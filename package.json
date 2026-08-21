@@ -7,8 +7,8 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "pack": "node scripts/prepack.js && electron-builder --win nsis portable",
-    "pack:dir": "node scripts/prepack.js && electron-builder --win dir"
+    "pack": "node scripts/prepack.js && electron-builder --win nsis portable --publish never",
+    "pack:dir": "node scripts/prepack.js && electron-builder --win dir --publish never"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
