@@ -1,0 +1,8 @@
+# 文本文件统一 LF(避免 Windows CRLF 干扰 diff)
+* text=auto eol=lf
+
+# 二进制文件
+*.png binary
+*.ico binary
+*.exe binary
+*.dll binary

@@ -1,0 +1,17 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# 本地缓存(打包/安装依赖时生成)
+.npm-cache/
+.electron-cache/
+*.log
+
+# 测试生成物
+.dsh-*
+.tmp-*
+scripts/icons-data.json
+
+# 系统文件
+.DS_Store
+Thumbs.db

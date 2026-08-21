@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>DeepSeek Harness 管理器</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://registry.npmjs.org https://api.github.com https://raw.githubusercontent.com https://api.deepseek.com">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">🐳 DSH 管理器 <span id="dsh-version" class="pill"></span></div>
+  <span id="launch-pill" class="pill">启动: —</span>
+  <div class="top-actions">
+    <button id="btn-settings" class="btn ghost" title="设置">⚙ 设置</button>
+  </div>
+</header>
+
+<div id="layout">
+  <nav id="side-nav">
+    <button class="nav-item active" data-view="overview">📊 概览</button>
+    <button class="nav-item" data-view="plugins">🧩 插件</button>
+    <button class="nav-item" data-view="diagnose">🩺 诊断</button>
+    <button class="nav-item" data-view="balance">💰 余额</button>
+  </nav>
+
+  <main id="content">
+    <section id="view-overview" class="view active">
+      <h2>概览</h2>
+      <div id="status-cards" class="cards"></div>
+
+      <div class="panel">
+        <h3>更新 harness <span id="update-badge"></span></h3>
+        <div class="row">
+          <div id="update-info" class="muted">检查中…</div>
+          <button id="btn-check-update" class="btn">检查更新</button>
+          <button id="btn-do-update" class="btn primary" disabled>更新到最新版</button>
+        </div>
+        <div id="update-progress" class="muted"></div>
+        <h4>备份与回滚</h4>
+        <div id="backup-list" class="muted">暂无备份</div>
+      </div>
+    </section>
+
+    <section id="view-plugins" class="view">
+      <h2>插件管理 <select id="plugins-select" class="inline-select"></select></h2>
+      <div class="note">开关仅修改管理器自有补丁(不卸载包,可随时恢复);卸载才会彻底移除依赖。修改后重启 profile 生效。</div>
+
+      <div class="panel">
+        <h3>🧩 已安装插件</h3>
+        <div class="row" style="margin:0 0 8px">
+          <input type="text" id="plugin-filter" placeholder="搜索已安装插件…" style="max-width:240px">
+          <span class="muted" id="plugin-count"></span>
+        </div>
+        <div id="plugins-table"></div>
+        <div id="plugins-expand" style="margin-top:8px"></div>
+      </div>
+
+      <div class="panel">
+        <h3>🔍 搜索与安装插件</h3>
+        <div class="row">
+          <input id="search-query" type="text" placeholder="插件名 / 关键词,如 dsh-tool-*、RAG、git;本地来源时填目录路径">
+          <label class="chk"><input type="checkbox" id="src-npm" checked> npm</label>
+          <label class="chk"><input type="checkbox" id="src-github" checked> GitHub</label>
+          <label class="chk"><input type="checkbox" id="src-local"> 本地</label>
+          <button id="btn-search" class="btn primary">搜索</button>
+        </div>
+        <div class="row">
+          <span class="muted">安装目标 profile:</span>
+          <select id="search-target"></select>
+          <span class="muted">结果筛选:</span>
+          <select id="search-source-filter">
+            <option value="all">全部来源</option>
+            <option value="npm">npm</option>
+            <option value="github">GitHub</option>
+            <option value="local">本地</option>
+          </select>
+        </div>
+        <div id="search-errors" class="warn-box"></div>
+        <div id="search-results"></div>
+        <div id="search-expand" style="margin-top:8px"></div>
+      </div>
+    </section>
+
+    <section id="view-diagnose" class="view">
+      <h2>诊断中心</h2>
+      <div class="row">
+        <button id="btn-diagnose" class="btn primary">开始诊断</button>
+        <span class="muted">排查「为什么突然不能用了」的第一步</span>
+      </div>
+      <div id="diagnose-results"></div>
+      <div id="diagnose-report" class="muted"></div>
+    </section>
+
+    <section id="view-balance" class="view">
+      <h2>账户余额 <span class="pill phase">Phase 2</span></h2>
+      <div class="panel">
+        <div class="row">
+          <input id="api-key" type="password" placeholder="DeepSeek API Key (sk-...)">
+          <button id="btn-save-key" class="btn">保存 Key</button>
+          <button id="btn-import-key" class="btn ghost">从 DSH 凭据导入</button>
+          <button id="btn-clear-key" class="btn ghost danger-ghost">清除</button>
+        </div>
+        <div class="muted">Key 使用 Windows 系统凭据加密存储,仅本机可解密,日志中不显示。</div>
+      </div>
+      <div class="panel">
+        <div class="row">
+          <h3 style="margin:0">余额</h3>
+          <button id="btn-refresh-balance" class="btn">刷新</button>
+        </div>
+        <div id="balance-display" class="balance"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer id="logbar">
+  <div class="log-head">
+    <span>📜 日志</span>
+    <div>
+      <button id="btn-log-clear" class="mini">清空</button>
+      <button id="btn-log-toggle" class="mini">收起</button>
+    </div>
+  </div>
+  <pre id="log-console"></pre>
+</footer>
+
+<div id="modal-root"></div>
+<script src="app.js"></script>
+</body>
+</html>

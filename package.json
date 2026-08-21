@@ -1,0 +1,67 @@
+{
+  "name": "deepseek-harness-manager",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness 管理器 — 启动/停止 harness、插件管理、更新、诊断、余额",
+  "main": "main.js",
+  "author": "HS",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "node scripts/prepack.js && electron-builder --win nsis portable",
+    "pack:dir": "node scripts/prepack.js && electron-builder --win dir"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "semver": "^7.6.3",
+    "undici": "^8.10.0"
+  },
+  "devDependencies": {
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.hs.deepseek-harness-manager",
+    "productName": "DeepSeek-Harness-Manager",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DeepSeek Harness 管理器",
+      "artifactName": "${productName}-${version}-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    }
+  }
+}
