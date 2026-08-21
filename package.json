@@ -12,8 +12,7 @@
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
-    "semver": "^7.6.3",
-    "undici": "^8.10.0"
+    "semver": "^7.6.3"
   },
   "devDependencies": {
     "electron": "^43.4.1",
