@@ -24,7 +24,19 @@
 
 ## 🖼 界面预览
 
-*(在此添加截图:概览页 / 插件页 / 诊断页)*
+**概览**(harness 状态 / DSH 环境检测 / 更新面板)
+
+![概览](docs/screenshots/overview.png)
+
+**插件管理**(已安装插件 + 搜索与安装)
+
+![插件管理](docs/screenshots/plugins.png)
+
+**诊断中心**
+
+![诊断中心](docs/screenshots/diagnose.png)
+
+> 截图由 `npm run screenshots` 自动生成(基于 Electron capturePage),可随时重新生成。
 
 ## 🚀 快速开始
 

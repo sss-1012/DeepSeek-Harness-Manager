@@ -699,3 +699,9 @@ function appendLog(line) {
 }
 
 init()
+
+// 供截图模式/脚本切换视图使用
+window.__switchView = (name) => {
+  const btn = document.querySelector(`.nav-item[data-view="${name}"]`)
+  if (btn) btn.click()
+}

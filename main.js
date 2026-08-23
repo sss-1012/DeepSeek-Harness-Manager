@@ -307,6 +307,28 @@ app.whenReady().then(() => {
   registerIpc()
   createWindow()
 
+  // 截图模式(app --screenshots):生成各视图截图到 docs/screenshots 后退出
+  if (process.argv.includes('--screenshots')) {
+    setTimeout(async () => {
+      const fs = require('node:fs')
+      const outDir = path.join(__dirname, 'docs', 'screenshots')
+      fs.mkdirSync(outDir, { recursive: true })
+      const views = ['overview', 'plugins', 'diagnose']
+      await new Promise((r) => setTimeout(r, 3000))
+      for (const v of views) {
+        try {
+          await mainWindow.webContents.executeJavaScript(`window.__switchView && window.__switchView('${v}')`)
+          await new Promise((r) => setTimeout(r, 1600))
+          const img = await mainWindow.webContents.capturePage()
+          fs.writeFileSync(path.join(outDir, v + '.png'), img.toPNG())
+          log.logInfo(`截图完成: ${v}.png`)
+        } catch (e) { log.logWarn(`截图 ${v} 失败: ${e.message}`) }
+      }
+      app.exit(0)
+    }, 100)
+    return
+  }
+
   trayHandle = trayMod.createTray({
     onStart: async () => {
       const r = await status.start('web', { onLog: (l) => { log.logInfo(l); broadcast('log:line', l) } })

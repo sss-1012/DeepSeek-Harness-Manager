@@ -7,6 +7,7 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
+    "screenshots": "electron . --screenshots",
     "pack": "node scripts/prepack.js && electron-builder --win nsis portable --publish never",
     "pack:dir": "node scripts/prepack.js && electron-builder --win dir --publish never"
   },
