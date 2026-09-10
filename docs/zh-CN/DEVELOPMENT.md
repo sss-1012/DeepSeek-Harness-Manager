@@ -66,6 +66,18 @@ npm run pack:dir    # 仅生成未打包目录(更快,便于测试)
 - CI 环境(`CI=true`)自动跳过;按文件大小幂等,重复执行不会重复复制
 - 也可单独执行:`npm run archive`(`npm run archive -- --force` 强制覆盖)
 
+### 把 GitHub Releases 同步到本地
+
+发布版由 CI 在云端构建并发布到 GitHub。若想让**每个已发布版本**(包括云端构建的和历史版本)在本地都有副本,可用同一归档目录做镜像:
+
+```powershell
+npm run sync-releases                   # 下载本地缺失的所有版本
+npm run sync-releases -- --only v0.1.2  # 只同步指定 tag
+npm run sync-releases -- --force        # 已存在也重新下载
+```
+
+两条路径写入同一套 `<归档根>/<tag>/` 结构,并按文件大小判定是否需要更新,因此"本地构建的"与"从 Release 下载的"不会冲突。
+
 ### 受限网络下打包
 
 ```powershell

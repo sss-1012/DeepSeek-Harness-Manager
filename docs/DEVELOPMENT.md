@@ -66,6 +66,18 @@ When `npm run pack` finishes it also runs `scripts/archive-build.js`, which copi
 - Skipped automatically in CI (`CI=true`), and idempotent by file size.
 - Re-run it alone with `npm run archive` (add `--force` to overwrite: `npm run archive -- --force`).
 
+### Mirroring GitHub Releases locally
+
+Releases are built by CI and published on GitHub. To keep a local copy of **every** published version — including ones built in the cloud, and older releases — mirror them into the same archive:
+
+```powershell
+npm run sync-releases                 # download every version missing locally
+npm run sync-releases -- --only v0.1.2  # one specific tag
+npm run sync-releases -- --force      # re-download even if present
+```
+
+Both paths write to the same `<archive root>/<tag>/` layout and compare by file size, so a locally built version and a downloaded release stay consistent.
+
 ### Restricted-network packaging
 
 ```powershell

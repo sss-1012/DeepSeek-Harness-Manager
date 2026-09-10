@@ -10,7 +10,8 @@
     "screenshots": "electron . --screenshots",
     "pack": "node scripts/prepack.js && electron-builder --win nsis portable --publish never && node scripts/archive-build.js",
     "pack:dir": "node scripts/prepack.js && electron-builder --win dir --publish never",
-    "archive": "node scripts/archive-build.js"
+    "archive": "node scripts/archive-build.js",
+    "sync-releases": "node scripts/sync-releases.js"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
