@@ -32,7 +32,9 @@ $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
 node scripts/smoke.js      # module-level smoke test (store, overrides, profiles, plugins, dsh, sources, resolver, update, history, diagnostics)
 node scripts/e2e.js        # end-to-end flow in an isolated DSH_HOME
 node scripts/e2e2.js       # uninstall + update-backup flows in an isolated environment
-node scripts/check-docs.js # verify every link and image path in the README/docs
+node scripts/check-docs.js # verify every link and image path in the README/docs (--offline skips external probing)
+node plugin/test/host.test.js    # DSH entry plugin: routes, injection, branches (mock host, fast)
+node plugin/test/boot-check.mjs  # DSH entry plugin: real dsh boot on port 3099 in an isolated DSH_HOME
 ```
 
 Both e2e scripts create their own throwaway `DSH_HOME` / manager home directories, so they never touch your real environment. Please run `smoke.js` before opening a pull request.
@@ -156,6 +158,31 @@ DeepSeek-Harness-Manager/
 - **Windows `.cmd` shims are parsed**, not executed through a shell: `tool.js` extracts the real JS entry point (`npm-cli.js`, `pnpm.cjs`, or a variable-based `SET "VAR=path"` form) and runs it with Node, which avoids shell quoting bugs and injection.
 - **Plugin resolution compatibility**: newer DSH versions resolve bundle plugins from the global install location. `compat.js` checks resolvability from the loader's own path and can repair it by creating directory junctions in the global `node_modules` (no copies, no downloads, reversible).
 - **Data directory**: `~/.dsh-manager/` holds config, backups, history, logs and reports. Deleting it resets the manager.
+
+## DSH entry plugin (`plugin/`)
+
+`plugin/` is a standalone DSH plugin with its own `package.json` (`dsh.bundle` declaration, `dsh-plugin`
+keyword). It injects a launcher pill into the DSH web UI and has no build step and no dependencies.
+
+- Host side (`lib/index.js`) registers three local routes through `ctx.webServer` and appends one
+  `<script>` with `tapIndex`: `/dsh-manager/status.json`, `/dsh-manager/launch`, `/dsh-manager/panel.js`.
+  If `ctx.webServer` is missing the plugin returns quietly, so it can never block a profile boot.
+- It locates the manager through `DSH_MANAGER_EXE` → `~/.dsh-manager/install.json` (written by packaged
+  builds at startup) → the standard install locations, and starts that exact executable — no guessing.
+- Two self-checks: `node plugin/test/host.test.js` (mock host context) and
+  `node plugin/test/boot-check.mjs` (real `dsh` boot).
+
+`boot-check.mjs` creates a throwaway profile under `.dshm-plugin-check/`, installs the plugin with
+`dsh plugin --profile mgr-test add link:<repo>/plugin`, boots it with `--port 3099 --no-open` under an
+isolated `DSH_HOME`, asserts every route and then cleans up — your real `~/.dsh` and any server on 3080 are
+never touched. Installing it for real:
+
+```powershell
+dsh plugin --profile web add link:<repo>/plugin   # restart dsh web afterwards
+```
+
+Publishing the package to npm would allow `dsh plugin --profile web add dsh-harness-manager`; see
+[plugin/README.md](../plugin/README.md) for that and for the awesome-list submission file.
 
 ## Environment variables
 

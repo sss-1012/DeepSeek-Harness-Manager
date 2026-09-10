@@ -32,7 +32,9 @@ $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
 node scripts/smoke.js      # 模块级冒烟测试(store / overrides / profiles / plugins / dsh / sources / resolver / update / history / diagnose)
 node scripts/e2e.js        # 隔离 DSH_HOME 下的端到端流程
 node scripts/e2e2.js       # 隔离环境下的卸载 + 更新备份流程
-node scripts/check-docs.js # 检查 README / docs 中所有链接与图片路径
+node scripts/check-docs.js # 检查 README / docs 中所有链接与图片路径(--offline 跳过外部探测)
+node plugin/test/host.test.js    # DSH 入口插件:路由 / 注入 / 分支(mock 宿主,很快)
+node plugin/test/boot-check.mjs  # DSH 入口插件:在隔离 DSH_HOME 里真实启动 dsh(端口 3099)
 ```
 
 两个 e2e 脚本都会自建一次性的 `DSH_HOME` 与管理器数据目录,**不会碰你的真实环境**。提 PR 前请先跑 `smoke.js`。
@@ -163,6 +165,30 @@ DeepSeek-Harness-Manager/
 - **插件解析兼容性**:新版 DSH 会从全局安装位置解析 bundle 插件。`compat.js` 会以 loader 自身路径为基准做检测,
   并可通过在全局 `node_modules` 创建目录联接来修复(不复制文件、不下载、可逆)
 - **数据目录**:`~/.dsh-manager/`(配置、备份、历史、日志、报告)。删掉即重置管理器
+
+## DSH 入口插件(`plugin/`)
+
+`plugin/` 是一个独立的 DSH 插件,自带 `package.json`(`dsh.bundle` 声明 + `dsh-plugin` 关键词),
+向 DSH Web 界面注入一个启动胶囊按钮,没有构建步骤、没有依赖。
+
+- 宿主侧(`lib/index.js`)通过 `ctx.webServer` 注册三个本机路由,并用 `tapIndex` 追加一段 `<script>`:
+  `/dsh-manager/status.json`、`/dsh-manager/launch`、`/dsh-manager/panel.js`。若拿不到 `ctx.webServer`
+  就静默退出,因此**永远不会拖垮 profile 启动**
+- 定位管理器:`DSH_MANAGER_EXE` → `~/.dsh-manager/install.json`(打包版启动时自动写入)→ 常见安装路径,
+  启动的就是这个确切的可执行文件,不做猜测
+- 两条自检:`node plugin/test/host.test.js`(mock 宿主上下文)与 `node plugin/test/boot-check.mjs`(真实启动 dsh)
+
+`boot-check.mjs` 会在 `.dshm-plugin-check/` 下建一个一次性 profile,用
+`dsh plugin --profile mgr-test add link:<仓库>/plugin` 装插件,在隔离 `DSH_HOME` 下以
+`--port 3099 --no-open` 启动,校验全部路由后自动清理 —— **不会碰你真实的 `~/.dsh`,也不会碰 3080 上的服务**。
+正式安装:
+
+```powershell
+dsh plugin --profile web add link:<仓库>/plugin   # 之后重启 dsh web
+```
+
+若把包发布到 npm,即可用 `dsh plugin --profile web add dsh-harness-manager` 安装;相关说明与
+awesome-list 收录用的 YAML 见 [plugin/README.md](../../plugin/README.md)。
 
 ## 环境变量
 

@@ -29,5 +29,17 @@
     "cordis.patch.yml",
     "README.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sss-1012/DeepSeek-Harness-Manager.git",
+    "directory": "plugin"
+  },
+  "homepage": "https://github.com/sss-1012/DeepSeek-Harness-Manager/tree/main/plugin",
+  "bugs": {
+    "url": "https://github.com/sss-1012/DeepSeek-Harness-Manager/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "license": "MIT"
 }
