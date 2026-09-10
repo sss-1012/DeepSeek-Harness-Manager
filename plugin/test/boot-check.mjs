@@ -3,7 +3,8 @@
 // 安全保证:使用独立的 DSH_HOME / DSH_MANAGER_HOME 与非默认端口,不读写真实的
 //          ~/.dsh、~/.dsh-manager,也不影响正在运行的服务。
 //
-// 用法: node plugin/test/boot-check.mjs [--port 3099] [--keep]
+// 用法: node plugin/test/boot-check.mjs [--port 3099] [--keep] [--spec <安装源>]
+//   --spec 默认 link:<本仓库>/plugin;验证 npm 发布包时用 --spec dsh-harness-manager
 import { execFileSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import http from 'node:http'
@@ -15,6 +16,7 @@ const pluginDir = path.resolve(here, '..').replace(/\\/g, '/')
 const argv = process.argv.slice(2)
 const port = Number((argv.includes('--port') ? argv[argv.indexOf('--port') + 1] : null) || 3099)
 const keep = argv.includes('--keep')
+const spec = argv.includes('--spec') ? argv[argv.indexOf('--spec') + 1] : `link:${pluginDir}`
 const root = process.env.DSHM_CHECK_ROOT || path.resolve(here, '..', '..', '.dshm-plugin-check')
 const profileDir = path.join(root, 'profiles', 'mgr-test')
 const bootLog = path.join(root, 'boot.log')
@@ -38,8 +40,8 @@ console.log(`[1/5] 从内置 web 模板创建测试 profile(${profileDir})`)
 dsh('--profile', 'mgr-test', '--from-default-profile', 'web', '--dump-config')
 await check('profile 已创建', () => fs.accessSync(path.join(profileDir, 'package.json')))
 
-console.log('[2/5] 安装插件(link 本地目录)')
-dsh('plugin', '--profile', 'mgr-test', 'add', `link:${pluginDir}`)
+console.log(`[2/5] 安装插件(${spec})`)
+dsh('plugin', '--profile', 'mgr-test', 'add', spec)
 const pkg = JSON.parse(fs.readFileSync(path.join(profileDir, 'package.json'), 'utf8'))
 await check('插件已加入 dsh.profile.bundles', () => {
   if (!(pkg.dsh?.profile?.bundles || []).includes('dsh-harness-manager')) throw new Error(JSON.stringify(pkg.dsh))

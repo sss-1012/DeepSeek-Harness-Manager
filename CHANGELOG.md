@@ -10,6 +10,7 @@
 - 🧩 **DSH 入口插件**(`plugin/`):在 DSH Web 界面左下角加一个「管理器」胶囊按钮。
   **绿点** = 已检测到管理器,点击即启动(管理器是单实例,已在运行会前置窗口);
   **黄点** = 未检测到,点击前往下载页。插件只提供入口、不含业务逻辑,缺失时不影响 DSH 启动。
+  已发布到 npm:`dsh plugin --profile web add dsh-harness-manager`。
 - 🪪 **打包版自注册**:管理器启动时写入 `~/.dsh-manager/install.json`(`exe` / `version` / `updatedAt`),
   供入口插件定位你实际在用的那一份;也可用环境变量 `DSH_MANAGER_EXE` 覆盖。
 - 🔁 **`npm run sync-releases`**:把 GitHub Releases 上的安装版 / 绿色版下载到本地归档目录

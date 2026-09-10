@@ -119,17 +119,20 @@ The plugin holds no business logic: three local routes (`/dsh-manager/status.jso
 If the manager is missing, DSH itself is unaffected.
 
 ```bash
-# install from this repository (link mode, no npm publish needed)
-dsh plugin --profile web add link:/path/to/DeepSeek-Harness-Manager/plugin
+# install from npm
+dsh plugin --profile web add dsh-harness-manager
 # then restart dsh web
 dsh plugin --profile web remove dsh-harness-manager   # uninstall
 ```
 
+Working on the plugin itself? Install the local copy instead:
+`dsh plugin --profile web add link:/path/to/DeepSeek-Harness-Manager/plugin`.
+
 The pill can be hidden (× button); the preference is stored in `localStorage`. The plugin locates
 the manager through `DSH_MANAGER_EXE`, then `~/.dsh-manager/install.json`, then the usual install
-locations — see [plugin/README.md](plugin/README.md) for details, the two self-check commands
-(`node plugin/test/host.test.js`, `node plugin/test/boot-check.mjs`) and the awesome-list
-submission file. The plugin is **not on npm yet**, so use the `link:` form above.
+locations — see [plugin/README.md](plugin/README.md) for details, the self-check commands
+(`node plugin/test/host.test.js`, `node plugin/test/boot-check.mjs --spec dsh-harness-manager`,
+`node plugin/test/resolve-check.mjs`) and the awesome-list submission file.
 
 ## Usage
 

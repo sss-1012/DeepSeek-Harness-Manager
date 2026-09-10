@@ -12,13 +12,15 @@
 
 ## 安装
 
+已发布到 npm([`dsh-harness-manager`](https://www.npmjs.com/package/dsh-harness-manager)):
+
 ```bash
 dsh plugin --profile web add dsh-harness-manager
 ```
 
 安装后重启 `dsh web`(或在管理器里重启该 profile)生效。
 
-本地开发安装(不发布 npm,直接链接目录):
+本地开发安装(直接链接仓库目录,改动即时可见):
 
 ```bash
 dsh plugin --profile web add link:E:\Work\DeepSeek-Harness-Manager\plugin

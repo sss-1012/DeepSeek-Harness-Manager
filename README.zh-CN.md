@@ -116,17 +116,18 @@ DSH Manager 把整个生命周期收进一个窗口:
 因此总是指向你实际在用的那一份。管理器没装也不影响 DSH 本身。
 
 ```bash
-# 从本仓库安装(link 方式,无需发布 npm)
-dsh plugin --profile web add link:/path/to/DeepSeek-Harness-Manager/plugin
+# 从 npm 安装
+dsh plugin --profile web add dsh-harness-manager
 # 之后重启 dsh web
 dsh plugin --profile web remove dsh-harness-manager   # 卸载
 ```
 
+如果你自己在改这个插件,可以改成链接本地目录安装:
+`dsh plugin --profile web add link:/path/to/DeepSeek-Harness-Manager/plugin`。
+
 胶囊可以关掉(× 按钮),偏好存在 `localStorage`。插件按 `DSH_MANAGER_EXE` →
 `~/.dsh-manager/install.json` → 常见安装路径的顺序定位管理器,详见
-[plugin/README.md](plugin/README.md)(含两条自检命令 `node plugin/test/host.test.js`、
-`node plugin/test/boot-check.mjs`,以及 awesome-list 收录用的 YAML)。
-插件**尚未发布到 npm**,所以请用上面的 `link:` 方式安装。
+[plugin/README.md](plugin/README.md)(含三条自检命令,以及 awesome-list 收录用的 YAML)。
 
 ## 使用流程
 

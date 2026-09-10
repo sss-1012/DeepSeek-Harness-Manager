@@ -182,8 +182,9 @@ never touched. Installing it for real:
 dsh plugin --profile web add link:<repo>/plugin   # restart dsh web afterwards
 ```
 
-Publishing the package to npm would allow `dsh plugin --profile web add dsh-harness-manager`; see
-[plugin/README.md](../plugin/README.md) for that and for the awesome-list submission file.
+The package is published to npm, so users install it with `dsh plugin --profile web add dsh-harness-manager`;
+see [plugin/README.md](../plugin/README.md) for the local `link:` form, the release steps and the
+awesome-list submission file.
 
 ## Environment variables
 
