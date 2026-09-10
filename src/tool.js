@@ -3,7 +3,7 @@
 // 方案:解析 shim 内容找到真实 JS 入口(npm-cli.js / pnpm.cjs),用 node 直接执行。
 const fs = require('node:fs')
 const path = require('node:path')
-const { execFile, execFileSync } = require('node:child_process')
+const { execFile, execFileSync, spawn } = require('node:child_process')
 
 const cache = new Map()
 
@@ -110,6 +110,49 @@ function resolveJsTool(cmd) {
   return entry
 }
 
+// 流式执行工具:实时把输出行回调给调用方(用于更新进度展示)
+function execToolStream(cmd, args, { onLine, timeout = 600000, cwd } = {}) {
+  return new Promise((resolve) => {
+    const entry = resolveJsTool(cmd)
+    if (!entry) {
+      const msg = `未找到命令: ${cmd}`
+      onLine?.(msg)
+      return resolve({ ok: false, code: 'ENOENT', stdout: '', stderr: msg, error: msg })
+    }
+    const isNative = /\.exe$/i.test(entry)
+    const child = spawn(isNative ? entry : process.execPath, isNative ? args : [entry, ...args], {
+      windowsHide: true,
+      env: nodeRunEnv(),
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let stdout = ''
+    let stderr = ''
+    const timer = setTimeout(() => {
+      try { child.kill() } catch { /* ignore */ }
+      onLine?.(`⏱ 执行超时(${Math.round(timeout / 1000)}s),已终止`)
+    }, timeout)
+    const handle = (buf, isErr) => {
+      const text = String(buf)
+      if (isErr) stderr += text; else stdout += text
+      for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim()
+        if (line) onLine?.(line)
+      }
+    }
+    child.stdout.on('data', (b) => handle(b, false))
+    child.stderr.on('data', (b) => handle(b, true))
+    child.on('error', (e) => {
+      clearTimeout(timer)
+      resolve({ ok: false, code: 'SPAWN', stdout, stderr, error: e.message })
+    })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      resolve({ ok: code === 0, code: code == null ? 1 : code, stdout, stderr, error: code === 0 ? null : `退出码 ${code}` })
+    })
+  })
+}
+
 // 异步执行工具(输出走管道,供调用方捕获)
 function execTool(cmd, args, opts = {}) {
   return new Promise((resolve) => {
@@ -148,4 +191,4 @@ function execToolSync(cmd, args, opts = {}) {
   }
 }
 
-module.exports = { execTool, execToolSync, resolveJsTool }
+module.exports = { execTool, execToolSync, execToolStream, resolveJsTool }

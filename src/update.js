@@ -6,7 +6,7 @@ const semver = require('semver')
 const { managerDirs, profilesDir } = require('./paths')
 const { version } = require('./dsh')
 const { listProfiles } = require('./profiles')
-const { execTool } = require('./tool')
+const { execTool, execToolStream } = require('./tool')
 
 function execFileAsync(cmd, args, opts = {}) {
   return execTool(cmd, args, opts)
@@ -52,16 +52,51 @@ async function createBackup() {
 }
 
 async function doUpdate(onProgress) {
-  onProgress?.('开始更新 @deepseek-ai/dsh ...')
-  const backup = await createBackup()
-  onProgress?.(`✔ 已备份到 ${backup.dir}`)
-  const r = await execFileAsync('npm', ['install', '-g', '@deepseek-ai/dsh@latest'], { timeout: 600000 })
+  // 结构化进度事件:{ phase, percent, line }
+  const emit = (phase, percent, line) => onProgress?.({ phase, percent, line })
+  const oldVersion = await version()
+  emit('start', 3, `开始更新 @deepseek-ai/dsh(当前 ${oldVersion || '未知'})…`)
+
+  let backup = null
+  try {
+    backup = await createBackup()
+    emit('backup', 15, `✔ 已备份当前版本(${backup.version})与各 profile 配置`)
+  } catch (e) {
+    emit('backup', 15, `⚠ 备份失败(继续更新): ${e.message}`)
+  }
+
+  emit('install', 20, '正在全局安装最新版(输出实时显示如下)…')
+  const r = await execToolStream('npm', ['install', '-g', '@deepseek-ai/dsh@latest'], {
+    timeout: 900000,
+    onLine: (line) => emit('install', null, line),
+  })
   if (!r.ok) {
-    onProgress?.(`✘ 更新失败: ${(r.stderr || r.error || '').slice(0, 500)}`)
+    emit('failed', 100, `✘ 更新失败: ${(r.stderr || r.error || '').slice(0, 400)}`)
     return { ok: false, backup, error: r.stderr || r.error }
   }
+
+  emit('verify', 95, '正在校验版本 …')
   const v = await version()
-  onProgress?.(`✔ 更新完成,当前版本: ${v}`)
+  emit('done', 100, `✔ 更新完成:${oldVersion || '?'} → ${v || '?'}`)
+
+  // 更新后自检:新版可能改变插件解析位置,导致 profile 插件加载失败
+  try {
+    const compat = require('./compat')
+    const issues = []
+    for (const p of listProfiles()) {
+      const res = compat.checkBundles(p.name)
+      if (!res.ok) issues.push(res)
+    }
+    if (issues.length) {
+      const detail = issues.map((i) => `${i.profile}: ${i.bad.join(', ')}`).join(';')
+      emit('done', 100, `⚠ 更新后自检发现 ${issues.length} 个 profile 的插件在新版下无法解析:${detail}`)
+      emit('done', 100, '💡 点「插件兼容性修复」可一键创建链接修复(否则启动 harness 会失败)')
+      return { ok: true, backup, version: v, compatIssues: issues }
+    }
+    emit('done', 100, '✔ 更新后自检通过:所有插件均可正常解析')
+  } catch (e) {
+    emit('done', 100, `⚠ 更新后自检未完成: ${e.message}`)
+  }
   return { ok: true, backup, version: v }
 }
 

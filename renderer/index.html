@@ -34,8 +34,13 @@
           <div id="update-info" class="muted">检查中…</div>
           <button id="btn-check-update" class="btn">检查更新</button>
           <button id="btn-do-update" class="btn primary" disabled>更新到最新版</button>
+          <button id="btn-compat-check" class="btn">插件兼容性检查</button>
         </div>
-        <div id="update-progress" class="muted"></div>
+        <div id="update-progress-wrap" class="progress-wrap" hidden>
+          <div class="progress-track"><div id="update-progress-bar" class="progress-bar"></div></div>
+          <div id="update-progress" class="muted">—</div>
+          <pre id="update-log" class="update-log"></pre>
+        </div>
         <h4>备份与回滚</h4>
         <div id="backup-list" class="muted">暂无备份</div>
       </div>

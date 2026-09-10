@@ -60,9 +60,10 @@ async function init() {
     if ($('.nav-item.active')?.dataset.view === 'overview') renderOverview()
   })
   window.dshm.onLog((line) => appendLog(line))
-  window.dshm.onUpdateProgress((msg) => { $('#update-progress').textContent = msg })
+  window.dshm.onUpdateProgress((evt) => handleUpdateProgress(evt))
   window.dshm.onProfileFailed((d) => {
-    toast(`「${d.profile}」启动失败(退出码 ${d.code})\n${d.lines}`, 'error')
+    const detail = d.summary || d.lines || ''
+    toast(`「${d.profile}」启动失败(退出码 ${d.code})\n${detail}`, 'error')
   })
   bindNav()
   bindTopButtons()
@@ -104,6 +105,7 @@ function refreshCurrentView() {
 function bindOverview() {
   $('#btn-check-update').onclick = refreshUpdate
   $('#btn-do-update').onclick = doUpdate
+  $('#btn-compat-check').onclick = () => runCompatCheck(false)
 }
 
 async function renderOverview() {
@@ -261,6 +263,63 @@ async function openLaunchConfig() {
 }
 
 // ---------- 更新 ----------
+// 结构化进度:{ phase, percent, line },percent 为 null 时显示不确定进度动画
+function handleUpdateProgress(evt) {
+  const wrap = $('#update-progress-wrap')
+  const bar = $('#update-progress-bar')
+  const text = $('#update-progress')
+  const logEl = $('#update-log')
+  if (!wrap || !bar) return
+  wrap.hidden = false
+  if (typeof evt === 'string') {
+    text.textContent = evt
+    logEl.textContent += (logEl.textContent ? '\n' : '') + evt
+    return
+  }
+  if (evt.percent == null) {
+    bar.classList.add('indeterminate')
+  } else {
+    bar.classList.remove('indeterminate')
+    bar.style.width = `${Math.max(0, Math.min(100, evt.percent))}%`
+  }
+  if (evt.line) {
+    text.textContent = evt.line.split('\n')[0]
+    logEl.textContent += (logEl.textContent ? '\n' : '') + evt.line
+    const lines = logEl.textContent.split('\n')
+    if (lines.length > 300) logEl.textContent = lines.slice(-200).join('\n')
+    logEl.scrollTop = logEl.scrollHeight
+  }
+}
+
+function resetUpdateProgress() {
+  $('#update-progress-wrap').hidden = false
+  const bar = $('#update-progress-bar')
+  bar.classList.add('indeterminate')
+  bar.style.width = '0'
+  $('#update-progress').textContent = '准备开始…'
+  $('#update-log').textContent = ''
+}
+
+// 插件解析兼容性:检查 / 一键修复(新版 dsh 变更插件解析位置时的救急手段)
+async function runCompatCheck(auto = false) {
+  const r = await window.dshm.compatCheck()
+  const bad = r.results.filter((x) => !x.ok)
+  if (!bad.length) {
+    if (!auto) toast('插件解析检查通过:所有 profile 的插件均可正常加载 ✓', 'ok')
+    return { ok: true }
+  }
+  const detail = bad.map((b) => `${b.profile}: ${b.bad.join('、')}`).join('\n')
+  const ok = await modal('插件解析异常',
+    `以下 profile 的插件在当前 dsh 版本下无法解析(启动 harness 会失败):<pre class="update-log">${esc(detail)}</pre>是否一键修复?<br><span class="muted">修复方式:在全局 node_modules 创建目录联接(不复制文件、不下载、可逆)</span>`,
+    [{ label: '一键修复', value: true, cls: 'primary' }, { label: '稍后', value: false }])
+  if (!ok) return { ok: false, bad }
+  const fixed = await window.dshm.compatFix()
+  const lines = fixed.results.flatMap((x) => x.results.map((y) => `${x.profile} / ${y.pkg}: ${y.status}`))
+  toast(`修复完成,共 ${lines.length} 项:\n${lines.join('\n')}`, 'ok')
+  appendLog('[compat] ' + lines.join(' | '))
+  return { ok: true }
+}
+
 async function refreshUpdate() {
   $('#update-info').textContent = '检查中…'
   const r = await window.dshm.checkUpdate()
@@ -317,10 +376,21 @@ async function doUpdate() {
     for (const p of running) await window.dshm.stopProfile(p.name, { force: false })
   }
   $('#btn-do-update').disabled = true
-  $('#update-progress').textContent = '更新中…'
+  resetUpdateProgress()
   const r = await window.dshm.doUpdate()
-  $('#update-progress').textContent = r.ok ? `✔ ${r.version}` : `✘ ${r.error}`
+  $('#update-progress').textContent = r.ok ? `✔ 更新完成:${r.version}` : `✘ 更新失败:${r.error}`
+  if (r.ok) $('#update-progress-bar').classList.remove('indeterminate'), $('#update-progress-bar').style.width = '100%'
   toast(r.ok ? `更新完成: v${r.version}` : '更新失败', r.ok ? 'ok' : 'error')
+  if (r.ok && r.compatIssues?.length) {
+    const detail = r.compatIssues.map((i) => `${i.profile}: ${i.bad.join('、')}`).join('\n')
+    const fix = await modal('更新后自检发现问题',
+      `新版 dsh 下以下插件无法解析,启动 harness 会失败:<pre class="update-log">${esc(detail)}</pre>是否立即一键修复?`,
+      [{ label: '一键修复', value: true, cls: 'primary' }, { label: '稍后', value: false }])
+    if (fix) {
+      await window.dshm.compatFix()
+      toast('插件兼容性修复完成 ✓', 'ok')
+    }
+  }
   refreshUpdate()
 }
 

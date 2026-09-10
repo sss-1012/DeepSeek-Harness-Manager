@@ -28,6 +28,8 @@ const api = {
   doUpdate: () => ipcRenderer.invoke('update:do'),
   listBackups: () => ipcRenderer.invoke('update:backups'),
   rollback: (id) => ipcRenderer.invoke('update:rollback', id),
+  compatCheck: () => ipcRenderer.invoke('compat:check'),
+  compatFix: (profile) => ipcRenderer.invoke('compat:fix', profile),
   // ---- 设置 ----
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),

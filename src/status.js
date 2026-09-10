@@ -28,6 +28,23 @@ function effectivePort(profileName) {
   return getProfileSetting(profileName).port || null
 }
 
+// 从启动输出里提炼可读的失败原因(插件解析失败 / 端口占用 / 其他)
+function summarizeBootFailure(lines) {
+  const text = lines.join('\n')
+  if (/EADDRINUSE|address already in use/i.test(text)) {
+    return '端口已被占用(可能有另一个 harness 实例在运行)。请先停止它,或在「配置启动项」里换一个检测端口。'
+  }
+  const missing = [...text.matchAll(/Cannot find package '([^']+)'/g)].map((m) => m[1])
+  const failedImports = [...text.matchAll(/failed to import loader entry [^(]*\(([^)]+)\)/g)].map((m) => m[1])
+  const pkgs = [...new Set(missing.length ? missing : failedImports)]
+  if (pkgs.length) {
+    return `插件加载失败,无法解析:${pkgs.join('、')}\n常见原因:dsh 版本更新后插件解析位置发生变化。可在更新面板点「插件兼容性修复」一键创建链接。(项目 ${pkgs.length} 个插件)`
+  }
+  if (/plugin tree failed to load/i.test(text)) return '插件树加载失败,详见下方日志'
+  const errLine = [...lines].reverse().find((l) => /Error:|error:|✘|failed to/i.test(l))
+  return errLine ? errLine.slice(0, 300) : (lines.slice(-2).join(' | ') || '启动后立即退出,无额外输出')
+}
+
 // 判定 profile 是否在运行:优先 PID,web 型叠加端口检测
 async function isRunning(profileName) {
   const s = sessions.get(profileName)
@@ -59,7 +76,7 @@ async function start(profileName, { args, onLog, onEarlyExit } = {}) {
       const t = chunk.trim()
       if (t) {
         recentLines.push(t)
-        if (recentLines.length > 12) recentLines.shift()
+        if (recentLines.length > 400) recentLines.shift()
         onLog?.(`[${profileName}] ${t}`)
       }
     }
@@ -71,19 +88,28 @@ async function start(profileName, { args, onLog, onEarlyExit } = {}) {
 
   child.on('exit', (code, signal) => {
     const wasReady = entry.readyAt
-    const earlyFailure = !wasReady && code !== 0
-    line(`进程退出 (code=${code}${signal ? `, signal=${signal}` : ''})`)
+    const aliveMs = Date.now() - entry.startedAt
+    // 未就绪就退出,或"就绪"后很短时间(30s)内崩溃 → 都视为启动失败
+    const crashedSoonAfterReady = wasReady && (Date.now() - wasReady) < 30000
+    const earlyFailure = (!wasReady || crashedSoonAfterReady) && code !== 0
+    line(`进程退出 (code=${code}${signal ? `, signal=${signal}` : ''}, 存活 ${(aliveMs / 1000).toFixed(1)}s)`)
     record(profileName, {
       action: 'stop',
       exitCode: code,
       signal: signal || null,
       durationMs: wasReady ? Date.now() - wasReady : null,
+      aliveMs,
       pid: child.pid,
     })
     sessions.delete(profileName)
     if (earlyFailure) {
-      const hint = recentLines.filter((l) => !l.startsWith('进程退出')).slice(-4).join(' | ')
-      onEarlyExit?.({ code, lines: hint || '启动后立即退出,无额外输出' })
+      onEarlyExit?.({
+        code,
+        aliveMs,
+        crashedAfterReady: crashedSoonAfterReady,
+        summary: summarizeBootFailure(recentLines),
+        lines: recentLines.slice(-6).join('\n'),
+      })
     }
   })
 
@@ -93,6 +119,8 @@ async function start(profileName, { args, onLog, onEarlyExit } = {}) {
     const poll = async () => {
       if (!sessions.has(profileName)) return
       if (await portOpen(port)) {
+        // 端口通了但进程已死(或即将死)→ 不算就绪,交给 exit 处理逻辑报错
+        if (!pidAlive(child.pid)) return
         entry.readyAt = Date.now()
         record(profileName, { action: 'start', pid: child.pid, port, plugins: profileInfo(profileName).bundles, durationMs: entry.readyAt - entry.startedAt, external: false })
         onLog?.(`[${profileName}] ✔ 服务就绪 http://127.0.0.1:${port} (耗时 ${entry.readyAt - entry.startedAt}ms)`)

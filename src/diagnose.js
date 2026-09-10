@@ -50,6 +50,14 @@ async function runDiagnostics() {
       `${p.bundles.length} 个 bundle${missing.length ? `, ${missing.length} 个缺失: ${missing.join(', ')}` : ''}`)
     const dis = disabledIds(p.name).filter((id) => !(p.bundles || []).includes(id))
     if (dis.length) add(`conflict-${p.name}`, `禁用条目检查: ${p.name}`, 'warn', `以下禁用 id 不在 bundles 中: ${dis.join(', ')}`)
+    // 插件解析兼容性(新版 dsh 从全局 loader 位置解析 bundle)
+    try {
+      const c = require('./compat').checkBundles(p.name)
+      if (!c.ok) {
+        add(`compat-${p.name}`, `插件解析: ${p.name}`, 'error',
+          `以下插件在当前 dsh 版本下无法解析,启动会失败: ${c.bad.join(', ')}(可在更新面板点「插件兼容性检查」一键修复)`)
+      }
+    } catch { /* 忽略检查异常 */ }
   }
 
   try {

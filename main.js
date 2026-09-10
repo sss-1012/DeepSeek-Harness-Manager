@@ -17,6 +17,7 @@ const diagnose = require('./src/diagnose')
 const update = require('./src/update')
 const balance = require('./src/balance')
 const env = require('./src/env')
+const compat = require('./src/compat')
 const status = require('./src/status')
 const icons = require('./src/icons')
 const trayMod = require('./src/tray')
@@ -130,9 +131,15 @@ function registerIpc() {
       args: opts.args || [],
       onLog: (line) => { log.logInfo(line); broadcast('log:line', line) },
       onEarlyExit: (info) => {
-        const msg = `profile「${name}」启动失败(退出码 ${info.code}): ${info.lines}`
+        const msg = `profile「${name}」启动失败(退出码 ${info.code},存活 ${(info.aliveMs / 1000).toFixed(1)}s): ${info.summary}`
         log.logWarn(msg)
-        broadcast('profile:failed', { profile: name, code: info.code, lines: info.lines })
+        broadcast('profile:failed', {
+          profile: name,
+          code: info.code,
+          aliveMs: info.aliveMs,
+          summary: info.summary,
+          lines: info.lines,
+        })
       },
     })
   })
@@ -213,7 +220,28 @@ function registerIpc() {
   ipcMain.handle('update:check', () => update.checkUpdate())
 
   ipcMain.handle('update:do', async () => {
-    return update.doUpdate((msg) => { log.logInfo(msg); broadcast('update:progress', msg) })
+    return update.doUpdate((evt) => {
+      const line = typeof evt === 'string' ? evt : evt?.line
+      if (line) log.logInfo(line)
+      broadcast('update:progress', evt)
+    })
+  })
+
+  // ---- 插件解析兼容性(新版 dsh 变更解析位置) ----
+  ipcMain.handle('compat:check', async () => {
+    const results = profiles.listProfiles().map((p) => compat.checkBundles(p.name))
+    return { ok: results.every((r) => r.ok), results }
+  })
+  ipcMain.handle('compat:fix', async (_e, profile) => {
+    const targets = profile ? [profile] : profiles.listProfiles().map((p) => p.name)
+    const out = []
+    for (const name of targets) {
+      const r = compat.fixBundles(name)
+      log.logInfo(`插件兼容性修复 ${name}: ${r.results.map((x) => `${x.pkg}=${x.status}`).join(', ')}`)
+      broadcast('log:line', `[compat] ${name}: ${r.results.map((x) => `${x.pkg}=${x.status}`).join(', ')}`)
+      out.push(r)
+    }
+    return { ok: true, results: out }
   })
 
   ipcMain.handle('update:backups', () => update.listBackups())

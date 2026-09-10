@@ -204,6 +204,33 @@ tr:hover td { background: rgba(37,99,235,.04); }
   color: #475569; white-space: pre-wrap; word-break: break-all;
 }
 
+/* ---- 更新进度 ---- */
+.progress-wrap { margin: 10px 0 4px; }
+.progress-track {
+  height: 8px; border-radius: 5px; background: var(--bg3); overflow: hidden;
+  border: 1px solid var(--border);
+}
+.progress-bar {
+  height: 100%; width: 0; border-radius: 5px; background: var(--accent);
+  transition: width .35s ease;
+}
+.progress-bar.indeterminate {
+  width: 35% !important;
+  background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent));
+  animation: indeterminate 1.1s ease-in-out infinite;
+}
+@keyframes indeterminate {
+  0% { margin-left: 0; }
+  50% { margin-left: 65%; }
+  100% { margin-left: 0; }
+}
+.update-log {
+  margin-top: 8px; max-height: 140px; overflow-y: auto;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.5; color: #475569;
+  background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  white-space: pre-wrap; word-break: break-all;
+}
+
 /* ---- 弹窗 ---- */
 #modal-root .overlay {
   position: fixed; inset: 0; background: rgba(15,23,42,.35);

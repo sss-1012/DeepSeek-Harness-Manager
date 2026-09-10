@@ -17,7 +17,8 @@
 | 🧩 **插件管理** | 已安装插件列表(**默认显示前 5 个,可展开**)、启用/禁用开关、**更新**、GitHub 详情跳转、卸载;列表内搜索过滤 |
 | 🔍 **搜索与安装** | **npm / GitHub / 本地**三来源适配层,默认空搜索展示 4 个、结果来源筛选;安装时自动**解析并安装插件依赖**;支持「跳过证书校验」适配代理/拦截网络 |
 | 🕘 **运行历史** | 每次启停记录(时间 / PID / 加载插件 / 启动耗时 / 退出码),排查「为什么变慢了」 |
-| 🩺 **诊断中心** | 一键检查 Node / npm / pnpm / dsh / profile 完整性 / 插件冲突 / 端口占用 / API Key,生成 Markdown 报告 |
+| 🩺 **诊断中心** | 一键检查 Node / npm / pnpm / dsh / profile 完整性 / **插件解析兼容性** / 端口占用 / API Key,生成 Markdown 报告 |
+| 🔄 **更新与兼容** | 版本检测、更新前自动备份、**实时进度与安装输出**、回滚;**更新后自动自检插件解析**并支持一键修复(`--publish` 之外的新版 dsh 解析位置变化时可救急) |
 | 💰 **账户余额** | DeepSeek API 余额查询,Key 使用 **Windows 系统凭据加密存储**,支持一键从 DSH 凭据导入 |
 | 🪟 **系统托盘** | 常驻托盘(与应用同款图标,悬停显示运行状态),右键快捷启停 |
 | 📜 **日志面板** | 所有操作实时滚动日志,可导出 |
@@ -73,6 +74,17 @@ $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
 $env:ELECTRON_BUILDER_BINARIES_MIRROR = "https://npmmirror.com/mirrors/electron-builder-binaries/"
 $env:CSC_IDENTITY_AUTO_DISCOVERY = "false"   # 无签名证书时跳过签名
 ```
+
+若本机有 HTTPS 拦截(企业代理 / 抓包工具,证书由本地根 CA 签发),Node 默认不信任该 CA,首次打包会在下载
+Electron 二进制时报 `unable to verify the first certificate`。追加下面一行让 Node 改用 Windows 系统根证书即可
+(Node ≥ 22.15 支持该参数;Node 20 不支持,请改用上面的镜像变量):
+
+```powershell
+$env:NODE_OPTIONS = "--use-system-ca"
+```
+
+> 提示: `electron-builder` 的下载缓存位于 `%LOCALAPPDATA%\electron-builder\Cache`。该目录为空时打包必须联网;
+> 缓存齐全后可离线打包。
 
 ## 📖 使用指南
 
