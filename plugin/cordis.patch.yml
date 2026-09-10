@@ -1,0 +1,18 @@
+# ============================================================================
+# dsh-harness-manager —— DSH bundle patch
+# ============================================================================
+# 挂载声明:把「打开 DSH Manager」入口插入 Web profile 的配置树。
+#
+# 安装:
+#   dsh plugin --profile web add dsh-harness-manager
+# 本地/开发安装(直接链接本目录):
+#   dsh plugin --profile web add link:<本目录绝对路径>
+# 安装后重启 dsh web 生效。
+#
+# 卸载:
+#   dsh plugin --profile web remove dsh-harness-manager
+# ============================================================================
+
+- insert:
+    - id: dsh-harness-manager
+      name: dsh-harness-manager

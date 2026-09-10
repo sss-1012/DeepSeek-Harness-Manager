@@ -325,6 +325,18 @@ app.whenReady().then(() => {
   log.onLogLine((line) => broadcast('log:line', line))
   log.logInfo(`${APP_NAME} v${APP_VERSION} 启动, DSH_HOME=${paths.dshHome}`)
 
+  // 自注册:写入 ~/.dsh-manager/install.json,让 DSH 插件(dsh-harness-manager)能找到管理器
+  // 仅在打包后写入,避免开发态把 electron.exe 当成管理器程序
+  try {
+    if (app.isPackaged) {
+      require('node:fs').writeFileSync(paths.installInfoPath, JSON.stringify({
+        exe: process.execPath,
+        version: APP_VERSION,
+        updatedAt: new Date().toISOString(),
+      }, null, 2), 'utf8')
+    }
+  } catch (e) { log.logWarn(`install.json 写入失败: ${e.message}`) }
+
   // 安全加固:启动时若检测到明文存储的密钥/Token,自动迁移为系统加密
   try {
     const c = store.load()

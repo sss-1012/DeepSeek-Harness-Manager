@@ -15,6 +15,8 @@ const managerDirs = {
 }
 
 const configPath = path.join(managerHome, 'config.json')
+// 自注册信息:供 DSH 插件(dsh-harness-manager)定位管理器可执行文件
+const installInfoPath = path.join(managerHome, 'install.json')
 const profilesDir = path.join(dshHome, 'profiles')
 
 function profileDir(name) {
@@ -37,6 +39,7 @@ module.exports = {
   managerHome,
   managerDirs,
   configPath,
+  installInfoPath,
   profilesDir,
   profileDir,
   overridesDir,

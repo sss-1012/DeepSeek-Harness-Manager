@@ -1,0 +1,33 @@
+{
+  "name": "dsh-harness-manager",
+  "version": "0.1.0",
+  "description": "在 DSH 界面里一键打开 DeepSeek Harness Manager(Windows 控制中心:环境/插件/诊断/更新回滚)",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "manager",
+    "windows",
+    "diagnostics"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "MIT"
+}

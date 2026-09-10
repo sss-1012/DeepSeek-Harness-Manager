@@ -9,6 +9,7 @@ dist/
 
 # 测试生成物
 .dsh-*
+.dshm-*
 .tmp-*
 scripts/icons-data.json
 
