@@ -1,183 +1,216 @@
-# 🐳 DeepSeek Harness Manager
+# DeepSeek Harness Manager
 
-> 一个开箱即用的 Windows 桌面管理器,帮你**启动/停止 DeepSeek Harness、管理插件、更新环境、排查问题、查看余额**。
+**English** · [简体中文](README.zh-CN.md)
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2B-lightgrey.svg)](https://github.com/)
-[![Electron](https://img.shields.io/badge/Electron-43-47848F.svg)](https://www.electronjs.org/)
-[![Node](https://img.shields.io/badge/Node-%3E%3D20-339933.svg)](https://nodejs.org/)
+> ### The Windows control center for DeepSeek Harness
 
----
+Launch, manage plugins, diagnose problems, update, and roll back your DSH environment — without living in the command line.
 
-## ✨ 功能特性
+[![Download for Windows](https://img.shields.io/badge/Download-Windows%20release-2ea44f?logo=windows&logoColor=white)](https://github.com/sss-1012/DeepSeek-Harness-Manager/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/sss-1012/DeepSeek-Harness-Manager?label=release)](https://github.com/sss-1012/DeepSeek-Harness-Manager/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/sss-1012/DeepSeek-Harness-Manager/release.yml?label=build)](https://github.com/sss-1012/DeepSeek-Harness-Manager/actions)
+[![GitHub stars](https://img.shields.io/github/stars/sss-1012/DeepSeek-Harness-Manager?style=flat)](https://github.com/sss-1012/DeepSeek-Harness-Manager/stargazers)
+[![License](https://img.shields.io/github/license/sss-1012/DeepSeek-Harness-Manager)](LICENSE)
+![Platform](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-lightgrey)
 
-| 模块 | 说明 |
+![DeepSeek Harness Manager — dashboard](docs/screenshots/overview.png)
+
+## Why DSH Manager?
+
+DeepSeek Harness moves fast. Profiles, plugin bundles, dependencies — and the CLI itself — change between releases. Doing all of that by hand in a terminal, and recovering when an update or a plugin goes wrong, is tedious and easy to get wrong.
+
+DSH Manager puts the whole lifecycle in one window:
+
+- **See** whether your Harness is running (status, PID, port) and start or stop it
+- **Manage** plugins: install, enable/disable, update, uninstall
+- **Check** the environment: Node.js, npm, pnpm, dsh, profiles, plugin resolution, ports
+- **Back up before** an update, and **roll back** when an update causes trouble
+- **Stay in control** of credentials and file permissions
+
+> DSH changes fast. Plugins break. Updates go wrong.
+> DSH Manager helps you **diagnose, recover, and keep the environment manageable** — it does not promise a magic fix.
+
+## Features
+
+| | Pillar | What it gives you |
+|---|---|---|
+| 🚀 | **Launch & manage** | Harness status, PID and port; start/stop; pick which profile to launch |
+| 🧩 | **Plugin management** | Install from npm / GitHub / local, enable or disable without uninstalling, update, uninstall, jump to the plugin's source |
+| 🩺 | **Diagnostics** | Environment, profiles, plugin resolution, ports, credentials and permissions — with a Markdown report |
+| 🔄 | **Update & rollback** | Version detection, backup before updating, live progress, one-click rollback |
+| 🧷 | **Compatibility repair** | After a DSH update, self-check whether your plugins still resolve — and repair in one click |
+| 🔐 | **Credentials & permissions** | Windows-encrypted secret storage, plaintext audits, one-click file-permission hardening |
+
+### Full feature list
+
+| Feature | Description |
 |---|---|
-| 📊 **概览** | Harness 状态卡片(运行状态 / PID / 端口)、一键启停、**配置启动项**(默认 web 启动)、DSH 环境检测(未装 Node/dsh 可一键安装) |
-| 🧩 **插件管理** | 已安装插件列表(**默认显示前 5 个,可展开**)、启用/禁用开关、**更新**、GitHub 详情跳转、卸载;列表内搜索过滤 |
-| 🔍 **搜索与安装** | **npm / GitHub / 本地**三来源适配层,默认空搜索展示 4 个、结果来源筛选;安装时自动**解析并安装插件依赖**;支持「跳过证书校验」适配代理/拦截网络 |
-| 🕘 **运行历史** | 每次启停记录(时间 / PID / 加载插件 / 启动耗时 / 退出码),排查「为什么变慢了」 |
-| 🩺 **诊断中心** | 一键检查 Node / npm / pnpm / dsh / profile 完整性 / **插件解析兼容性** / 端口占用 / API Key,生成 Markdown 报告 |
-| 🔄 **更新与兼容** | 版本检测、更新前自动备份、**实时进度与安装输出**、回滚;**更新后自动自检插件解析**并支持一键修复(`--publish` 之外的新版 dsh 解析位置变化时可救急) |
-| 💰 **账户余额** | DeepSeek API 余额查询,Key 使用 **Windows 系统凭据加密存储**,支持一键从 DSH 凭据导入 |
-| 🪟 **系统托盘** | 常驻托盘(与应用同款图标,悬停显示运行状态),右键快捷启停 |
-| 📜 **日志面板** | 所有操作实时滚动日志,可导出 |
+| Dashboard | Harness status (PID, port), launch/stop, launch settings per profile |
+| Environment | Detect and one-click install/uninstall Node.js, npm, pnpm and the dsh CLI |
+| Plugin manager | Installed plugin list (search/filter), enable, disable, update, uninstall |
+| Plugin sources | npm registry, GitHub repositories, local folders |
+| Dependency resolver | Detects plugin dependencies during installation |
+| Diagnostics | Node/npm/pnpm/dsh, profile integrity, plugin resolution, port, credentials, file permissions + Markdown report |
+| Updates | Detect newer versions, back up, update with live output, roll back to a backup |
+| Compatibility | Post-update plugin-resolution self-check with one-click repair |
+| Profiles | List profiles, choose the launch target, manage plugins per profile |
+| Security | DPAPI-encrypted secrets, plaintext credential audit, ACL hardening |
+| Tray & logs | System tray quick actions, live log panel |
+| Balance | DeepSeek API balance (optional, Phase 2) |
 
-## 🖼 界面预览
+## Screenshots
 
-**概览**(harness 状态 / DSH 环境检测 / 更新面板)
+### Dashboard — status, environment, updates
 
-![概览](docs/screenshots/overview.png)
+![Dashboard](docs/screenshots/overview.png)
 
-**插件管理**(已安装插件 + 搜索与安装)
+### Plugin manager — installed plugins and search/install
 
-![插件管理](docs/screenshots/plugins.png)
+![Plugin Manager](docs/screenshots/plugins.png)
 
-**诊断中心**
+### Diagnostics — environment checks, plugin resolution, security audit
 
-![诊断中心](docs/screenshots/diagnose.png)
+![Diagnostics](docs/screenshots/diagnose.png)
 
-> 截图由 `npm run screenshots` 自动生成(基于 Electron capturePage),可随时重新生成。
+<sub>Screenshots are generated from the app itself with `npm run screenshots` (Electron `capturePage`), so they never drift far from the real UI.</sub>
 
-## 🚀 快速开始
+## Download
 
-### 环境要求
+The easiest way to get started is the latest Windows release:
 
-- Windows 10 / 11
-- [Node.js](https://nodejs.org/) ≥ 20(自带 npm)
-- 已全局安装 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)(`npm install -g @deepseek-ai/dsh`)
+**[⬇ Download the latest release](https://github.com/sss-1012/DeepSeek-Harness-Manager/releases/latest)**
 
-### 运行(开发模式)
+Two build types are published:
+
+| Build | Best for |
+|---|---|
+| `DeepSeek-Harness-Manager-<version>-setup.exe` | **Installer** — recommended for normal use. Adds Start-menu and desktop shortcuts, and supports uninstalling. |
+| `DeepSeek-Harness-Manager-<version>-portable.exe` | **Portable** — no installation. Handy for testing or running from a USB drive. |
+
+### Requirements
+
+- Windows 10 / 11 (x64)
+- DeepSeek Harness (`@deepseek-ai/dsh`), installed globally
+
+You do **not** have to set up the environment by hand: if Node.js or the dsh CLI are missing, the dashboard offers one-click installation.
+
+> Building from source instead? See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## Usage
+
+1. **Open the app** — the dashboard shows whether your Harness is running, plus the DSH version and environment status.
+2. **Fix the environment if needed** — install missing Node.js / dsh pieces from the dashboard, or press *Check for updates*.
+3. **Start the Harness** — press *Start*. Command-line style profiles (for example a custom profile that expects `--probe`) need their launch arguments set in *Launch settings* first.
+4. **Manage plugins** — in *Plugins*: search a source, install, then enable/disable with the switch. Disabling never uninstalls: the manager keeps its own patch, so you can flip it back at any time.
+5. **After a DSH update** — the manager self-checks plugin resolution and offers a one-click repair if something no longer resolves.
+6. **When something breaks** — run *Diagnostics*; it produces a Markdown report you can attach to an issue.
+
+## Security
+
+Credentials handling is deliberately conservative:
+
+- DeepSeek API keys and GitHub tokens are stored with **Windows-backed secure storage** (Electron `safeStorage` / DPAPI). Decryption requires the same Windows account on the same machine.
+- If OS-level encryption is unavailable, the manager **refuses to save secrets in plaintext** (fail-closed); any legacy plaintext secret is migrated to encrypted storage at startup.
+- Secrets are held by the main process only and are sent only to the official endpoints (`api.deepseek.com`, `api.github.com`). They are not written into logs, runtime history, backups or diagnostic reports.
+- Diagnostics audits plaintext credentials and file permissions, and can harden permissions in one click (breaks inheritance, leaving only *current user / SYSTEM / Administrators*).
+- The optional **"skip certificate verification for GitHub"** switch is **off by default**; enable it only on networks with TLS interception. It affects GitHub requests only.
+- ⚠️ **Heads-up:** DeepSeek Harness itself stores provider keys in plaintext in `~/.dsh/.credentials.yaml`. The manager never writes there, but Diagnostics will warn you about the exposure and offer to tighten the file permissions.
+
+## Troubleshooting
+
+### The Harness will not start
+
+Run **Diagnostics**. The manager extracts the real reason from the boot output, for example:
+
+- *Plugin resolution failure* — `failed to import loader entry …` → press **Plugin compatibility check** in the update panel and repair it. This happens when a new DSH release resolves plugins from a different location.
+- *Port already in use* — another Harness instance is still running; stop it or change the monitored port in *Launch settings*.
+- `--expose-internals is required for HMR service` — you are on a manager build older than **v0.1.2**; upgrade. (Old builds launched DSH with Electron's bundled Node, which breaks the profile boot.)
+
+### Harness is not detected
+
+The dashboard shows the DSH version it can find. If it is empty, the CLI is not on `PATH` or not installed — use the dashboard's one-click install, or run `npm install -g @deepseek-ai/dsh` yourself.
+
+### Plugin installation fails
+
+- Check that npm/pnpm work in a normal terminal.
+- On proxy or TLS-intercepting networks, GitHub search/install may fail with `fetch failed`; the search panel can enable *skip certificate verification* for GitHub, or use the npm / local source instead.
+- pnpm must be installed for profile-local installs (`npm install -g pnpm`).
+
+### HTTPS certificate errors while building or downloading
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — it covers mirrors, `--use-system-ca` and offline builds.
+
+### Where are the logs?
+
+`~/.dsh-manager/logs/`, plus the built-in log panel at the bottom of the window. Diagnostic reports are written to `~/.dsh-manager/reports/`.
+
+## Architecture
+
+```
+┌─ Electron main process (Node.js) ──────────────────────────┐
+│  dsh.js        dsh CLI wrapper (launch / stop / version)   │
+│  tool.js       npm / pnpm runner (shim resolution)          │
+│  profiles.js   profile discovery & metadata                 │
+│  plugins/      plugin service + source adapters             │
+│  overrides.js  manager-owned enable/disable patch state     │
+│  status.js     process supervision & status polling         │
+│  update.js     version check / backup / update / rollback   │
+│  diagnose.js   diagnostics center                           │
+│  env.js        environment detect / install / uninstall     │
+│  compat.js     plugin-resolution compatibility + repair     │
+│  security.js   credential & file-permission audit           │
+│  balance.js    DeepSeek API balance                         │
+│  tray.js       system tray                                  │
+└───────────────┬─────────────────────────────────────────────┘
+                │ IPC (contextBridge, allow-listed API)
+┌───────────────▼─────────────────────────────────────────────┐
+│ Renderer — plain HTML / CSS / JS, no build step             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Design decisions worth knowing:
+
+- **Enable/disable state belongs to the manager.** It is written to `~/.dsh-manager/plugins/<profile>/overrides/state.yml` and injected at launch with `dsh --patch`. The profile's own `cordis.patch.yml` and the plugin packages are never touched, so a DSH update cannot overwrite your state.
+- **DSH is launched with the real `node.exe`**, never with Electron's bundled Node — the latter trips the HMR internals check and aborts the profile boot.
+- **`.cmd` shims are parsed** to their real JS entry points and executed with Node directly, which avoids Windows shell quoting problems and injection risk.
+- **Source adapters** (`src/plugins/sources/{npm,github,local}.js`) share one interface; adding a new plugin source is one file.
+- **Runtime data lives in `~/.dsh-manager/`** (config, backups, history, logs, reports) — delete the folder to reset.
+
+## Development
 
 ```powershell
-git clone https://github.com/<your-name>/DeepSeek-Harness-Manager.git
+git clone https://github.com/sss-1012/DeepSeek-Harness-Manager.git
 cd DeepSeek-Harness-Manager
 npm install
-npm start
+npm start                 # run the app
+node scripts/smoke.js     # smoke-test the core modules
+npm run pack              # build installer + portable
+npm run screenshots       # regenerate README screenshots
 ```
 
-> 国内网络安装 Electron 二进制可先设置:`$env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"`
+Full setup, mirror configuration, packaging and offline-build notes: **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)**.
 
-### 打包
+## Roadmap
 
-```powershell
-npm run pack
-```
+- [ ] Embedded plugin details (currently opens GitHub in your browser)
+- [ ] English UI (the app interface is Chinese today; only the documentation is bilingual)
+- [ ] Runtime history view in the UI (the data is already recorded to disk)
+- [ ] Better compatibility detection across DSH versions
+- [ ] More plugin sources (curated registries)
+- [ ] Update notifications for new releases
 
-产物在 `dist/`:`DeepSeek-Harness-Manager-<version>-setup.exe`(安装程序)+ `DeepSeek-Harness-Manager-<version>-portable.exe`(绿色免安装版)。
-打包前自动执行 `scripts/prepack.js` 重建图标并内嵌到代码,应用不依赖磁盘图标文件。
+## Contributing
 
-国内网络打包需设置镜像:
+Bug reports, feature requests and pull requests are welcome.
 
-```powershell
-$env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
-$env:ELECTRON_BUILDER_BINARIES_MIRROR = "https://npmmirror.com/mirrors/electron-builder-binaries/"
-$env:CSC_IDENTITY_AUTO_DISCOVERY = "false"   # 无签名证书时跳过签名
-```
+- 🐞 [Report a bug](https://github.com/sss-1012/DeepSeek-Harness-Manager/issues/new)
+- 💡 [Request a feature](https://github.com/sss-1012/DeepSeek-Harness-Manager/issues/new)
+- 🔧 [Contribute code](docs/DEVELOPMENT.md) — please run `node scripts/smoke.js` before opening a PR
 
-若本机有 HTTPS 拦截(企业代理 / 抓包工具,证书由本地根 CA 签发),Node 默认不信任该 CA,首次打包会在下载
-Electron 二进制时报 `unable to verify the first certificate`。追加下面一行让 Node 改用 Windows 系统根证书即可
-(Node ≥ 22.15 支持该参数;Node 20 不支持,请改用上面的镜像变量):
+When reporting a problem, attaching the diagnostics report (`~/.dsh-manager/reports/`) usually saves a round trip.
 
-```powershell
-$env:NODE_OPTIONS = "--use-system-ca"
-```
-
-> 提示: `electron-builder` 的下载缓存位于 `%LOCALAPPDATA%\electron-builder\Cache`。该目录为空时打包必须联网;
-> 缓存齐全后可离线打包。
-
-## 📖 使用指南
-
-- **首次使用**:打开「概览」→ 若环境未就绪,按提示一键安装 Node.js / dsh;已就绪可点「检查更新」
-- **启动 harness**:概览页 Harness 卡片点「启动 harness」;命令行型 profile(如 open-design)需先在「配置启动项」填启动参数
-- **安装插件**:插件页 → 搜索(勾选来源)→ 详情/安装;安装时自动带上依赖
-- **禁用插件**:插件列表开关——只改管理器自有补丁,**不卸载包、不改原文件**,重启 profile 生效
-- **网络拦截环境**:GitHub 搜索失败时,点「开启跳过证书校验」一键重试,或在设置中手动开关
-- **查余额**:余额页保存 API Key(系统凭据加密)或「从 DSH 凭据导入」→ 刷新
-
-## 🏗 架构与设计要点
-
-```
-┌─ Electron 主进程 (Node.js) ────────────────────────────┐
-│  dsh.js       dsh CLI 封装(启停/版本/定位全局安装)        │
-│  tool.js      npm/pnpm 跨平台执行(shim 解析,防注入)       │
-│  profiles.js  profile 扫描 / 创建 / 删除                 │
-│  plugins/     插件服务 + 来源适配层 + 依赖解析             │
-│  overrides.js 管理器自有启停状态补丁                      │
-│  status.js    进程管理 / 状态轮询 / 运行历史              │
-│  update.js    版本检测 / 备份 / 更新 / 回滚              │
-│  diagnose.js  诊断中心                                   │
-│  env.js       环境检测 / 一键安装 / 卸载                 │
-│  balance.js   余额查询(Phase 2)                         │
-└──────────────┬─────────────────────────────────────────┘
-               │ IPC (contextBridge, 白名单 API)
-┌──────────────▼─────────────────────────────────────────┐
-│  渲染进程(原生 HTML/CSS/JS,零构建步骤)                     │
-└────────────────────────────────────────────────────────┘
-```
-
-- **启停状态管理器所有**:启用/禁用写入 `~/.dsh-manager/plugins/<profile>/overrides/state.yml`,启动时经 `dsh --patch` 注入,**不修改 `cordis.patch.yml` 与插件包**,更新 harness 不会覆盖状态(类似 VSCode extensions.json 的思路)
-- **插件来源适配层**:`src/plugins/sources/{npm,github,local}.js` 统一接口,新增来源只需加一个文件
-- **数据目录**:`~/.dsh-manager/`(配置 / 备份 / 历史 / 日志 / 报告),与项目目录分离,可删除即重置
-
-## 🔐 安全说明
-
-- API Key / GitHub Token 使用 **Windows 系统凭据(safeStorage / DPAPI)加密**存储,磁盘无明文;解密需同一 Windows 账户与本机
-- 系统加密不可用时**拒绝明文保存**(fail-closed);启动时自动检测并迁移历史明文数据
-- 密钥仅主进程持有,只发送到对应官方接口;日志、备份、历史记录均不含密钥
-- **密钥安全审计**:诊断中心检查明文存储与文件权限,并提供「🔒 收紧密钥文件权限」一键加固(断开继承,仅 当前用户 / SYSTEM / Administrators 可读)
-- ⚠️ **注意**:DeepSeek Harness 自身的凭据文件 `~/.dsh/.credentials.yaml` 由 dsh 以**明文**保存 provider 密钥(非管理器写入);如需更强保护,建议改用环境变量注入并及时轮换密钥
-- 「GitHub 跳过证书校验」默认关闭,仅在代理/证书拦截网络按需开启
-
-## 📁 目录结构
-
-```text
-DeepSeek-Harness-Manager/
-├── main.js                 # Electron 主进程 + IPC
-├── preload.js              # contextBridge 白名单 API
-├── renderer/               # 界面(原生 HTML/CSS/JS)
-├── src/
-│   ├── paths.js            # 路径(DSH_HOME / 管理器目录)
-│   ├── store.js            # 配置存储(safeStorage 加密)
-│   ├── log.js              # 日志(内存环形缓冲 + 文件)
-│   ├── dsh.js              # dsh CLI 封装
-│   ├── tool.js             # npm/pnpm 跨平台执行
-│   ├── profiles.js         # profile 扫描/创建/删除
-│   ├── overrides.js        # 启停状态补丁(管理器所有)
-│   ├── plugins/            # 插件服务
-│   │   ├── sources/        #   npm / github / local 来源适配器
-│   │   └── resolver.js     #   插件依赖解析
-│   ├── status.js           # 进程管理 / 状态轮询 / 历史
-│   ├── history.js          # 运行记录
-│   ├── diagnose.js         # 诊断中心
-│   ├── update.js           # 版本检测/备份/更新/回滚
-│   ├── env.js              # 环境检测/一键安装/卸载
-│   ├── balance.js          # 余额查询
-│   ├── icons.js            # 内嵌图标(打包时生成)
-│   └── tray.js             # 系统托盘
-├── scripts/
-│   ├── smoke.js            # 模块冒烟测试
-│   ├── e2e.js / e2e2.js    # 端到端测试(隔离环境)
-│   ├── prepack.js          # 打包前图标重建/内嵌
-│   └── gen-icons.ps1       # 图标生成
-└── assets/                 # 图标(ico/png)
-```
-
-## 🛠 开发与测试
-
-```powershell
-node scripts/smoke.js      # 冒烟测试核心模块
-npm start                  # 启动应用
-npm run pack               # 打包
-```
-
-## 🗺 Roadmap
-
-- [ ] 插件详情页内嵌浏览(不跳转浏览器)
-- [ ] 多语言界面(EN)
-- [ ] 更新日志查看
-- [ ] 更多插件来源适配器
-
-## 📄 License
+## License
 
 [MIT](LICENSE)
+
+<sub>If DSH Manager is useful to you, consider giving the project a star — it helps other DSH users find it.</sub>
