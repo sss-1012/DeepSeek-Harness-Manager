@@ -18,6 +18,7 @@ const update = require('./src/update')
 const balance = require('./src/balance')
 const env = require('./src/env')
 const compat = require('./src/compat')
+const security = require('./src/security')
 const status = require('./src/status')
 const icons = require('./src/icons')
 const trayMod = require('./src/tray')
@@ -206,6 +207,14 @@ function registerIpc() {
 
   ipcMain.handle('plugins:detail', async (_e, pkg) => {
     return { url: await plugins.resolveDetailUrl(pkg) }
+  })
+
+  // ---- 密钥存储安全 ----
+  ipcMain.handle('security:audit', () => security.audit())
+  ipcMain.handle('security:harden', async () => {
+    const r = security.hardenFilePerms()
+    for (const x of r) log.logInfo(`权限收紧 ${x.file}: ${x.status}${x.error ? ' - ' + x.error : ''}`)
+    return { ok: r.every((x) => x.status === 'hardened' || x.status === 'skip'), results: r }
   })
 
   // ---- 历史 / 诊断 / 更新 ----

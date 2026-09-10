@@ -73,11 +73,23 @@ async function runDiagnostics() {
     add('port', '端口 3080', 'error', '无法检查端口')
   }
 
-  add('apikey', 'API Key', hasApiKey() ? 'ok' : 'warn', hasApiKey() ? '已在管理器配置(余额功能可用)' : '未配置(余额功能不可用,可稍后在设置中配置)')
-
   const enc = encryptionStatus()
+  const keyUsable = hasApiKey()
+  add('apikey', 'API Key', keyUsable || enc === 'secure' ? 'ok' : 'warn',
+    keyUsable ? '已配置(余额功能可用)'
+      : enc === 'secure' ? '已加密存储(需在管理器应用内运行才能解密验证)'
+        : enc === 'plain' ? '⚠ 以明文存储(建议在余额页重新保存以迁移为加密存储)'
+          : '未配置(余额功能不可用,可在设置中配置)')
+
   add('apikey-enc', '密钥存储加密', enc === 'secure' ? 'ok' : enc === 'plain' ? 'warn' : 'warn',
     enc === 'secure' ? '系统凭据加密(safeStorage/DPAPI)' : enc === 'plain' ? '⚠ 明文降级存储(仅测试模式),存在泄露风险' : '未保存密钥')
+
+  // 密钥存储安全审计:明文凭据文件 / 文件权限
+  try {
+    for (const r of require('./security').audit()) add(r.id, r.label, r.status, r.detail)
+  } catch (e) {
+    add('security-audit', '密钥安全审计', 'warn', `审计失败: ${e.message}`)
+  }
 
   const reportPath = writeReport(checks)
   return { checks, reportPath, dshHome }

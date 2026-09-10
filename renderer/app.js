@@ -647,6 +647,16 @@ async function doInstall({ spec, name }) {
 
 // ---------- 诊断 ----------
 function bindDiagnose() {
+  $('#btn-harden').onclick = async () => {
+    const ok = await modal('收紧密钥文件权限',
+      '将对以下文件断开权限继承,并只允许 <b>当前用户 / SYSTEM / Administrators</b> 访问:<br>· DSH 凭据文件 <span class="muted">~/.dsh/.credentials.yaml</span><br>· 管理器配置 <span class="muted">~/.dsh-manager/config.json</span><br><br>继续?',
+      [{ label: '收紧权限', value: true, cls: 'primary' }, { label: '取消', value: false }])
+    if (!ok) return
+    const r = await window.dshm.securityHarden()
+    const lines = r.results.map((x) => `${x.file}: ${x.status}${x.error ? ' — ' + x.error : ''}`)
+    toast(`权限处理完成:\n${lines.join('\n')}`, r.ok ? 'ok' : 'error')
+    appendLog('[security] ' + lines.join(' | '))
+  }
   $('#btn-diagnose').onclick = async () => {
     const box = $('#diagnose-results')
     box.innerHTML = '<div class="muted">诊断中…</div>'

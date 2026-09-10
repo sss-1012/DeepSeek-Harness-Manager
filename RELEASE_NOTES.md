@@ -2,6 +2,12 @@
 
 由 GitHub Actions 自动构建发布的 Windows 桌面版。
 
+### v0.1.3 更新(安全加固)
+- 🔐 **密钥安全审计**:诊断中心新增「DSH 凭据文件内容 / 管理器密钥存储 / 文件权限」三项检查
+- 🔒 **一键收紧文件权限**:新增「🔒 收紧密钥文件权限」按钮(断开权限继承,仅 当前用户 / SYSTEM / Administrators 可读),
+  并可随时重跑(dsh 更新重建凭据文件后权限可能回退)
+- ℹ️ 说明:管理器的密钥使用 **Windows DPAPI 加密**(仅本机本账户可解密);而 **dsh 自身的 `~/.dsh/.credentials.yaml` 是明文存储**,管理器不向其写入,但会在诊断中提示该风险
+
 ### v0.1.2 更新(重要修复)
 - 🐞 **修复:管理器启动 harness 失败** —— 之前用 Electron 内建 Node 启动 dsh,会触发
   `hmr: --expose-internals is required` 导致 profile 启动崩溃;现改为**用真实 node.exe 启动**(实测通过)

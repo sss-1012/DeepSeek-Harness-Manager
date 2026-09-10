@@ -30,6 +30,8 @@ const api = {
   rollback: (id) => ipcRenderer.invoke('update:rollback', id),
   compatCheck: () => ipcRenderer.invoke('compat:check'),
   compatFix: (profile) => ipcRenderer.invoke('compat:fix', profile),
+  securityAudit: () => ipcRenderer.invoke('security:audit'),
+  securityHarden: () => ipcRenderer.invoke('security:harden'),
   // ---- 设置 ----
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),

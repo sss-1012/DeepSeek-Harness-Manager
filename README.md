@@ -122,9 +122,11 @@ $env:NODE_OPTIONS = "--use-system-ca"
 
 ## 🔐 安全说明
 
-- API Key / GitHub Token 使用 **Windows 系统凭据(safeStorage / DPAPI)加密**存储,磁盘无明文
+- API Key / GitHub Token 使用 **Windows 系统凭据(safeStorage / DPAPI)加密**存储,磁盘无明文;解密需同一 Windows 账户与本机
 - 系统加密不可用时**拒绝明文保存**(fail-closed);启动时自动检测并迁移历史明文数据
 - 密钥仅主进程持有,只发送到对应官方接口;日志、备份、历史记录均不含密钥
+- **密钥安全审计**:诊断中心检查明文存储与文件权限,并提供「🔒 收紧密钥文件权限」一键加固(断开继承,仅 当前用户 / SYSTEM / Administrators 可读)
+- ⚠️ **注意**:DeepSeek Harness 自身的凭据文件 `~/.dsh/.credentials.yaml` 由 dsh 以**明文**保存 provider 密钥(非管理器写入);如需更强保护,建议改用环境变量注入并及时轮换密钥
 - 「GitHub 跳过证书校验」默认关闭,仅在代理/证书拦截网络按需开启
 
 ## 📁 目录结构

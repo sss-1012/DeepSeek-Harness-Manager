@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-manager",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "DeepSeek Harness 管理器 — 启动/停止 harness、插件管理、更新、诊断、余额",
   "main": "main.js",
   "author": "HS",

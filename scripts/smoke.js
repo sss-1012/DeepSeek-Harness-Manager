@@ -18,7 +18,7 @@ async function main() {
   paths.ensureManagerDirs()
   console.log('=== 1. store ===')
   store.setSettings({ closeToTray: true })
-  store.setApiKey('sk-mock-0000000000000000') // 仅测试加密存储往返,非真实密钥
+  store.setApiKey('mock-key-for-smoke-test') // 仅测试加密存储往返;非真实密钥、也不是密钥形态
   console.log('hasApiKey:', store.hasApiKey(), '| settings:', JSON.stringify(store.getSettings().closeToTray))
 
   console.log('=== 2. overrides ===')
