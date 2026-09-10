@@ -80,21 +80,24 @@ node plugin/test/resolve-check.mjs web --deep   # 只读:检查某 profile 的 b
 
 ## 提交到 awesome-dsh-plugin
 
-收录要求:仓库含 `package.json` 的 `dsh.bundle` 声明、仓库创建满 1 天、≥10 次提交、
-GitHub topics 含 `dsh-plugin`。桌面客户端本体不作为条目,但**启动器插件属于条目**
-(仓库内子目录插件可用 fragment URL)。
+上游要求(见其 `contributing.md`):`package.json` 声明 `dsh.bundle` 且同级有 `cordis.patch.yml`、
+仓库创建满 1 天、仓库带 [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic、描述必须与代码相符。
+本插件位于子目录,按「monorepo 子包」形式提交:`url` 指向子目录,`name` 用 `owner/repo#subname`,
+文件名 `owner__repo--<子路径>.yml`。
 
-在 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)
-提交 `data/plugins/sss-1012__DeepSeek-Harness-Manager.yml`:
+在 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 添加**一个文件**
+`data/plugins/sss-1012__DeepSeek-Harness-Manager--plugin.yml`:
 
 ```yaml
 url: https://github.com/sss-1012/DeepSeek-Harness-Manager/tree/main/plugin
-name: dsh-harness-manager
-category: launcher
+name: sss-1012/DeepSeek-Harness-Manager#plugin
+category: dev
 description:
-  en: Launcher entry for DeepSeek Harness Manager — a Windows control center for profiles, plugins, diagnostics, updates and rollback.
-  zh: DeepSeek Harness Manager 的启动入口 —— Windows 控制中心,管理 profile、插件、诊断、更新与回滚。
+  en: "Launcher pill in the DSH web UI that opens DeepSeek Harness Manager, a Windows desktop app which installs Node/pnpm/dsh, manages plugins and profiles, diagnoses failures, and updates or rolls back the dsh CLI."
+  zh: "DSH 界面左下角的入口胶囊,一键打开 DeepSeek Harness Manager —— Windows 控制中心:装环境(Node/pnpm/dsh)、管插件与 profile、诊断故障,以及 dsh CLI 的更新与回滚。"
 ```
+
+不要手改生成出来的两个 README;`category` 只能取上游列出的固定值之一(`dev` 为同类启动器常用的分类)。
 
 ## License
 
