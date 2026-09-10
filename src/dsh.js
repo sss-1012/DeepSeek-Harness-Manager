@@ -26,19 +26,28 @@ function dshBin() {
 }
 
 function envFor(extra) {
+  const { realNodeExe } = require('./tool')
   const base = { ...process.env, DSH_HOME: dshHome }
-  // Electron 主进程里 process.execPath 是 electron.exe,以 Node 模式运行子进程
-  if (process.versions && process.versions.electron) base.ELECTRON_RUN_AS_NODE = '1'
+  // 仅在没有真实 node.exe、退化为 electron-as-node 时才需要该变量
+  if (!realNodeExe() && process.versions && process.versions.electron) base.ELECTRON_RUN_AS_NODE = '1'
   return { ...base, ...(extra || {}) }
+}
+
+// dsh 必须用真实 node.exe 启动:用 electron-as-node 会触发
+// "hmr: --expose-internals is required" 并导致 profile 启动失败(实测)
+function nodeForDsh() {
+  const { nodeRunner } = require('./tool')
+  return nodeRunner()
 }
 
 function execDsh(args, opts = {}) {
   return new Promise((resolve) => {
     let bin
     try { bin = dshBin() } catch (e) { return resolve({ ok: false, code: -1, stdout: '', stderr: e.message, error: e.message }) }
-    execFile(process.execPath, [bin, ...args], {
+    const runner = nodeForDsh()
+    execFile(runner.exe, [bin, ...args], {
       cwd: opts.cwd,
-      env: envFor(opts.env),
+      env: { ...envFor(opts.env), ...runner.env },
       windowsHide: true,
       timeout: opts.timeout || 120000,
       maxBuffer: 8 * 1024 * 1024,
@@ -64,9 +73,10 @@ function spawnProfile(name, { patches = [], args = [], onLine, extraEnv } = {}) 
   const argv = ['--profile', name]
   for (const p of patches || []) argv.push('--patch', p)
   argv.push(...(args || []))
-  const child = spawn(process.execPath, [dshBin(), ...argv], {
+  const runner = nodeForDsh()
+  const child = spawn(runner.exe, [dshBin(), ...argv], {
     cwd: profileDir(name),
-    env: envFor(extraEnv),
+    env: { ...envFor(extraEnv), ...runner.env },
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   })

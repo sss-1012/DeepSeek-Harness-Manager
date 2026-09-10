@@ -15,6 +15,28 @@ function nodeRunEnv() {
   return process.env
 }
 
+let realNodeCache
+// 优先使用真实 node.exe:Electron 内建 Node 与官方 node 存在差异
+// (实测:用 electron.exe 跑 dsh 会触发 hmr 的 "--expose-internals is required" 并导致 profile 启动失败)
+function realNodeExe() {
+  if (realNodeCache !== undefined) return realNodeCache
+  try {
+    const out = execFileSync('where.exe', ['node'], { encoding: 'utf8', windowsHide: true, timeout: 10000 })
+    const p = out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+      .find((x) => /node\.exe$/i.test(x) && !/electron/i.test(x))
+    if (p && fs.existsSync(p)) { realNodeCache = p; return p }
+  } catch { /* 回退 */ }
+  realNodeCache = null
+  return null
+}
+
+// 统一的 node 运行器:{ exe, env } —— 真实 node 优先,找不到才回退到 electron-as-node
+function nodeRunner() {
+  const real = realNodeExe()
+  if (real) return { exe: real, env: process.env, isReal: true }
+  return { exe: process.execPath, env: nodeRunEnv(), isReal: false }
+}
+
 function whereAll(cmd) {
   try {
     const out = execFileSync('where.exe', [cmd], { encoding: 'utf8', windowsHide: true, timeout: 10000 })
@@ -120,9 +142,10 @@ function execToolStream(cmd, args, { onLine, timeout = 600000, cwd } = {}) {
       return resolve({ ok: false, code: 'ENOENT', stdout: '', stderr: msg, error: msg })
     }
     const isNative = /\.exe$/i.test(entry)
-    const child = spawn(isNative ? entry : process.execPath, isNative ? args : [entry, ...args], {
+    const runner = nodeRunner()
+    const child = spawn(isNative ? entry : runner.exe, isNative ? args : [entry, ...args], {
       windowsHide: true,
-      env: nodeRunEnv(),
+      env: runner.env,
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -159,10 +182,11 @@ function execTool(cmd, args, opts = {}) {
     const entry = resolveJsTool(cmd)
     if (!entry) return resolve({ ok: false, code: 'ENOENT', stdout: '', stderr: `未找到命令: ${cmd}`, error: `ENOENT ${cmd}` })
     const isNative = /\.exe$/i.test(entry)
-    execFile(isNative ? entry : process.execPath, isNative ? args : [entry, ...args], {
+    const runner = nodeRunner()
+    execFile(isNative ? entry : runner.exe, isNative ? args : [entry, ...args], {
       windowsHide: true,
       maxBuffer: 8 * 1024 * 1024,
-      env: nodeRunEnv(),
+      env: runner.env,
       ...opts,
     }, (err, stdout, stderr) => {
       resolve({
@@ -182,8 +206,9 @@ function execToolSync(cmd, args, opts = {}) {
   if (!entry) return { ok: false, stdout: '', error: `未找到命令: ${cmd}` }
   try {
     const isNative = /\.exe$/i.test(entry)
-    const out = execFileSync(isNative ? entry : process.execPath, isNative ? args : [entry, ...args], {
-      encoding: 'utf8', windowsHide: true, timeout: 15000, env: nodeRunEnv(), ...opts,
+    const runner = nodeRunner()
+    const out = execFileSync(isNative ? entry : runner.exe, isNative ? args : [entry, ...args], {
+      encoding: 'utf8', windowsHide: true, timeout: 15000, env: runner.env, ...opts,
     })
     return { ok: true, stdout: out || '' }
   } catch (e) {
@@ -191,4 +216,4 @@ function execToolSync(cmd, args, opts = {}) {
   }
 }
 
-module.exports = { execTool, execToolSync, execToolStream, resolveJsTool }
+module.exports = { execTool, execToolSync, execToolStream, resolveJsTool, nodeRunner, realNodeExe }
