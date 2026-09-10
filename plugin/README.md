@@ -64,6 +64,7 @@ plugin/
   lib/panel.js         # 客户端:左下角胶囊按钮
   test/host.test.js    # 无依赖自检(mock ctx,13 项)
   test/boot-check.mjs  # 真实启动自检(隔离环境,9 项)
+  test/resolve-check.mjs  # 只读:bundle 解析 + 依赖树完整度
 ```
 
 ## 自检
@@ -77,6 +78,25 @@ node plugin/test/resolve-check.mjs web --deep   # 只读:检查某 profile 的 b
 `boot-check.mjs` 会在 `.dshm-plugin-check/` 下**用独立的 DSH_HOME 与非默认端口**(默认 3099)
 创建测试 profile,不读写真实的 `~/.dsh`、`~/.dsh-manager`,也不影响正在运行的服务;
 结束时会自动清理(若目录仍被刚退出的子进程占用,会交给后台进程稍后删除)。
+
+## 发布到 npm(可选)
+
+发布后即可 `dsh plugin --profile web add dsh-harness-manager`,不必再用 `link:`。
+
+```bash
+cd plugin
+npm login
+npm publish --access public
+```
+
+若账号开启了 2FA,npm 会要求一次性验证码,否则报
+`E403 ... Two-factor authentication or granular access token with bypass 2fa enabled is required`。两种解法:
+
+1. 带验证码发布:`npm publish --access public --otp=<验证器里的 6 位码>`;
+   若提示需要 web 认证,先执行 `npm login --auth-type=web` 再发布。
+2. 生成**勾选 Bypass 2FA** 的 granular token(包权限 Read and write),设置
+   `npm config set //registry.npmjs.org/:_authToken <token>` 后再发布。
+   该 token 等同免 2FA 的发布权限,不要提交进仓库,用完可撤销。
 
 ## 提交到 awesome-dsh-plugin
 
