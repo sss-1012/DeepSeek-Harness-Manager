@@ -15,6 +15,12 @@
 
 ![DeepSeek Harness Manager — 概览页](docs/screenshots/overview.png)
 
+> [!IMPORTANT]
+> **上游变化很快。** 本管理器面向当前 `@deepseek-ai/dsh` CLI(0.1.x)。DSH 迭代频繁:
+> profile、插件 bundle、以及「插件从哪里解析」都可能随版本改变。管理器会尽力检测、
+> 每次更新前自动备份、并提供一键插件兼容修复 —— 但无法预见上游的每一处改动。
+> **在确认新版本可用之前,请保留自动备份。**
+
 ## 为什么需要它?
 
 DeepSeek Harness 迭代很快:profile、插件 bundle、依赖关系乃至 CLI 本身都会在版本之间变化。全程靠终端手工处理,出问题时再手工抢救,既繁琐又容易出错。
@@ -95,6 +101,32 @@ DSH Manager 把整个生命周期收进一个窗口:
 **你不需要手工准备环境**:如果缺少 Node.js 或 dsh CLI,概览页会提供一键安装。
 
 > 想从源码构建?见 [docs/zh-CN/DEVELOPMENT.md](docs/zh-CN/DEVELOPMENT.md)。
+
+## 配套插件:在 DSH 界面里打开管理器
+
+仓库里还带了一个小型 DSH 插件(`plugin/`),会在 DSH Web 界面**左下角**放一个「管理器」胶囊按钮:
+
+| 胶囊状态 | 点击后 |
+|---|---|
+| 绿点 —— 已找到管理器 | 直接启动;已在运行则前置已有窗口(单实例) |
+| 黄点 —— 未找到 | 打开 Releases 页面供你下载 |
+
+插件不含任何业务逻辑:三个本机路由(`/dsh-manager/status.json`、`/dsh-manager/launch`、
+`/dsh-manager/panel.js`)加一段注入脚本。它读取打包版管理器自动写入的 `install.json`,
+因此总是指向你实际在用的那一份。管理器没装也不影响 DSH 本身。
+
+```bash
+# 从本仓库安装(link 方式,无需发布 npm)
+dsh plugin --profile web add link:/path/to/DeepSeek-Harness-Manager/plugin
+# 之后重启 dsh web
+dsh plugin --profile web remove dsh-harness-manager   # 卸载
+```
+
+胶囊可以关掉(× 按钮),偏好存在 `localStorage`。插件按 `DSH_MANAGER_EXE` →
+`~/.dsh-manager/install.json` → 常见安装路径的顺序定位管理器,详见
+[plugin/README.md](plugin/README.md)(含两条自检命令 `node plugin/test/host.test.js`、
+`node plugin/test/boot-check.mjs`,以及 awesome-list 收录用的 YAML)。
+插件**尚未发布到 npm**,所以请用上面的 `link:` 方式安装。
 
 ## 使用流程
 
@@ -199,13 +231,33 @@ npm run screenshots       # 重新生成 README 截图
 - [ ] 更多插件来源(精选 registry)
 - [ ] 新版本更新提醒
 
+## 相关项目
+
+DSH 生态长得很快,这些项目值得一看(均与本项目无隶属关系):
+
+- [awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) —— DSH 插件精选列表([站点](https://awesome-dsh-plugin.com))
+- [dsh-market/dsh-market](https://github.com/dsh-market/dsh-market) —— 长在 DSH 里的插件市场([站点](https://dshmarket.com))
+- [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) —— 另一套 DSH 桌面外壳([站点](https://dshdesktop.cn))
+- [dataelement/dsh-desktop](https://github.com/dataelement/dsh-desktop) —— 另一套桌面外壳([站点](https://dshdesktop.com))
+- [hairyf/deepseek-harness-desktop](https://github.com/hairyf/deepseek-harness-desktop) —— Tauri 桌面版,安装包很小([站点](https://dshtauri.mintlifysite.com))
+- [2768651338/dsh-plugin-manager](https://github.com/2768651338/dsh-plugin-manager) —— 在 DSH 内启停插件并写备注的插件
+
+**本项目的差异**:它不是又一套 DSH 界面,而是围绕**环境**的 Windows 控制中心 ——
+一键装 Node/pnpm/dsh、多来源插件搜索、管理器自有的启用/禁用状态、跨版本的插件解析修复、
+全局 CLI 更新与备份回滚、凭据与权限审计。它也能和上面的外壳配合使用:界面用你顺手的,
+出问题时再用管理器。
+
 ## 参与贡献
 
 欢迎提交 bug、功能建议与 PR。
 
 - 🐞 [报告问题](https://github.com/sss-1012/DeepSeek-Harness-Manager/issues/new)
 - 💡 [功能建议](https://github.com/sss-1012/DeepSeek-Harness-Manager/issues/new)
-- 🔧 [贡献代码](docs/zh-CN/DEVELOPMENT.md) —— 提 PR 前请先跑一遍 `node scripts/smoke.js`
+- 🔧 [贡献代码](docs/zh-CN/CONTRIBUTING.md) —— 提 PR 前请先跑一遍 `node scripts/smoke.js`
+  (构建细节见 [docs/zh-CN/DEVELOPMENT.md](docs/zh-CN/DEVELOPMENT.md))
+- 🔒 [隐私说明](docs/zh-CN/PRIVACY.md) —— 无遥测,密钥加密留在本机
+- 📋 [更新日志](CHANGELOG.md) · [版本说明](RELEASE_NOTES.md)
+- 🤖 用 AI 助手改代码?让它先读 [AGENTS.md](AGENTS.md)
 
 反馈问题时,附上诊断报告(`~/.dsh-manager/reports/`)通常能省一轮沟通。
 
@@ -213,4 +265,6 @@ npm run screenshots       # 重新生成 README 截图
 
 [MIT](LICENSE)
 
-<sub>如果 DSH Manager 对你有用,欢迎给项目点个 Star —— 这能帮到更多 DSH 用户找到它。</sub>
+<sub>本项目与 DeepSeek 官方无隶属关系;「DeepSeek」「DeepSeek Harness」仅用于说明本工具管理的对象。
+DSH 迭代很快 —— 如果你需要稳定,请固定使用某个确认可用的 dsh 版本。
+如果 DSH Manager 对你有用,欢迎给项目点个 Star —— 这能帮到更多 DSH 用户找到它。</sub>

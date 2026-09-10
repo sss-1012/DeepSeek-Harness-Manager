@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: 冒烟测试 / 文档链接 / 插件自检
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 核心模块冒烟测试
+        run: node scripts/smoke.js
+
+      - name: 文档相对链接检查
+        run: node scripts/check-docs.js --offline
+
+      - name: DSH 入口插件自检(mock 宿主)
+        run: node plugin/test/host.test.js

@@ -15,6 +15,13 @@ Launch, manage plugins, diagnose problems, update, and roll back your DSH enviro
 
 ![DeepSeek Harness Manager — dashboard](docs/screenshots/overview.png)
 
+> [!IMPORTANT]
+> **Upstream moves fast.** This manager targets the current `@deepseek-ai/dsh` CLI (0.1.x).
+> DSH is a fast-moving preview: profiles, plugin bundles and the layout plugins are resolved from
+> can change between releases. The manager detects what it can, backs up before every update and
+> offers a one-click plugin-compatibility repair — but it cannot anticipate every upstream change.
+> Keep the automatic backup until you are sure the new version is good.
+
 ## Why DSH Manager?
 
 DeepSeek Harness moves fast. Profiles, plugin bundles, dependencies — and the CLI itself — change between releases. Doing all of that by hand in a terminal, and recovering when an update or a plugin goes wrong, is tedious and easy to get wrong.
@@ -95,6 +102,34 @@ Two build types are published:
 You do **not** have to set up the environment by hand: if Node.js or the dsh CLI are missing, the dashboard offers one-click installation.
 
 > Building from source instead? See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## Companion plugin: open the manager from inside DSH
+
+This repository also ships a small DSH plugin (`plugin/`) that puts a **管理器** pill in the
+bottom-left corner of the DSH web UI:
+
+| Pill state | What a click does |
+|---|---|
+| Green dot — manager found | Launches it. Already running? The existing window comes to the front (single instance). |
+| Amber dot — not found | Opens the releases page so you can download it. |
+
+The plugin holds no business logic: three local routes (`/dsh-manager/status.json`,
+`/dsh-manager/launch`, `/dsh-manager/panel.js`) and one injected `<script>`. It reads
+`install.json` written by the packaged manager, so it always points at the copy you actually run.
+If the manager is missing, DSH itself is unaffected.
+
+```bash
+# install from this repository (link mode, no npm publish needed)
+dsh plugin --profile web add link:/path/to/DeepSeek-Harness-Manager/plugin
+# then restart dsh web
+dsh plugin --profile web remove dsh-harness-manager   # uninstall
+```
+
+The pill can be hidden (× button); the preference is stored in `localStorage`. The plugin locates
+the manager through `DSH_MANAGER_EXE`, then `~/.dsh-manager/install.json`, then the usual install
+locations — see [plugin/README.md](plugin/README.md) for details, the two self-check commands
+(`node plugin/test/host.test.js`, `node plugin/test/boot-check.mjs`) and the awesome-list
+submission file. The plugin is **not on npm yet**, so use the `link:` form above.
 
 ## Usage
 
@@ -199,13 +234,34 @@ Full setup, mirror configuration, packaging and offline-build notes: **[docs/DEV
 - [ ] More plugin sources (curated registries)
 - [ ] Update notifications for new releases
 
+## Related projects
+
+DSH has a fast-growing ecosystem. These are worth a look (none of them are affiliated with this project):
+
+- [awesome-dsh-plugin/awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) — the curated DSH plugin list ([site](https://awesome-dsh-plugin.com))
+- [dsh-market/dsh-market](https://github.com/dsh-market/dsh-market) — a plugin market that lives inside DSH ([site](https://dshmarket.com))
+- [anywhere-labs/deepseek-harness-desktop](https://github.com/anywhere-labs/deepseek-harness-desktop) — alternative desktop shell for DSH ([site](https://dshdesktop.cn))
+- [dataelement/dsh-desktop](https://github.com/dataelement/dsh-desktop) — alternative desktop shell ([site](https://dshdesktop.com))
+- [hairyf/deepseek-harness-desktop](https://github.com/hairyf/deepseek-harness-desktop) — Tauri-based desktop with a tiny installer ([site](https://dshtauri.mintlifysite.com))
+- [2768651338/dsh-plugin-manager](https://github.com/2768651338/dsh-plugin-manager) — in-DSH plugin to toggle plugins and keep notes
+
+**How this project differs:** it is not another DSH UI. It is a Windows control center around the
+*environment* — one-click install of Node/pnpm/dsh, plugin search across several sources,
+manager-owned enable/disable state, cross-version plugin-resolution repair, global-CLI update with
+backup and rollback, and credential/permission auditing. It also works as a companion to the shells
+above: keep using your favourite DSH UI, and use the manager when something breaks.
+
 ## Contributing
 
 Bug reports, feature requests and pull requests are welcome.
 
 - 🐞 [Report a bug](https://github.com/sss-1012/DeepSeek-Harness-Manager/issues/new)
 - 💡 [Request a feature](https://github.com/sss-1012/DeepSeek-Harness-Manager/issues/new)
-- 🔧 [Contribute code](docs/DEVELOPMENT.md) — please run `node scripts/smoke.js` before opening a PR
+- 🔧 [Contribute code](CONTRIBUTING.md) — please run `node scripts/smoke.js` before opening a PR
+  (build details: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md))
+- 🔒 [Privacy](PRIVACY.md) — no telemetry; secrets stay encrypted on your machine
+- 📋 [Changelog](CHANGELOG.md) · [release notes](RELEASE_NOTES.md)
+- 🤖 Working with an AI agent? Point it at [AGENTS.md](AGENTS.md)
 
 When reporting a problem, attaching the diagnostics report (`~/.dsh-manager/reports/`) usually saves a round trip.
 
@@ -213,4 +269,6 @@ When reporting a problem, attaching the diagnostics report (`~/.dsh-manager/repo
 
 [MIT](LICENSE)
 
-<sub>If DSH Manager is useful to you, consider giving the project a star — it helps other DSH users find it.</sub>
+<sub>Not affiliated with DeepSeek. “DeepSeek” and “DeepSeek Harness” are used descriptively to say what this
+tool manages. DSH is a fast-moving preview — if you need stability, pin a dsh version you know works.
+If DSH Manager is useful to you, consider giving the project a star — it helps other DSH users find it.</sub>

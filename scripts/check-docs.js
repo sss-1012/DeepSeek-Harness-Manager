@@ -8,10 +8,17 @@ const ROOT = path.resolve(__dirname, '..')
 const FILES = [
   'README.md',
   'README.zh-CN.md',
+  'CONTRIBUTING.md',
+  'CHANGELOG.md',
+  'AGENTS.md',
+  'PRIVACY.md',
+  'plugin/README.md',
   'docs/DEVELOPMENT.md',
   'docs/TROUBLESHOOTING.md',
   'docs/zh-CN/DEVELOPMENT.md',
   'docs/zh-CN/TROUBLESHOOTING.md',
+  'docs/zh-CN/CONTRIBUTING.md',
+  'docs/zh-CN/PRIVACY.md',
   'RELEASE_NOTES.md',
 ]
 
@@ -51,13 +58,18 @@ let problems = 0
     if (bad.length) problems++
   }
 
-  console.log(`\n=== 外部链接探测(${externals.size} 个)===
+  // --offline:跳过外部链接探测(CI 上跑确定性检查;外部站点抖动不应让构建变红)
+  if (process.argv.includes('--offline')) {
+    console.log(`\n(已跳过外部链接探测,共 ${externals.size} 个;需要时去掉 --offline 再跑)`)
+  } else {
+    console.log(`\n=== 外部链接探测(${externals.size} 个)===
 `)
-  for (const u of [...externals].sort()) {
-    const code = await probe(u)
-    const ok = code === 200 || code === 301 || code === 302 || code === 307 || code === 308
-    if (!ok) problems++
-    console.log(`${ok ? '✓' : '✗'} ${code}  ${u}`)
+    for (const u of [...externals].sort()) {
+      const code = await probe(u)
+      const ok = code === 200 || code === 301 || code === 302 || code === 307 || code === 308
+      if (!ok) problems++
+      console.log(`${ok ? '✓' : '✗'} ${code}  ${u}`)
+    }
   }
 
   console.log(`\n结论: ${problems === 0 ? '全部通过 ✓' : problems + ' 处需要修复'}`)
