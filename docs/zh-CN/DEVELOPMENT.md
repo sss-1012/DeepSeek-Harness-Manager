@@ -35,6 +35,7 @@ node scripts/e2e2.js       # 隔离环境下的卸载 + 更新备份流程
 node scripts/check-docs.js # 检查 README / docs 中所有链接与图片路径(--offline 跳过外部探测)
 node plugin/test/host.test.js    # DSH 入口插件:路由 / 注入 / 分支(mock 宿主,很快)
 node plugin/test/boot-check.mjs  # DSH 入口插件:在隔离 DSH_HOME 里真实启动 dsh(端口 3099)
+node plugin/test/resolve-check.mjs web --deep  # 只读:某 profile 的 bundle 是否都能解析、依赖树是否完整
 ```
 
 两个 e2e 脚本都会自建一次性的 `DSH_HOME` 与管理器数据目录,**不会碰你的真实环境**。提 PR 前请先跑 `smoke.js`。

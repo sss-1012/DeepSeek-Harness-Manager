@@ -69,8 +69,9 @@ plugin/
 ## 自检
 
 ```bash
-node plugin/test/host.test.js     # 快:mock 宿主上下文,校验路由/注入/分支
-node plugin/test/boot-check.mjs   # 慢(约 1 分钟):真实 dsh web 端到端
+node plugin/test/host.test.js        # 快:mock 宿主上下文,校验路由/注入/分支
+node plugin/test/boot-check.mjs      # 慢(约 1 分钟):真实 dsh web 端到端
+node plugin/test/resolve-check.mjs web --deep   # 只读:检查某 profile 的 bundle 是否都能解析、依赖树是否完整
 ```
 
 `boot-check.mjs` 会在 `.dshm-plugin-check/` 下**用独立的 DSH_HOME 与非默认端口**(默认 3099)

@@ -35,6 +35,7 @@ node scripts/e2e2.js       # uninstall + update-backup flows in an isolated envi
 node scripts/check-docs.js # verify every link and image path in the README/docs (--offline skips external probing)
 node plugin/test/host.test.js    # DSH entry plugin: routes, injection, branches (mock host, fast)
 node plugin/test/boot-check.mjs  # DSH entry plugin: real dsh boot on port 3099 in an isolated DSH_HOME
+node plugin/test/resolve-check.mjs web --deep  # read-only: can every bundle of a profile resolve, is its dependency tree complete?
 ```
 
 Both e2e scripts create their own throwaway `DSH_HOME` / manager home directories, so they never touch your real environment. Please run `smoke.js` before opening a pull request.
