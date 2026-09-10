@@ -51,6 +51,21 @@ npm run pack:dir    # 仅生成未打包目录(更快,便于测试)
 
 `npm run pack` 会先执行 `scripts/prepack.js`:重建图标并把 base64 内嵌到 `src/icons.js`,因此打包后的应用不依赖磁盘上的图标文件。
 
+### 每次构建的本地留档
+
+`npm run pack` 完成后会自动执行 `scripts/archive-build.js`,把两个可执行文件按版本号复制到本地归档:
+
+```text
+<归档根>/v<版本>/
+├── DeepSeek-Harness-Manager-<版本>-setup.exe
+└── DeepSeek-Harness-Manager-<版本>-portable.exe
+```
+
+- 归档根默认是项目上一级的 `DSH-Manager-Releases`,可用 `DSH_MANAGER_RELEASES_DIR` 覆盖
+- 刻意放在 `dist/` 之外 —— `dist/` 会在下次打包时被清空
+- CI 环境(`CI=true`)自动跳过;按文件大小幂等,重复执行不会重复复制
+- 也可单独执行:`npm run archive`(`npm run archive -- --force` 强制覆盖)
+
 ### 受限网络下打包
 
 ```powershell
@@ -145,5 +160,6 @@ DeepSeek-Harness-Manager/
 | `DSH_MANAGER_HOME` | 管理器数据目录(默认 `~/.dsh-manager`) |
 | `DSH_CLI_BIN` | 显式指定 dsh CLI 入口路径,跳过自动探测 |
 | `DSH_MANAGER_ALLOW_PLAIN` | 设为 `1` 时允许明文保存密钥 —— **仅用于测试** |
+| `DSH_MANAGER_RELEASES_DIR` | 构建产物的本地归档根目录(默认项目上一级的 `DSH-Manager-Releases`) |
 | `ELECTRON_MIRROR`、`ELECTRON_BUILDER_BINARIES_MIRROR` | 构建期下载镜像 |
 | `CSC_IDENTITY_AUTO_DISCOVERY` | 设为 `false` 跳过代码签名 |

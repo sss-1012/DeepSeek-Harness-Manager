@@ -51,6 +51,21 @@ Artifacts land in `dist/`:
 
 `npm run pack` first runs `scripts/prepack.js`, which regenerates the icons and embeds them as base64 into `src/icons.js`, so the packaged app never depends on icon files being present on disk.
 
+### Local archive of every build
+
+When `npm run pack` finishes it also runs `scripts/archive-build.js`, which copies both executables into a versioned local archive:
+
+```text
+<archive root>/v<version>/
+├── DeepSeek-Harness-Manager-<version>-setup.exe
+└── DeepSeek-Harness-Manager-<version>-portable.exe
+```
+
+- Archive root defaults to `../DSH-Manager-Releases` (next to the project) and can be changed with `DSH_MANAGER_RELEASES_DIR`.
+- It is deliberately outside `dist/`, which gets wiped on the next build.
+- Skipped automatically in CI (`CI=true`), and idempotent by file size.
+- Re-run it alone with `npm run archive` (add `--force` to overwrite: `npm run archive -- --force`).
+
 ### Restricted-network packaging
 
 ```powershell
@@ -138,5 +153,6 @@ DeepSeek-Harness-Manager/
 | `DSH_MANAGER_HOME` | Manager data directory (default `~/.dsh-manager`) |
 | `DSH_CLI_BIN` | Explicit path to the dsh CLI entry, bypassing auto-detection |
 | `DSH_MANAGER_ALLOW_PLAIN` | `1` allows plaintext secret storage — **testing only** |
+| `DSH_MANAGER_RELEASES_DIR` | Local archive root for built installers (default `../DSH-Manager-Releases`) |
 | `ELECTRON_MIRROR`, `ELECTRON_BUILDER_BINARIES_MIRROR` | Build-time download mirrors |
 | `CSC_IDENTITY_AUTO_DISCOVERY` | `false` skips code signing |
