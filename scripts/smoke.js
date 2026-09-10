@@ -39,9 +39,14 @@ async function main() {
   console.log(`plugins: ${pl.plugins.length} (bundles=${pl.plugins.filter((p) => p.kind === 'bundle').length}, deps=${pl.plugins.filter((p) => p.kind === 'dependency').length})`)
   console.log('sample:', JSON.stringify(pl.plugins.slice(0, 3), null, 1))
 
-  console.log('=== 5. dsh.version ===')
-  console.log('dsh version:', await dsh.version())
-  console.log('dsh bin:', dsh.dshBin())
+  console.log('=== 5. dsh CLI ===')
+  // dsh 不是本仓库依赖:CI 或未安装 dsh 的机器上取不到,不能因此让冒烟测试失败
+  try {
+    console.log('dsh version:', await dsh.version())
+    console.log('dsh bin:', dsh.dshBin())
+  } catch (e) {
+    console.log('dsh CLI 不可用(未全局安装时属正常):', e.message)
+  }
 
   console.log('=== 6. sources.search (npm) ===')
   try {
