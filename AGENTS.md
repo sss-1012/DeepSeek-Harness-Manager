@@ -17,7 +17,7 @@ It also ships a small DSH entry plugin under `plugin/`.
 | `renderer/` | Plain HTML/CSS/JS UI (no build step). **UI text is Chinese** |
 | `src/` | Core modules: `dsh.js` (CLI wrapper), `tool.js` (npm/pnpm runner), `status.js` (process supervision), `plugins/` (+ `sources/`), `compat.js`, `update.js`, `diagnose.js`, `security.js`, `env.js`, `store.js`, `paths.js` |
 | `plugin/` | The DSH entry plugin (`lib/index.js` host side, `lib/panel.js` client side) + its tests |
-| `scripts/` | `smoke.js`, `check-docs.js`, `prepack.js`, `archive-build.js`, `sync-releases.js`, icon generators |
+| `scripts/` | `smoke.js`, `check-docs.js`, `prepack.js`, `archive-build.js`, `sync-releases.js`, `verify-signature.ps1`, icon generators |
 | `docs/` | Development & troubleshooting docs (English + `docs/zh-CN/`) |
 
 ## Commands
@@ -30,6 +30,8 @@ node scripts/check-docs.js       # verify relative + external links (--offline t
 node plugin/test/host.test.js    # plugin host-side self-check (mock ctx)
 node plugin/test/boot-check.mjs  # plugin end-to-end: isolated profile + real dsh boot on port 3099
 npm run pack                     # build installer + portable into dist/ (also archives locally)
+npm run verify-signature         # check the Authenticode signature + SHA-256 of every dist/ artifact
+npm run verify-signature:strict  # same, but exit 1 if anything is unsigned
 ```
 
 Before claiming a change works, run at least `smoke.js`, `check-docs.js --offline` and — if you touched
@@ -61,9 +63,12 @@ Before claiming a change works, run at least `smoke.js`, `check-docs.js --offlin
 1. Bump `version` in `package.json`, add a section to `RELEASE_NOTES.md` (and `CHANGELOG.md`).
 2. Rebuild: `npm run pack` (this writes `dist/` **and** copies the installers into the local archive
    `<archiveRoot>/v<version>/`, default `E:\Work\DSH-Manager-Releases` — the maintainer wants a local copy
-   of every published build).
+   of every published build). Its last step verifies Authenticode signatures: once signing credentials
+   (`WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD`) are configured, an unsigned artifact fails the build; without
+   them it only warns, and users get the SmartScreen "unrecognized app" prompt. See
+   [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 3. Push a `v*` tag; `.github/workflows/release.yml` builds on `windows-latest` and publishes the GitHub
-   Release. CI must pass first (`.github/workflows/ci.yml`).
+   Release (both installers plus `SHA256SUMS.txt`). CI must pass first (`.github/workflows/ci.yml`).
 4. Optional: `npm run sync-releases` mirrors every published release back into the same archive.
 
 ## Definition of done

@@ -93,6 +93,12 @@ DSH Manager 把整个生命周期收进一个窗口:
 | `DeepSeek-Harness-Manager-<version>-setup.exe` | **安装程序** —— 日常使用推荐。创建开始菜单/桌面快捷方式,支持卸载 |
 | `DeepSeek-Harness-Manager-<version>-portable.exe` | **绿色免安装版** —— 适合测试、临时使用或放在 U 盘里 |
 
+> **关于 SmartScreen 提示。** 目前的发布版尚未做代码签名,首次运行可能弹出「Windows 已保护你的电脑」。
+> 这是 Microsoft Defender SmartScreen 对"无法归属到已知发布者的应用"的默认反应,**不是病毒告警**:
+> 点 **更多信息 → 仍要运行** 即可;也可以先右键下载的文件 → **属性 → 解除锁定** 再运行。
+> 若该发布版带有 `SHA256SUMS.txt`,可用 `Get-FileHash <文件> -Algorithm SHA256` 校验下载是否完整。
+> 该提示的成因与修复方式见 [docs/zh-CN/DEVELOPMENT.md](docs/zh-CN/DEVELOPMENT.md)。
+
 ### 环境要求
 
 - Windows 10 / 11(x64)

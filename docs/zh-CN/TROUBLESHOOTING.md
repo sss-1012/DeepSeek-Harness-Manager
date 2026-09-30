@@ -13,6 +13,62 @@
 | `EADDRINUSE` / 端口被占用 | 已有另一个 Harness 实例在运行 | 停掉那个实例,或在「配置启动项」里改检测端口 |
 | `--expose-internals is required for HMR service` | 你用的管理器版本早于 **v0.1.2**,旧版本用 Electron 内建 Node 启动 DSH | 升级管理器 —— v0.1.2 起改为用真实 `node.exe` 启动 |
 
+## 管理器窗口一闪就关
+
+若管理器启动后 1 秒内消失,且 `~/.dsh-manager/logs/` 里**没有产生新日志文件**,说明它死在创建窗口之前。
+最常见的原因是继承了 `ELECTRON_RUN_AS_NODE=1`:
+
+```powershell
+[Environment]::GetEnvironmentVariable('ELECTRON_RUN_AS_NODE')
+```
+
+该变量为 `1` 时,Electron 会把应用当成普通 Node 运行:`require('electron')` 拿不到 `app`,main.js 在单实例
+检查处就抛异常 —— 此时一行日志都来不及写。它不是系统级设置,而是从 Electron 父进程继承来的,而 **DSH 本身
+就是 Electron 应用**:DSH 启动的任何东西(界面左下角的「管理器」胶囊、从 DSH 里打开的终端)都会把它带下去。
+处理方式:
+
+- 升级入口插件:新版 `dsh-harness-manager` 在启动管理器前会清掉该变量
+- 或改用资源管理器 / 开始菜单启动管理器,不要从 DSH 派生的终端里启动
+
+**不要**用「以管理员身份运行」绕过:UAC 会重建一份不含该变量的环境,所以看起来有效,但"请求提权"恰恰是
+Windows SmartScreen 对未签名程序弹窗的触发条件 —— 而且它会掩盖真正的原因。
+
+## 装进 DSH 的工作目录?应用会在启动前就被终结
+
+DeepSeek Harness 会给它用作**工作目录**的文件夹打上**低完整性(Low Mandatory Level)标签**,里面所有文件
+都会继承这个标签。因此装在那里的 Electron 应用,自身就是一堆**低完整性映像**;而 Chromium 启动时会启用
+"禁止加载低完整性映像"的自我保护,于是 Windows 会拦掉它加载自己的 exe 与 DLL:
+
+```text
+Microsoft-Windows-Security-Mitigations/KernelMode,事件 ID 6
+Process '...\DeepSeek-Harness-Manager.exe' was blocked from loading the low-integrity binary
+'...\DeepSeek-Harness-Manager.exe'
+```
+
+表现出来就是**窗口永远不出现**:进程一秒内退出,`~/.dsh-manager/logs/` 不产生新日志,也没有任何报错输出。
+可用下面的命令确认:
+
+```powershell
+icacls "E:\Work" | Select-String 'Mandatory'      # 工作目录根
+```
+
+两种修法:
+
+1. **装到工作目录之外**(推荐,一劳永逸)—— 例如安装程序默认的按用户目录
+   `%LOCALAPPDATA%\Programs\DeepSeek-Harness-Manager`,那里没有低完整性标签
+2. **把已安装目录的标签提回 Medium**(快速):
+
+   ```powershell
+   icacls "<安装目录>" /setintegritylevel (OI)(CI)Medium /T /C
+   ```
+
+   改完再用 `icacls` 复核。若提示 *Access is denied*,请用管理员身份的终端执行
+
+注意「以管理员身份运行」只是在掩盖问题:管理员令牌会让 Chromium 跳过上述自我保护,所以看起来"有效",
+但它让每次启动都变成提权请求 —— 而这恰恰是未签名程序触发 SmartScreen 弹窗的原因。
+
+从 GitHub 下载的文件不受影响:完整性标签是本地 NTFS 元数据,不属于文件内容,因此下载后安装是干净的。
+
 ## 检测不到 Harness
 
 概览页 `dsh CLI` 那一行会显示它能找到的版本。若为空:

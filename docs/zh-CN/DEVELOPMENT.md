@@ -86,7 +86,6 @@ npm run sync-releases -- --force        # 已存在也重新下载
 ```powershell
 $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
 $env:ELECTRON_BUILDER_BINARIES_MIRROR = "https://npmmirror.com/mirrors/electron-builder-binaries/"
-$env:CSC_IDENTITY_AUTO_DISCOVERY = "false"   # 无代码签名证书时跳过签名
 ```
 
 若本机存在 HTTPS 拦截(企业代理 / 抓包工具),且其根证书只被 Windows 信任,Node 下载 Electron 二进制时会报
@@ -100,6 +99,60 @@ $env:NODE_OPTIONS = "--use-system-ca"
 
 - `electron-builder` 的下载缓存在 `%LOCALAPPDATA%\electron-builder\Cache`。首次必须联网填充;之后可离线打包
 - 不要提交 `dist/` 与各类缓存 —— 它们已在 `.gitignore` 中
+
+### 代码签名(以及为什么会被 SmartScreen 拦)
+
+Windows 对"无法归属到已知发布者"的可执行文件会弹出 **「Windows 已保护你的电脑」**(Microsoft Defender
+SmartScreen)。未签名文件完全没有发布者信誉,而且按
+[微软的 SmartScreen 信誉规则](https://learn.microsoft.com/zh-cn/windows/apps/package-and-deploy/smartscreen-reputation),
+未签名文件的信誉是**按文件**从零开始、且**不会**被下一个版本继承:
+
+- 自签名证书与不签名完全等价(同样的警告)
+- EV 证书自 2024 年起不再能绕过 SmartScreen —— 不要为这个目的去买 EV
+- 签名不会立刻消除警告:信誉要靠真实下载量慢慢积累;但只有签了名才**有可能**积累,
+  并且每次发布都用**同一张**证书,后续版本才能继承这份信誉
+
+配好凭据后,electron-builder 会给它产出的每个可执行文件签名:`win-unpacked` 里的主程序(用户从开始菜单
+启动的就是它)、`elevate.exe`、卸载器、NSIS 安装程序与免安装版:
+
+```powershell
+# a. .pfx 文件(CA 颁发的可导出证书)
+$env:WIN_CSC_LINK = "C:\certs\my-code-signing.pfx"   # 绝对路径、https URL 或 base64
+$env:WIN_CSC_KEY_PASSWORD = "********"               # 绝不要提交到仓库
+npm run pack
+
+# b. 证书在 Windows 证书存储 / USB 令牌 / HSM 里 —— 用 subject name 指定。
+#    写在命令行上,避免把机器相关信息或密钥写进 package.json。
+npx electron-builder --win nsis portable --publish never `
+  -c.win.signtoolOptions.certificateSubjectName="你的公司名称"
+```
+
+[package.json](../../package.json) 里的 `win.signtoolOptions` 已固定为仅 SHA-256 签名 + RFC-3161 时间戳。
+Azure Trusted Signing / Artifact Signing 可通过 `win.azureSignOptions` 接入(见
+[electron-builder 的 Windows 签名文档](https://www.electron.build/docs/features/code-signing/code-signing-win)),
+但先确认微软的准入限制:公共信任证书只对美国、加拿大、欧盟、英国、澳大利亚、新西兰、日本、韩国、新加坡、
+瑞士、挪威、以色列的组织开放,个人开发者必须居住在美国或加拿大。
+
+#### 不要相信构建日志,要验产物
+
+electron-builder 是在**查找证书之前**就以 *info* 级别打印 `signing with signtool.exe` 的,真正"跳过签名"
+只写 *debug* 级别日志。所以一个什么都没签的构建,每个文件照样会打一行那句话(见
+`app-builder-lib/out/codeSign/windowsCodeSign.js` 与 `windowsSignToolManager.js`)。请直接验产物:
+
+```powershell
+npm run verify-signature          # 只报告:未配置凭据时告警并继续
+npm run verify-signature:strict   # 只要有产物未签名就失败(exit 1)
+```
+
+`scripts/verify-signature.ps1` 会打印每个产物的签名状态、签署者与 SHA-256。只要**配置了**签名凭据而产物
+仍未签名,它就会失败,因此证书配错不可能混进发布。请保留该文件的 UTF-8 BOM:Windows PowerShell 5.1 会把
+无 BOM 的文件按 ANSI 解析,导致字符串解析错误。
+
+CI 里凭据来自仓库 Secrets(`WIN_CSC_LINK`、`WIN_CSC_KEY_PASSWORD`)。`npm run pack` 的最后一步就是这个检查,
+所以一旦 Secrets 存在,它自动变成硬性闸门;在此之前发布任务只会告警,并产出未签名包。
+
+> `CSC_IDENTITY_AUTO_DISCOVERY` **只对 macOS 生效**,对 Windows 构建没有任何作用 —— 本项目文档此前把它写成
+> "无证书时跳过签名",这是错的,并且掩盖了真正的问题。Windows 是否签名只取决于上面的凭据。
 
 ## 截图
 
@@ -201,4 +254,6 @@ dsh plugin --profile web add link:<仓库>/plugin   # 之后重启 dsh web
 | `DSH_MANAGER_ALLOW_PLAIN` | 设为 `1` 时允许明文保存密钥 —— **仅用于测试** |
 | `DSH_MANAGER_RELEASES_DIR` | 构建产物的本地归档根目录(默认项目上一级的 `DSH-Manager-Releases`) |
 | `ELECTRON_MIRROR`、`ELECTRON_BUILDER_BINARIES_MIRROR` | 构建期下载镜像 |
-| `CSC_IDENTITY_AUTO_DISCOVERY` | 设为 `false` 跳过代码签名 |
+| `WIN_CSC_LINK`、`WIN_CSC_KEY_PASSWORD` | Windows 代码签名证书(`.pfx` 路径、https URL 或 base64)及其密码 |
+| `DSH_MANAGER_DIST_DIR` | `scripts/verify-signature.ps1` 要检查的目录(默认 `dist/`) |
+| `CSC_IDENTITY_AUTO_DISCOVERY` | **仅对 macOS 签名生效** —— 对 Windows 构建无作用 |

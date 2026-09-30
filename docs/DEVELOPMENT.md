@@ -86,7 +86,6 @@ Both paths write to the same `<archive root>/<tag>/` layout and compare by file 
 ```powershell
 $env:ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/"
 $env:ELECTRON_BUILDER_BINARIES_MIRROR = "https://npmmirror.com/mirrors/electron-builder-binaries/"
-$env:CSC_IDENTITY_AUTO_DISCOVERY = "false"   # skip code signing when no certificate is available
 ```
 
 If the machine has HTTPS interception (corporate proxy, packet inspection) and its root CA is only trusted by Windows, Node will fail to download the Electron binary with `unable to verify the first certificate`. Let Node use the Windows certificate store instead (Node ≥ 22.15; not available on Node 20 — use the mirror variables there):
@@ -99,6 +98,67 @@ Notes:
 
 - electron-builder's download cache lives in `%LOCALAPPDATA%\electron-builder\Cache`. It must be filled online once; afterwards packaging works offline.
 - Never commit `dist/` or the caches — they are git-ignored.
+
+### Code signing (and why SmartScreen blocks the app)
+
+Windows shows **“Windows protected your PC”** (Microsoft Defender SmartScreen) for executables it cannot
+attribute to a known publisher. An unsigned binary has no publisher reputation at all, and per
+[Microsoft's SmartScreen reputation rules](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)
+an unsigned file's reputation starts at zero **per file** and is never inherited by the next version:
+
+- A self-signed certificate behaves exactly like no signature (same warning).
+- EV certificates no longer bypass SmartScreen (changed in 2024) — do not pay for EV for this reason.
+- Signing does not remove the warning immediately: reputation accumulates from real downloads, but only a
+  signed file can accumulate it *at all*. Signing every release with the **same** certificate lets later
+  versions inherit it.
+
+Supply credentials and electron-builder signs every executable it produces — the `win-unpacked` main
+executable (the one users launch from the Start menu), `elevate.exe`, the uninstaller, the NSIS installer
+and the portable exe:
+
+```powershell
+# a. .pfx file (exportable certificate from a CA)
+$env:WIN_CSC_LINK = "C:\certs\my-code-signing.pfx"   # absolute path, https URL or base64
+$env:WIN_CSC_KEY_PASSWORD = "********"               # never commit this
+npm run pack
+
+# b. certificate in the Windows store / USB token / HSM — select it by subject name.
+#    Passed on the command line so no secret or machine-specific value lands in package.json.
+npx electron-builder --win nsis portable --publish never `
+  -c.win.signtoolOptions.certificateSubjectName="Your Company Name"
+```
+
+`win.signtoolOptions` in [package.json](../package.json) already pins SHA-256-only signing and an RFC-3161
+timestamp server. Azure Trusted Signing / Artifact Signing is supported through `win.azureSignOptions`
+(see [electron-builder's Windows signing docs](https://www.electron.build/docs/features/code-signing/code-signing-win)),
+but check Microsoft's eligibility limits first: public-trust certificates are only issued to organisations
+in the US, Canada, the EU, the UK, Australia, New Zealand, Japan, Korea, Singapore, Switzerland, Norway and
+Israel, and individual developers must reside in the US or Canada.
+
+#### Do not trust the build log — verify the artifacts
+
+electron-builder prints `signing with signtool.exe` at *info* level **before** it looks for a certificate,
+and writes the actual skip only at *debug* level. A build that signed nothing therefore still logs one such
+line per file (see `app-builder-lib/out/codeSign/windowsCodeSign.js` vs `windowsSignToolManager.js`).
+Check the output instead:
+
+```powershell
+npm run verify-signature          # report only: warns and continues when no credentials are configured
+npm run verify-signature:strict   # fail (exit 1) if any artifact is not signed
+```
+
+`scripts/verify-signature.ps1` prints each artifact's status, signer and SHA-256. It fails automatically
+whenever signing credentials *are* configured but the output is unsigned, so a misconfigured certificate
+cannot reach a release. Keep the file's UTF-8 BOM: Windows PowerShell 5.1 reads BOM-less files as ANSI and
+mis-parses the strings.
+
+In CI the credentials come from repository secrets (`WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`). `npm run pack`
+ends with this same check, so it turns into a hard gate as soon as those secrets exist; until then the
+release job builds unsigned and only warns.
+
+> `CSC_IDENTITY_AUTO_DISCOVERY` is **macOS-only** and does nothing for Windows builds — it used to be
+> documented here as “skip code signing”, which was wrong and hid the real problem. Whether a Windows build
+> is signed depends solely on the credentials above.
 
 ## Screenshots
 
@@ -196,4 +256,6 @@ awesome-list submission file.
 | `DSH_MANAGER_ALLOW_PLAIN` | `1` allows plaintext secret storage — **testing only** |
 | `DSH_MANAGER_RELEASES_DIR` | Local archive root for built installers (default `../DSH-Manager-Releases`) |
 | `ELECTRON_MIRROR`, `ELECTRON_BUILDER_BINARIES_MIRROR` | Build-time download mirrors |
-| `CSC_IDENTITY_AUTO_DISCOVERY` | `false` skips code signing |
+| `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD` | Windows code-signing certificate (`.pfx` path, https URL or base64) and its password |
+| `DSH_MANAGER_DIST_DIR` | Directory `scripts/verify-signature.ps1` inspects (default `dist/`) |
+| `CSC_IDENTITY_AUTO_DISCOVERY` | **macOS signing only** — no effect on Windows builds |

@@ -8,10 +8,12 @@
   "scripts": {
     "start": "electron .",
     "screenshots": "electron . --screenshots",
-    "pack": "node scripts/prepack.js && electron-builder --win nsis portable --publish never && node scripts/archive-build.js",
-    "pack:dir": "node scripts/prepack.js && electron-builder --win dir --publish never",
+    "pack": "node scripts/prepack.js && electron-builder --win nsis portable --publish never && node scripts/archive-build.js && npm run verify-signature",
+    "pack:dir": "node scripts/prepack.js && electron-builder --win dir --publish never && npm run verify-signature",
     "archive": "node scripts/archive-build.js",
-    "sync-releases": "node scripts/sync-releases.js"
+    "sync-releases": "node scripts/sync-releases.js",
+    "verify-signature": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-signature.ps1",
+    "verify-signature:strict": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-signature.ps1 -RequireSigned"
   },
   "dependencies": {
     "js-yaml": "^4.1.0",
@@ -52,7 +54,13 @@
         }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "signtoolOptions": {
+        "signingHashAlgorithms": [
+          "sha256"
+        ],
+        "rfc3161TimeStampServer": "http://timestamp.digicert.com"
+      }
     },
     "nsis": {
       "oneClick": false,

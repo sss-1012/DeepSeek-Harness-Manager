@@ -25,13 +25,25 @@ jobs:
       - name: Package Windows installers
         run: npm run pack
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          # Code-signing credentials. While these secrets are unset the build still succeeds
+          # and only warns; once they exist, `npm run pack` fails if the artifacts are unsigned,
+          # so an unrecognized-app (SmartScreen) build can never be published.
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - name: Generate SHA-256 checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist\*.exe | Sort-Object Name | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash, $_.Name
+          } | Set-Content dist\SHA256SUMS.txt -Encoding ascii
+          Get-Content dist\SHA256SUMS.txt
 
       - name: Create Release
         shell: pwsh
         run: |
           gh release create "${{ github.ref_name }}" `
-            dist/*.exe `
+            dist/*.exe dist/SHA256SUMS.txt `
             --title "DeepSeek Harness Manager ${{ github.ref_name }}" `
             --notes-file RELEASE_NOTES.md
         env:

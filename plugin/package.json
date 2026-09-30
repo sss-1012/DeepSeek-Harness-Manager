@@ -1,6 +1,6 @@
 {
   "name": "dsh-harness-manager",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "在 DSH 界面里一键打开 DeepSeek Harness Manager(Windows 控制中心:环境/插件/诊断/更新回滚)",
   "keywords": [
     "dsh",

@@ -94,6 +94,14 @@ Two build types are published:
 | `DeepSeek-Harness-Manager-<version>-setup.exe` | **Installer** — recommended for normal use. Adds Start-menu and desktop shortcuts, and supports uninstalling. |
 | `DeepSeek-Harness-Manager-<version>-portable.exe` | **Portable** — no installation. Handy for testing or running from a USB drive. |
 
+> **About the SmartScreen prompt.** These builds are not code-signed yet, so the first launch may show
+> *"Windows protected your PC"*. That is Microsoft Defender SmartScreen reacting to an app it cannot
+> attribute to a known publisher — not a malware detection. Choose **More info → Run anyway**, or
+> right-click the downloaded file → **Properties → Unblock** before running it. If the release includes a
+> `SHA256SUMS.txt` asset, you can check your download with
+> `Get-FileHash <file> -Algorithm SHA256`. Why this happens, and how it gets fixed, is documented in
+> [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
 ### Requirements
 
 - Windows 10 / 11 (x64)

@@ -107,7 +107,13 @@ function apply(ctx) {
         return
       }
       try {
-        const child = spawn(found.exe, [], { detached: true, stdio: 'ignore', windowsHide: false })
+        // 必须清掉 ELECTRON_RUN_AS_NODE:本插件运行在 DSH 的 Electron 宿主进程内,该变量会随环境
+        // 继承给被启动的 exe。一旦带着它启动,管理器会被 Electron 当成普通 Node 运行,
+        // require('electron') 拿不到 app,在 main.js 的单实例检查处抛 TypeError 并静默退出
+        // —— 用户看到的就是"闪一下就没了",且不会留下任何日志。
+        const env = { ...process.env }
+        delete env.ELECTRON_RUN_AS_NODE
+        const child = spawn(found.exe, [], { detached: true, stdio: 'ignore', windowsHide: false, env })
         child.unref()
         res.writeHead(200, JSON_HEADERS)
         res.end(JSON.stringify({ ok: true, exe: found.exe }))
