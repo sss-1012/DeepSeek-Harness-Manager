@@ -198,6 +198,8 @@ DeepSeek-Harness-Manager/
 │   │   ├── sources/        #   npm / github / local adapters
 │   │   └── resolver.js     #   plugin dependency resolver
 │   ├── status.js           # process supervision, status polling, history
+│   ├── desktop.js          # official DeepSeek Harness desktop app detection
+│   ├── proc.js             # process enumeration for the update pre-flight
 │   ├── history.js          # runtime history records
 │   ├── diagnose.js         # diagnostics center
 │   ├── update.js           # version check / backup / update / rollback
@@ -217,7 +219,9 @@ DeepSeek-Harness-Manager/
 - **The manager owns enable/disable state.** It writes `~/.dsh-manager/plugins/<profile>/overrides/state.yml` and passes it at launch via `dsh --patch`. The profile's `cordis.patch.yml` and the plugin packages stay untouched, so a DSH upgrade cannot overwrite your choices.
 - **DSH is always launched with the real `node.exe`.** Electron's bundled Node (`ELECTRON_RUN_AS_NODE`) makes DSH take an HMR path that requires `--expose-internals` and aborts the profile boot — measured, not theoretical.
 - **Windows `.cmd` shims are parsed**, not executed through a shell: `tool.js` extracts the real JS entry point (`npm-cli.js`, `pnpm.cjs`, or a variable-based `SET "VAR=path"` form) and runs it with Node, which avoids shell quoting bugs and injection.
-- **Plugin resolution compatibility**: newer DSH versions resolve bundle plugins from the global install location. `compat.js` checks resolvability from the loader's own path and can repair it by creating directory junctions in the global `node_modules` (no copies, no downloads, reversible).
+- **Plugin resolution compatibility**: newer DSH versions resolve bundle plugins from the global install location. `compat.js` resolves from the loader's own path (it walks up from the dsh bin until it finds the `@deepseek-ai/dsh` package — computing that path one level too high was why the old check always reported "OK"), classifies each bundle (`ok` / `profile-only` / `link-dangling` / `missing` / `load-failed` / `loader-missing`), runs an isolated **load probe** in a child Node process, and repairs by creating directory junctions in the global `node_modules` (no copies, no downloads, reversible) with **immediate re-verification**.
+- **The official desktop app owns `profiles/desktop`**: `desktop.js` detects it (registry), `profiles.js` marks that profile `external`/`readOnly`, and every write path (start/stop, plugin enable/disable/update/uninstall, `compat.fixBundles`, backup/restore) refuses it. Upstream states the CLI must not start or modify that profile.
+- **Updates and rollbacks run a process pre-flight** (`proc.js` + `runningWorkloads()`): while any managed profile, CLI dsh process or the desktop app is running, the operation is refused, because npm replacing locked files is exactly what produced the historical `EBUSY` + half-updated global install.
 - **Data directory**: `~/.dsh-manager/` holds config, backups, history, logs and reports. Deleting it resets the manager.
 
 ## DSH entry plugin (`plugin/`)

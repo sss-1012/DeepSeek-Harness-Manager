@@ -58,8 +58,10 @@ DSH Manager puts the whole lifecycle in one window:
 | Plugin sources | npm registry, GitHub repositories, local folders |
 | Dependency resolver | Detects plugin dependencies during installation |
 | Diagnostics | Node/npm/pnpm/dsh, profile integrity, plugin resolution, port, credentials, file permissions + Markdown report |
-| Updates | Detect newer versions, back up, update with live output, roll back to a backup |
-| Compatibility | Post-update plugin-resolution self-check with one-click repair |
+| Updates | Detect newer versions, back up, update with live output, roll back to a backup. Updates and rollbacks run a **process pre-flight** first: while any harness, CLI or the official desktop app is running, the operation is blocked (that is what makes npm fail with `EBUSY`), and npm failures are classified with a concrete next step |
+| Compatibility | Plugin-resolution self-check that **really** resolves from the loader (the loader path used to be computed one level too high, so the old check always reported "OK"): per-bundle classification (resolvable / profile-only / dangling junction / missing package / broken global install), an isolated **load probe**, one-click junction repair, **immediate re-verification**, and it skips the official desktop profile |
+| Official desktop | Detects the official DeepSeek Harness desktop app (registry + version + bundled runtime), shows it on the dashboard with an "open" action, and treats `profiles/desktop` as **read-only** — no start/stop, no plugin changes, no junction repair (upstream: the CLI must not start or modify that profile) |
+| Session deletion | One-click install/uninstall of the community plugin `@huanlin/dsh-plugin-session-delete`, which adds **delete-session** entries inside the DSH UI (conversation-header trash button + session-row "…" menu + risk-consent dialog). The official dsh only *archives* sessions |
 | Profiles | List profiles, choose the launch target, manage plugins per profile |
 | Security | DPAPI-encrypted secrets, plaintext credential audit, ACL hardening |
 | Tray & logs | System tray quick actions, live log panel |
@@ -141,6 +143,24 @@ the manager through `DSH_MANAGER_EXE`, then `~/.dsh-manager/install.json`, then 
 locations — see [plugin/README.md](plugin/README.md) for details, the self-check commands
 (`node plugin/test/host.test.js`, `node plugin/test/boot-check.mjs --spec dsh-harness-manager`,
 `node plugin/test/resolve-check.mjs`) and the awesome-list submission file.
+
+## Coexisting with the official desktop app
+
+The official **DeepSeek Harness desktop app** (Electron, `apps/desktop` upstream) is a *shell*: it bundles its
+own dsh runtime, Node.js and pnpm, opens no listening port, and **owns `~/.dsh/profiles/desktop` exclusively**
+(upstream states the CLI must not start or modify that profile). The manager therefore:
+
+- **detects it** (uninstall registry entry → version, install path, bundled Node/pnpm) and shows a dashboard card
+  with an "open the official desktop app" button;
+- treats that profile as **read-only**: no start/stop, no plugin enable/disable/update/uninstall, no
+  compatibility repair, no backup/restore — the plugins page shows it with a lock banner;
+- keeps the version row honest by separating the **global CLI version** (`npm i -g @deepseek-ai/dsh`) from the
+  **desktop app's bundled runtime**.
+
+Division of labour: the desktop app is the zero-setup way to run DSH; the manager is the *ops* tool for the
+CLI/`dsh web` side — multi-profile management, plugin search across sources, diagnostics, updates with backup
+and rollback, credential/permission auditing. They share `~/.dsh` data (sessions, settings, credentials) but
+never each other's executable packages.
 
 ## Usage
 

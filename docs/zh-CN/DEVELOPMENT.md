@@ -194,6 +194,8 @@ DeepSeek-Harness-Manager/
 │   │   ├── sources/        #   npm / github / local 适配器
 │   │   └── resolver.js     #   插件依赖解析
 │   ├── status.js           # 进程监管、状态轮询、运行记录
+│   ├── desktop.js          # 官方 DeepSeek Harness 桌面端识别
+│   ├── proc.js             # 更新预检用的进程枚举
 │   ├── history.js          # 运行历史记录
 │   ├── diagnose.js         # 诊断中心
 │   ├── update.js           # 版本检测 / 备份 / 更新 / 回滚
@@ -216,8 +218,16 @@ DeepSeek-Harness-Manager/
   `--expose-internals` 的 HMR 路径,导致 profile 启动中断 —— 这是实测结论,不是推测
 - **Windows `.cmd` shim 只解析不执行**:`tool.js` 从中提取真实 JS 入口(`npm-cli.js`、`pnpm.cjs`,或
   `SET "VAR=path"` 变量式写法)后直接用 Node 运行,规避 shell 引号问题与注入风险
-- **插件解析兼容性**:新版 DSH 会从全局安装位置解析 bundle 插件。`compat.js` 会以 loader 自身路径为基准做检测,
-  并可通过在全局 `node_modules` 创建目录联接来修复(不复制文件、不下载、可逆)
+- **插件解析兼容性**:新版 DSH 会从全局安装位置解析 bundle 插件。`compat.js` 以 loader 自身路径为基准
+  (从 dsh 的 bin 文件向上找到 `name === '@deepseek-ai/dsh'` 的那一层 —— 早期版本这里多退了一层目录,
+  导致检查永远返回「未找到 loader,跳过」),逐 bundle 分档
+  (`ok` / `profile-only` / `link-dangling` / `missing` / `load-failed` / `loader-missing`),
+  用独立 Node 子进程做**加载探测**,修复(全局 `node_modules` 建目录联接)后**立即复验**
+- **官方桌面端独占 `profiles/desktop`**:`desktop.js` 负责识别(注册表),`profiles.js` 把该 profile 标记为
+  `external` / `readOnly`;所有写入路径(启停、插件启停/更新/卸载、`compat.fixBundles`、备份还原)都拒绝它 ——
+  官方文档明确 CLI 不得启动或修改该 profile
+- **更新与回滚前强制进程预检**(`proc.js` + `runningWorkloads()`):只要有管理器托管的 profile、CLI dsh 进程
+  或官方桌面端在运行,就拒绝执行 —— npm 替换被占用的文件正是历史 `EBUSY` 与"半更新"状态的原因
 - **数据目录**:`~/.dsh-manager/`(配置、备份、历史、日志、报告)。删掉即重置管理器
 
 ## DSH 入口插件(`plugin/`)

@@ -15,8 +15,8 @@ It also ships a small DSH entry plugin under `plugin/`.
 | `main.js` | Electron main process: window, tray, IPC handlers, startup self-registration |
 | `preload.js` | `contextBridge` surface — every renderer capability is allow-listed here |
 | `renderer/` | Plain HTML/CSS/JS UI (no build step). **UI text is Chinese** |
-| `src/` | Core modules: `dsh.js` (CLI wrapper), `tool.js` (npm/pnpm runner), `status.js` (process supervision), `plugins/` (+ `sources/`), `compat.js`, `update.js`, `diagnose.js`, `security.js`, `env.js`, `store.js`, `paths.js` |
-| `plugin/` | The DSH entry plugin (`lib/index.js` host side, `lib/panel.js` client side) + its tests |
+| `src/` | Core modules: `dsh.js` (CLI wrapper), `tool.js` (npm/pnpm runner), `status.js` (process supervision), `desktop.js` (official desktop app detection), `proc.js` (process enumeration for the update pre-flight), `plugins/` (+ `sources/`), `compat.js`, `update.js`, `diagnose.js`, `security.js`, `env.js`, `store.js`, `paths.js` |
+| `plugin/` | DSH entry plugin: host `lib/index.js` (routes + `tapIndex`), official client-plugin entry `lib/client.js` (`window.__ModuleLoader__.load`), HTTP-injection fallback `lib/panel.js`, plus its tests. **`client.js` and `panel.js` are independent copies — change both together** |
 | `scripts/` | `smoke.js`, `check-docs.js`, `prepack.js`, `archive-build.js`, `sync-releases.js`, `verify-signature.ps1`, icon generators |
 | `docs/` | Development & troubleshooting docs (English + `docs/zh-CN/`) |
 
@@ -57,6 +57,13 @@ Before claiming a change works, run at least `smoke.js`, `check-docs.js --offlin
    `README.zh-CN.md` is Chinese and both must stay in sync; the same applies to `docs/` vs `docs/zh-CN/`.
 7. **Dependencies are a last resort.** `renderer/` has no build step by design; the packaged app must not
    depend on Node built-ins Electron lacks (e.g. `undici`) — use `node:https`.
+8. **`profiles/desktop` belongs to the official desktop app.** Upstream states the CLI must not start or
+   modify that profile. `src/profiles.js` marks it `external`/`readOnly`; keep that guard on every new
+   code path (start/stop, plugin changes, compatibility repair, backup/restore). The same applies to
+   backups: never restore an external profile.
+9. **Update/rollback must refuse while anything uses the global dsh.** npm replacing locked files is what
+   produced the historical `EBUSY` + half-updated install. Keep the `runningWorkloads()` pre-flight in
+   front of `doUpdate`/`rollback`/`reinstallDsh`, and never kill the user's desktop app for them.
 
 ## Release flow
 

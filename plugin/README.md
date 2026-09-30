@@ -56,16 +56,33 @@ dsh plugin --profile web remove dsh-harness-manager
 | `/dsh-manager/launch` | POST | 以 detached 方式启动管理器进程 |
 | `/dsh-manager/panel.js` | GET | 左下角入口的客户端脚本 |
 
+## 两种载体(重要)
+
+插件同时提供两种入口,共用同一个 `window.__dshManagerPanel` 守卫,**先到先得,不会出现两个胶囊**:
+
+| 入口 | 机制 | 生效载体 |
+|---|---|---|
+| `lib/client.js` | 官方 `dsh.client` 客户端插件(client-modules 协议:`window.__ModuleLoader__.load`) | 浏览器里的 `dsh web` **与官方桌面端壳** |
+| `lib/panel.js` | 宿主用 `tapIndex` 往首页注入 `<script>`(回退路径) | 仅有 HTTP 服务的 web 载体 |
+
+**载体差异(诚实说明)**:官方桌面端壳**不提供 `webServer`**,也不向页面暴露「启动外部程序」的能力(其 preload 只暴露快捷键 / 新手引导 / 更新 / 目录选择 / 平台页)。因此在桌面端里:
+
+- 胶囊**会显示**(灰点),但点击只能打开下载页 —— 请在 Windows 开始菜单 / 任务栏打开管理器;
+- 浏览器里的 `dsh web` 保持原样:绿点 / 黄点 + 一键启动。
+
+> `lib/client.js` 与 `lib/panel.js` 是两份独立实现(本仓库没有构建步骤把它们合并),改动胶囊外观或行为时要同步修改。
+
 ## 目录结构
 
 ```
 plugin/
-  package.json         # dsh.bundle 声明 + keywords(dsh-plugin)
+  package.json         # dsh.bundle + dsh.client 声明 + keywords(dsh-plugin)
   cordis.patch.yml     # 把插件挂进 profile 配置树
-  lib/index.js         # 宿主侧:路由 + tapIndex 注入
-  lib/panel.js         # 客户端:左下角胶囊按钮
-  test/host.test.js    # 无依赖自检(mock ctx,13 项)
-  test/boot-check.mjs  # 真实启动自检(隔离环境,9 项)
+  lib/index.js         # 宿主侧:路由 + tapIndex 注入(webServer 可选)
+  lib/client.js        # 客户端插件入口(官方 client-modules 协议)
+  lib/panel.js         # HTTP 注入回退实现
+  test/host.test.js    # 无依赖自检(mock ctx + mock __ModuleLoader__,15 项)
+  test/boot-check.mjs  # 真实启动自检(隔离环境,11 项,含 client-modules 启动图校验)
   test/resolve-check.mjs  # 只读:bundle 解析 + 依赖树完整度
 ```
 

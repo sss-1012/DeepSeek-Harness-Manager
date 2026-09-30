@@ -181,6 +181,79 @@ await test('panel.js 语法正确且只挂载一次', () => {
   }
 })
 
+// ---- 客户端插件入口(dsh.client):官方 client-modules 协议 ----
+await test('client.js 通过 __ModuleLoader__ 注册,导出 apply/inject', () => {
+  const src = fs.readFileSync(path.join(here, '..', 'lib', 'client.js'), 'utf8')
+  const prev = {
+    window: globalThis.window,
+    document: globalThis.document,
+    localStorage: globalThis.localStorage,
+    fetch: globalThis.fetch,
+    requestAnimationFrame: globalThis.requestAnimationFrame,
+  }
+  const created = []
+  const node = () => {
+    const n = {
+      style: {}, children: [], textContent: '', title: '', id: '',
+      setAttribute() {}, appendChild(c) { this.children.push(c) }, addEventListener() {}, parentNode: null,
+    }
+    created.push(n)
+    return n
+  }
+  const loaded = []
+  globalThis.window = { __ModuleLoader__: { load: (entry) => loaded.push(entry) } }
+  globalThis.document = {
+    readyState: 'complete', createElement: node,
+    body: { appendChild() {} }, getElementById: () => null, addEventListener() {},
+  }
+  globalThis.localStorage = { getItem: () => null, setItem() {} }
+  // status.json 返回"未检测到管理器",据此断言降级/正常两条路径都能挂载
+  globalThis.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve({ installed: false, downloadUrl: 'https://x/y' }) })
+  globalThis.requestAnimationFrame = (fn) => fn()
+  try {
+    new Function(src)()
+    assert.equal(loaded.length, 1, '应当注册一个 client 模块')
+    assert.equal(loaded[0].id, 'dsh-harness-manager')
+    const mod = loaded[0].factory(() => { throw new Error('本插件不该 require 任何模块') })
+    assert.equal(typeof mod.apply, 'function')
+    assert.ok(Array.isArray(mod.inject))
+    let cleanup = null
+    const ctx = { effect: (fn) => { cleanup = fn() } }
+    mod.apply(ctx)
+    assert.equal(globalThis.window.__dshManagerPanel, true, '挂载后应设置守卫标记')
+    assert.equal(typeof cleanup, 'function', 'apply 应通过 ctx.effect 注册清理')
+    assert.doesNotThrow(() => cleanup())
+    // 第二个实例(panel.js 先挂)不应重复挂载
+    globalThis.window.__dshManagerPanel = true
+    const again = loaded[0].factory(() => { throw new Error('no require') })
+    assert.doesNotThrow(() => again.apply({}))
+  } finally {
+    for (const [k, v] of Object.entries(prev)) if (v === undefined) delete globalThis[k]; else globalThis[k] = v
+  }
+})
+
+await test('client.js 在没有宿主路由时降级(hostless)', async () => {
+  const src = fs.readFileSync(path.join(here, '..', 'lib', 'client.js'), 'utf8')
+  const prev = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage, fetch: globalThis.fetch, requestAnimationFrame: globalThis.requestAnimationFrame }
+  const node = () => ({ style: {}, children: [], textContent: '', title: '', id: '', setAttribute() {}, appendChild() {}, addEventListener() { /* 不触发点击 */ }, parentNode: null })
+  globalThis.window = { __ModuleLoader__: { load: () => {} } }
+  globalThis.document = { readyState: 'complete', createElement: node, body: { appendChild() {} }, getElementById: () => null, addEventListener() {} }
+  globalThis.localStorage = { getItem: () => null, setItem() {} }
+  globalThis.fetch = () => Promise.reject(new Error('offline / no route'))
+  globalThis.requestAnimationFrame = (fn) => fn()
+  try {
+    const loaded = []
+    globalThis.window.__ModuleLoader__ = { load: (e) => loaded.push(e) }
+    new Function(src)()
+    const mod = loaded[0].factory(() => { throw new Error('no require') })
+    assert.doesNotThrow(() => mod.apply({}))
+    // 降级路径不应抛错(promise rejection 已被 catch);给它一个 tick
+    await new Promise((r) => setTimeout(r, 10))
+  } finally {
+    for (const [k, v] of Object.entries(prev)) if (v === undefined) delete globalThis[k]; else globalThis[k] = v
+  }
+})
+
 // ---- 汇总 ----
 fs.rmSync(tmp, { recursive: true, force: true })
 const failed = results.filter((r) => !r.ok)

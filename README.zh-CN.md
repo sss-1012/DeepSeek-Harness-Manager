@@ -57,8 +57,10 @@ DSH Manager 把整个生命周期收进一个窗口:
 | 插件来源 | npm registry、GitHub 仓库、本地目录 |
 | 依赖解析 | 安装时自动检测插件依赖 |
 | 诊断中心 | Node/npm/pnpm/dsh、profile 完整性、插件解析、端口、凭据、文件权限 + Markdown 报告 |
-| 更新 | 检测新版本、备份、带实时输出地更新、回滚到备份 |
-| 兼容性 | 更新后插件解析自检 + 一键修复 |
+| 更新 | 检测新版本、备份、带实时输出地更新、回滚到备份。更新/回滚前先做**进程预检**:只要有 harness、CLI 或官方桌面端在运行就拒绝执行(这正是 npm `EBUSY` 的根因),并对 npm 失败分类给出下一步 |
+| 兼容性 | 真正从 loader 位置解析的插件自检(旧版的 loader 路径算高了一层,导致检查**永远报 OK**):逐 bundle 分档(可解析 / 仅 profile 内 / 联接断链 / 包不存在 / 全局安装损坏)、独立进程**加载探测**、一键建联接、**修完立即复验**,并跳过官方桌面端 profile |
+| 官方桌面端 | 识别官方 DeepSeek Harness 桌面端(注册表 + 版本 + 自带运行时),概览页给卡片与「打开」按钮;把 `profiles/desktop` 当**只读**——不启停、不改插件、不修兼容性(官方:CLI 不得启动或修改该 profile) |
+| 删除对话 | 一键安装/卸载社区插件 `@huanlin/dsh-plugin-session-delete`,在 DSH 界面里获得**删除会话**入口(会话头部垃圾桶 + 侧栏会话行「…」菜单 + 风险确认弹窗)。官方 dsh 只有「归档」 |
 | Profile | 列出 profile、选择启动目标、按 profile 管理插件 |
 | 安全 | DPAPI 加密密钥、明文凭据审计、ACL 加固 |
 | 托盘与日志 | 系统托盘快捷操作、实时日志面板 |
@@ -134,6 +136,18 @@ dsh plugin --profile web remove dsh-harness-manager   # 卸载
 胶囊可以关掉(× 按钮),偏好存在 `localStorage`。插件按 `DSH_MANAGER_EXE` →
 `~/.dsh-manager/install.json` → 常见安装路径的顺序定位管理器,详见
 [plugin/README.md](plugin/README.md)(含三条自检命令,以及 awesome-list 收录用的 YAML)。
+
+## 与官方桌面端共存
+
+官方 **DeepSeek Harness 桌面端**(Electron,上游 `apps/desktop`)是一个**壳**:自带 dsh 运行时、Node.js 与 pnpm,
+不监听任何端口,并**独占 `~/.dsh/profiles/desktop`**(官方明确:CLI 不得启动或修改该 profile)。因此管理器:
+
+- **识别它**(卸载注册表项 → 版本、安装路径、自带 Node/pnpm),概览页给一张卡片和「打开官方桌面端」按钮;
+- 把该 profile 当**只读**:不启停、不启停/更新/卸载插件、不做兼容性修复、不备份还原 —— 插件页对它显示锁定横幅;
+- 版本信息区分**全局 CLI 版本**(`npm i -g @deepseek-ai/dsh`)与**桌面端自带运行时版本**,不混为一谈。
+
+分工:官方桌面端负责"开箱即用";管理器负责 CLI / `dsh web` 侧的**运维** —— 多 profile、多来源插件搜索、
+诊断、带备份与回滚的更新、凭据与权限审计。两者共享 `~/.dsh` 的会话/设置/凭据,但**不共用可执行包**。
 
 ## 使用流程
 

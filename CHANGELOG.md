@@ -3,6 +3,43 @@
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/);版本号与 GitHub Release 的 tag 一致。
 安装版 / 绿色免安装版构建产物见 [Releases](https://github.com/sss-1012/DeepSeek-Harness-Manager/releases)。
 
+## [0.2.0] - 2026-09-30
+
+面向 dsh `0.2.0-rc.2` 与官方桌面端的更新,并修掉两个"一直没生效"的老问题。
+
+### 修复(根因)
+
+- 🐞 **插件兼容性检查其实一直在谎报 OK**:`src/compat.js` 计算 loader 路径时多退了一层
+  (`@deepseek-ai` 作用域目录而不是 `@deepseek-ai/dsh` 包目录),导致 `loaderBase()` 永远不存在 →
+  旧代码遇到"未找到 loader"直接 `return { ok: true }`。这正是「兼容性检查没有起作用」的原因。
+  现在改为从 bin 文件向上找到 `name === '@deepseek-ai/dsh'` 的那一层,并且 loader 缺失会明确报错。
+- 🐞 **更新失败的 EBUSY 有明确根因**:2026-09-10 的日志显示 `npm error code EBUSY / copyfile … koffi.node`
+  —— 当时有 harness 在运行,文件被占用;npm 随后 `ENOTEMPTY` 清理失败,全局 dsh 处于**半更新状态**。
+  现在更新/回滚前强制进程预检,并对 npm 错误分类给出结论。
+- 🐞 **回滚是"静默的"**:旧 `rollback()` 只恢复 profile 的 `package.json`/`cordis*.yml`,
+  不修插件联接、不复验,日志里只有一行「回滚到备份」;npm 步骤失败时 profile 甚至不会被恢复。
+  现在逐步执行并记录每一步结果,结束后修联接并复验,还会确认版本真的变了。
+
+### 新增
+
+- 🪟 **官方桌面端共存**:识别官方 DeepSeek Harness 桌面端(注册表版本/安装路径/自带 Node·pnpm),
+  概览页新增卡片与「打开官方桌面端」;`profiles/desktop` 被标记为**外部只读** ——
+  禁止启动/停止、插件启停与卸载、兼容性修复、备份还原(官方文档:CLI 不得启动或修改该 profile)。
+- 🧹 **删除对话记录**:插件页新增一键安装/卸载社区插件 `@huanlin/dsh-plugin-session-delete`,
+  安装后在 DSH 界面里获得「删除会话」入口(会话头部垃圾桶 + 侧栏会话行「…」菜单 + 风险确认),
+  会一并清理会话日志、投影缓存与工作区记账。官方 dsh 只有「归档」。
+- 🔐 **更新/回滚强预检 + 强制重装**:`update:preflight` 列出占用全局 dsh 的进程(管理器托管的 profile、
+  CLI 进程、官方桌面端);`update:reinstallDsh` 用于 npm 半更新状态下的 `npm i -g @deepseek-ai/dsh@latest --force`。
+- 🧩 **入口插件迁移到官方 `dsh.client` 机制**:新增 `plugin/lib/client.js`(client-modules 协议
+  `window.__ModuleLoader__.load`),官方启动图会带上本插件;桌面端壳同样能加载(但桌面端不提供本机路由,
+  也不允许页面启动外部程序,胶囊在那里为灰点、点击打开下载页)。旧的 HTTP 注入路径保留为回退。
+
+### 变更
+
+- 兼容性检查新增逐 bundle 分档(可解析 / 仅 profile 内 / 联接断链 / 包不存在 / 全局安装损坏 / 可解析但加载失败)、
+  独立进程加载探测、修复后立即复验、跳过官方桌面端 profile;检查与修复全部写日志。
+- 备份/还原跳过外部(官方桌面端)profile。
+
 ## [0.1.4] - 2026-09-10
 
 ### 新增

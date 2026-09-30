@@ -147,6 +147,7 @@ try {
       if (!/javascript/.test(r.headers.get('content-type') || '')) throw new Error(String(r.headers.get('content-type')))
       if (!body.includes('__dshManagerPanel')) throw new Error('脚本内容不含守卫标识')
     })
+    let indexHtml = null
     await check('index:已注入 panel.js 标签', async () => {
       // token 行在监听就绪后写入,可能晚于 status.json 就绪 → 轮询等待
       let token = null
@@ -157,11 +158,33 @@ try {
       if (!token) throw new Error('boot log 中未找到 token')
       const res = await httpGetText(`${base}/?token=${token}`)
       const html = res.body
+      indexHtml = html
       fs.writeFileSync(path.join(root, 'index.html'), html)
       if (!html.includes('<script defer src="/dsh-manager/panel.js"></script>')) {
         throw new Error(`status=${res.status} bytes=${html.length} hasPanelRef=${html.includes('panel.js')} tail=${JSON.stringify(html.slice(-200))}`)
       }
     })
+
+    // 官方 client-modules:dsh.client 声明应当变成启动图里的一行,并且 bundle 能直接取到
+    let bootEntry = null
+    await check('client-modules:本插件已进入 __DSH_BOOT__ 启动图', () => {
+      const m = indexHtml && indexHtml.match(/globalThis\["__DSH_BOOT__"\]\s*=\s*(\{[\s\S]*?\})<\/script>/)
+      if (!m) throw new Error('页面里没有 __DSH_BOOT__ 启动图')
+      const boot = JSON.parse(m[1])
+      bootEntry = (boot.entries || []).find((e) => e.id === 'dsh-harness-manager') || null
+      if (!bootEntry) throw new Error(`启动图条目:${(boot.entries || []).map((e) => e.id).join(', ').slice(0, 400)}`)
+      fs.writeFileSync(path.join(root, 'boot-entry.json'), JSON.stringify(bootEntry, null, 2))
+    })
+
+    await check('client-modules:client bundle 可取到我们的注册代码', async () => {
+      if (!bootEntry) throw new Error('没有启动图条目,跳过')
+      const url = new URL(bootEntry.url, `${base}/`).href
+      const res = await httpGetText(url)
+      if (res.status !== 200) throw new Error(`HTTP ${res.status} ${url}`)
+      if (!res.body.includes('__ModuleLoader__.load')) throw new Error('bundle 内没有 __ModuleLoader__.load 注册')
+      if (!res.body.includes('dsh-harness-manager')) throw new Error('bundle 内没有本插件 id')
+    })
+
     await check('launch:GET 返回 405', async () => {
       const r = await fetch(`${base}/dsh-manager/launch`)
       if (r.status !== 405) throw new Error(`status=${r.status}`)
