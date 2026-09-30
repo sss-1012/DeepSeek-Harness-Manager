@@ -10,6 +10,7 @@ const DEFAULTS = {
     closeToTray: true,
     pollIntervalMs: 2000,
     insecureGitHub: false, // 网络代理/证书拦截环境下,GitHub 请求跳过证书校验
+    stopProfilesOnExit: false, // 退出管理器时是否连带停止它启动的 harness:默认 false —— 关闭管理器不应打断正在用的 DSH 会话
     profiles: {}, // { profileName: { port: null, args: '' } }
   },
 }

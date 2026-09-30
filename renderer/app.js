@@ -934,6 +934,8 @@ async function openSettings() {
   modal('设置', `
     <h4>通用</h4>
     <label class="chk" style="margin:6px 0"><input type="checkbox" id="set-tray" ${s.closeToTray ? 'checked' : ''}> 关闭窗口时最小化到托盘</label>
+    <label class="chk" style="margin:6px 0"><input type="checkbox" id="set-stop-on-exit" ${s.stopProfilesOnExit ? 'checked' : ''}> 退出管理器时停止 harness</label>
+    <div class="muted">默认<b>不停止</b>:管理器只是控制台,关掉它不应打断正在使用的 DSH 会话(如 3080 上的 GUI)。</div>
     <div class="row"><span style="width:120px">状态轮询(ms)</span><input type="text" id="set-poll" value="${s.pollIntervalMs || 2000}" style="max-width:120px"></div>
 
     <h4>插件安装位置</h4>
@@ -960,6 +962,7 @@ async function openSettings() {
     if (!ok) return
     await window.dshm.setSettings({
       closeToTray: $('#set-tray').checked,
+      stopProfilesOnExit: $('#set-stop-on-exit').checked,
       pollIntervalMs: Math.max(500, Number($('#set-poll').value) || 2000),
       defaultInstallProfile: $('#set-install-profile').value || null,
       insecureGitHub: $('#set-gh-insecure').checked,

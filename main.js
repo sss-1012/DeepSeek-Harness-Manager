@@ -446,15 +446,22 @@ app.whenReady().then(() => {
     e.preventDefault()
     quitting = true
     if (statusTimer) clearInterval(statusTimer)
-    const running = (await status.snapshot()).filter((s) => s.running)
+    // 默认「退出管理器不停止 harness」:管理器只是控制台,关掉它不该打断正在使用的 DSH 会话
+    // (曾经默认 stopAll,导致关闭管理器连带断开 3080 上的会话)。需要旧行为可在设置里打开。
+    if (!store.getSettings().stopProfilesOnExit) {
+      log.logInfo('退出管理器(保留正在运行的 harness)')
+      app.exit(0)
+      return
+    }
+    const running = (await status.snapshot()).filter((s) => s.running && !s.external)
     if (running.length) {
       const choice = dialog.showMessageBoxSync(mainWindow, {
         type: 'warning',
         title: '退出管理器',
         message: `仍有 ${running.length} 个 harness 在运行(${running.map((s) => s.name).join(', ')})`,
-        detail: '退出管理器将停止这些进程。要继续吗?',
+        detail: '设置里开启了「退出时停止 harness」,退出管理器将停止这些进程。要继续吗?',
         buttons: ['停止并退出', '取消'],
-        defaultId: 0,
+        defaultId: 1,
         cancelId: 1,
       })
       if (choice !== 0) { quitting = false; return }
