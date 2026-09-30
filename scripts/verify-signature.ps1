@@ -65,29 +65,47 @@ if (-not $hasPfx -and ($env:WIN_CSC_LINK -or $env:CSC_LINK)) {
 }
 $mustSign = $RequireSigned -or $credentialsConfigured
 
+# Get-AuthenticodeSignature lives in Microsoft.PowerShell.Security. When this script is launched
+# through `powershell` (5.1) from a pwsh/PS7 parent, that module can fail to autoload
+# ("command was found in the module ... but the module could not be loaded"), which is exactly
+# what broke a CI release. Degrade instead of failing: keep printing SHA-256 for every artifact.
+$canCheckSignature = $null -ne (Get-Command Get-AuthenticodeSignature -ErrorAction SilentlyContinue)
+if (-not $canCheckSignature) {
+  Write-Host '  ! Get-AuthenticodeSignature is unavailable in this PowerShell (module could not be loaded).' -ForegroundColor Yellow
+  Write-Host '    Only SHA-256 will be printed. Run this script with pwsh (PowerShell 7) for signature status.' -ForegroundColor Yellow
+  if ($env:PSModulePath -and $PSVersionTable.PSVersion.Major -lt 6) {
+    Write-Host '    hint: PSModulePath inherited from PowerShell 7; launch with `pwsh -File` instead.' -ForegroundColor Yellow
+  }
+}
+
 $unsigned = @()
 $signed = @()
 
 Write-Host ''
 Write-Host 'verify-signature:' -ForegroundColor Cyan
 foreach ($f in $targets) {
-  $sig = Get-AuthenticodeSignature -LiteralPath $f.FullName
+  $sig = if ($canCheckSignature) { Get-AuthenticodeSignature -LiteralPath $f.FullName } else { $null }
   $sizeMb = [math]::Round($f.Length / 1MB, 1)
   $sha = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash
 
-  if ($sig.Status -eq 'Valid') {
+  if ($sig -and $sig.Status -eq 'Valid') {
     $subject = if ($sig.SignerCertificate) { $sig.SignerCertificate.Subject } else { '(unknown)' }
     $signed += $f
     Write-Host ("  [OK]   {0}  {1} MB" -f $f.Name, $sizeMb) -ForegroundColor Green
     Write-Host ("         签署者: {0}" -f $subject)
   } else {
     $unsigned += $f
-    Write-Host ("  [未签] {0}  {1} MB  ({2})" -f $f.Name, $sizeMb, $sig.Status) -ForegroundColor Yellow
+    $status = if ($sig) { $sig.Status } else { 'Unavailable' }
+    Write-Host ("  [未签] {0}  {1} MB  ({2})" -f $f.Name, $sizeMb, $status) -ForegroundColor Yellow
   }
   Write-Host ("         SHA256: {0}" -f $sha)
 }
 
 Write-Host ''
+if (-not $canCheckSignature -and -not $mustSign) {
+  Write-Host ("! verify-signature: 无法检查签名状态(仅打印了 {0} 个产物的 SHA-256);未配置签名凭据,不视为失败" -f $targets.Count) -ForegroundColor Yellow
+  exit 0
+}
 if ($unsigned.Count -eq 0) {
   Write-Host ("✔ verify-signature: {0}/{1} 个产物签名有效" -f $signed.Count, $targets.Count) -ForegroundColor Green
   exit 0

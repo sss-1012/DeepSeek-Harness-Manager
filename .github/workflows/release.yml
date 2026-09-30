@@ -52,8 +52,14 @@ jobs:
       - name: Verify artifact signatures
         shell: pwsh
         run: |
-          # 只报告、不阻塞发布:凭据有效却没签上时用 strict 让它红,方便发现配置问题
-          if ($env:WIN_CSC_LINK) { npm run verify-signature:strict } else { npm run verify-signature }
+          # 用 pwsh(PowerShell 7)而不是 powershell(5.1):后者在 pwsh 父进程下会因 PSModulePath
+          # 继承而加载不了 Microsoft.PowerShell.Security,导致 Get-AuthenticodeSignature 不可用。
+          # 只报告、不阻塞发布:凭据有效却没签上时用 strict 让它红,方便发现配置问题。
+          if ($env:WIN_CSC_LINK) {
+            pwsh -NoProfile -File scripts/verify-signature.ps1 -RequireSigned
+          } else {
+            pwsh -NoProfile -File scripts/verify-signature.ps1
+          }
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
