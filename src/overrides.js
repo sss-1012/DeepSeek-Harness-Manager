@@ -36,6 +36,13 @@ function disabledIds(profile) {
 }
 
 function setEnabled(profile, id, enabled) {
+  const { profileInfo } = require('./profiles')
+  const info = profileInfo(profile)
+  if (info.external) {
+    const err = new Error(info.externalReason)
+    err.external = true
+    throw err
+  }
   const entries = readState(profile).filter((e) => !(e && e.id === id))
   if (!enabled) entries.push({ id, disabled: true })
   writeState(profile, entries)

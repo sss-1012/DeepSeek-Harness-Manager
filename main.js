@@ -20,6 +20,7 @@ const env = require('./src/env')
 const compat = require('./src/compat')
 const security = require('./src/security')
 const status = require('./src/status')
+const desktop = require('./src/desktop')
 const icons = require('./src/icons')
 const trayMod = require('./src/tray')
 
@@ -127,6 +128,8 @@ function registerIpc() {
   })
 
   ipcMain.handle('profile:start', async (_e, name, opts = {}) => {
+    const info = profiles.profileInfo(name)
+    if (info.external) return { ok: false, error: info.externalReason, external: true }
     if (await status.isRunning(name)) return { ok: false, error: `「${name}」已在运行` }
     return status.start(name, {
       args: opts.args || [],
@@ -159,6 +162,8 @@ function registerIpc() {
   })
 
   ipcMain.handle('profile:remove', async (_e, name) => {
+    const info = profiles.profileInfo(name)
+    if (info.external) return { ok: false, error: info.externalReason, external: true }
     try {
       profiles.removeProfile(name)
       log.logInfo(`删除 profile: ${name}`)
@@ -171,13 +176,20 @@ function registerIpc() {
   ipcMain.handle('plugins:list', (_e, profile) => plugins.listPlugins(profile))
 
   ipcMain.handle('plugins:setEnabled', async (_e, profile, id, enabled) => {
-    overrides.setEnabled(profile, id, enabled)
+    try {
+      overrides.setEnabled(profile, id, enabled)
+    } catch (e) {
+      log.logWarn(`插件启停被拒绝(${profile} / ${id}):${e.message}`)
+      return { ok: false, error: e.message, external: Boolean(e.external) }
+    }
     log.logInfo(`插件 ${enabled ? '启用' : '禁用'}: ${profile} / ${id}`)
     const running = await status.isRunning(profile)
     return { ok: true, disabledIds: overrides.disabledIds(profile), needRestart: running }
   })
 
   ipcMain.handle('plugins:uninstall', async (_e, profile, pkg) => {
+    const info = profiles.profileInfo(profile)
+    if (info.external) return { ok: false, error: info.externalReason, external: true }
     log.logInfo(`卸载插件: ${profile} / ${pkg}`)
     return plugins.uninstall(profile, pkg)
   })
@@ -194,6 +206,8 @@ function registerIpc() {
   })
 
   ipcMain.handle('plugins:install', async (_e, profile, spec, opts = {}) => {
+    const info = profiles.profileInfo(profile)
+    if (info.external) return { ok: false, error: info.externalReason, external: true }
     return plugins.installWithDeps(profile, spec, {
       withDeps: opts.withDeps !== false,
       onLog: (line) => { log.logInfo(line); broadcast('log:line', line) },
@@ -201,6 +215,8 @@ function registerIpc() {
   })
 
   ipcMain.handle('plugins:update', async (_e, profile, pkg) => {
+    const info = profiles.profileInfo(profile)
+    if (info.external) return { ok: false, error: info.externalReason, external: true }
     log.logInfo(`更新插件: ${profile} / ${pkg}`)
     return plugins.update(profile, pkg)
   })
@@ -228,36 +244,66 @@ function registerIpc() {
 
   ipcMain.handle('update:check', () => update.checkUpdate())
 
-  ipcMain.handle('update:do', async () => {
+  ipcMain.handle('update:do', async (_e, opts = {}) => {
     return update.doUpdate((evt) => {
+      const line = typeof evt === 'string' ? evt : evt?.line
+      if (line) log.logInfo(line)
+      broadcast('update:progress', evt)
+    }, { stopManaged: Boolean(opts.stopManaged) })
+  })
+
+  // 强制重装全局 dsh(npm 半更新 / EBUSY 之后的可靠修法)
+  ipcMain.handle('update:reinstallDsh', async () => {
+    return update.reinstallDsh((evt) => {
       const line = typeof evt === 'string' ? evt : evt?.line
       if (line) log.logInfo(line)
       broadcast('update:progress', evt)
     })
   })
 
+  // 更新/回滚前的进程预检(谁在占用全局 dsh)
+  ipcMain.handle('update:preflight', () => update.runningWorkloads())
+
   // ---- 插件解析兼容性(新版 dsh 变更解析位置) ----
   ipcMain.handle('compat:check', async () => {
-    const results = profiles.listProfiles().map((p) => compat.checkBundles(p.name))
-    return { ok: results.every((r) => r.ok), results }
+    const all = await compat.checkAll({ deep: true })
+    log.logInfo(`插件兼容性检查:${all.summary}`)
+    for (const p of all.profiles) {
+      for (const it of p.items || []) if (it.state !== 'ok') log.logWarn(`[兼容性] ${p.profile} / ${it.name}: ${it.state} - ${it.detail}`)
+    }
+    return { ok: all.global.ok && all.profiles.every((p) => p.ok), ...all }
   })
   ipcMain.handle('compat:fix', async (_e, profile) => {
     const targets = profile ? [profile] : profiles.listProfiles().map((p) => p.name)
     const out = []
     for (const name of targets) {
-      const r = compat.fixBundles(name)
-      log.logInfo(`插件兼容性修复 ${name}: ${r.results.map((x) => `${x.pkg}=${x.status}`).join(', ')}`)
-      broadcast('log:line', `[compat] ${name}: ${r.results.map((x) => `${x.pkg}=${x.status}`).join(', ')}`)
+      const r = await compat.fixBundles(name, { deep: true, onLog: (l) => log.logInfo(l) })
+      const line = r.skipped
+        ? `[compat] ${name}: 跳过(${r.reason})`
+        : `[compat] ${name}: ${(r.results || []).map((x) => `${x.pkg}=${x.status}${x.verify && x.verify !== 'ok' ? '(' + x.verify + ')' : ''}`).join(', ')}`
+      log.logInfo(line)
+      broadcast('log:line', line)
       out.push(r)
     }
-    return { ok: true, results: out }
+    const check = await compat.checkAll({ deep: false })
+    return { ok: out.every((r) => r.ok), results: out, check }
   })
 
   ipcMain.handle('update:backups', () => update.listBackups())
 
-  ipcMain.handle('update:rollback', async (_e, id) => {
+  ipcMain.handle('update:rollback', async (_e, id, opts = {}) => {
     log.logInfo(`回滚到备份: ${id}`)
-    return update.rollback(id)
+    const r = await update.rollback(id, { stopManaged: Boolean(opts.stopManaged) })
+    for (const s of r.steps || []) log.logInfo(`[回滚] ${s.ok ? '✔' : '✘'} ${s.name}${s.detail ? ': ' + s.detail : ''}`)
+    return r
+  })
+
+  // ---- 官方桌面端 ----
+  ipcMain.handle('desktop:info', () => desktop.detect())
+  ipcMain.handle('desktop:open', async () => {
+    const info = desktop.detect()
+    if (!info.exe) return { ok: false, error: '未找到官方桌面端可执行文件' }
+    try { await shell.openPath(info.exe); log.logInfo(`打开官方桌面端: ${info.exe}`); return { ok: true, exe: info.exe } } catch (e) { return { ok: false, error: e.message } }
   })
 
   // ---- 设置 ----

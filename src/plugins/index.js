@@ -4,7 +4,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execDsh } = require('../dsh')
 const { profileInfo } = require('../profiles')
-const { disabledIds, setEnabled } = require('../overrides')
+const { disabledIds, setEnabled: setEnabledRaw } = require('../overrides')
 const { isPluginLike } = require('./plugin-util')
 const resolver = require('./resolver')
 const npmSource = require('./sources/npm')
@@ -65,16 +65,34 @@ function listPlugins(profile) {
   return { profile, plugins: [...bundles, ...extraDeps], disabledIds: disabled }
 }
 
+// 官方桌面端独占的 profile 不允许管理器改插件(与 src/status.js 的守卫一致)
+function assertWritable(profile) {
+  const info = profileInfo(profile)
+  if (info.external) {
+    const err = new Error(info.externalReason)
+    err.external = true
+    throw err
+  }
+}
+
+function setEnabled(profile, id, enabled) {
+  assertWritable(profile)
+  return setEnabledRaw(profile, id, enabled)
+}
+
 async function uninstall(profile, pkg) {
+  assertWritable(profile)
   return execDsh(['plugin', '--profile', profile, 'remove', pkg], { cwd: profileInfo(profile).dir, timeout: 180000 })
 }
 
 async function installSpec(profile, spec) {
+  assertWritable(profile)
   return execDsh(['plugin', '--profile', profile, 'add', spec], { cwd: profileInfo(profile).dir, timeout: 300000 })
 }
 
 // 更新插件到最新版本(pnpm update --latest)
 async function update(profile, pkg) {
+  assertWritable(profile)
   return execDsh(['plugin', '--profile', profile, 'update', pkg, '--latest'], { cwd: profileInfo(profile).dir, timeout: 300000 })
 }
 

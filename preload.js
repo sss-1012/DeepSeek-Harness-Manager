@@ -25,11 +25,16 @@ const api = {
   listHistory: (profile) => ipcRenderer.invoke('history:list', profile),
   runDiagnostics: () => ipcRenderer.invoke('diagnose:run'),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
-  doUpdate: () => ipcRenderer.invoke('update:do'),
+  doUpdate: (opts) => ipcRenderer.invoke('update:do', opts),
+  updatePreflight: () => ipcRenderer.invoke('update:preflight'),
+  reinstallDsh: () => ipcRenderer.invoke('update:reinstallDsh'),
   listBackups: () => ipcRenderer.invoke('update:backups'),
-  rollback: (id) => ipcRenderer.invoke('update:rollback', id),
+  rollback: (id, opts) => ipcRenderer.invoke('update:rollback', id, opts),
   compatCheck: () => ipcRenderer.invoke('compat:check'),
   compatFix: (profile) => ipcRenderer.invoke('compat:fix', profile),
+  // ---- 官方桌面端 ----
+  desktopInfo: () => ipcRenderer.invoke('desktop:info'),
+  desktopOpen: () => ipcRenderer.invoke('desktop:open'),
   securityAudit: () => ipcRenderer.invoke('security:audit'),
   securityHarden: () => ipcRenderer.invoke('security:harden'),
   // ---- 设置 ----

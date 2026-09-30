@@ -61,6 +61,8 @@ async function isRunning(profileName) {
 }
 
 async function start(profileName, { args, onLog, onEarlyExit } = {}) {
+  const guard = externalGuard(profileName)
+  if (guard) return guard
   if (await isRunning(profileName)) return { ok: false, error: `profile「${profileName}」已在运行` }
   const patch = ensureOverrides(profileName)
   const setting = getProfileSetting(profileName)
@@ -141,7 +143,17 @@ async function start(profileName, { args, onLog, onEarlyExit } = {}) {
   return { ok: true, pid: child.pid, port }
 }
 
+// 官方桌面端独占的 profile:管理器不得启动/停止(官方文档:CLI 不能启动或修改它)
+function externalGuard(profileName) {
+  const info = profileInfo(profileName)
+  if (!info.external) return null
+  log.logWarn(`拒绝操作外部 profile「${profileName}」:${info.externalReason}`)
+  return { ok: false, error: info.externalReason, external: true }
+}
+
 async function stop(profileName, { force } = {}) {
+  const guard = externalGuard(profileName)
+  if (guard) return guard
   const s = sessions.get(profileName)
   let pid = s?.pid || null
   if (!pid) {
@@ -165,8 +177,30 @@ async function stopAll() {
 
 function snapshot() {
   const out = []
+  let desktopState = null
   for (const info of listAll()) {
     const s = sessions.get(info.name)
+    if (info.external) {
+      // 外部(官方桌面端)profile:不探端口(它不监听),只用桌面端进程判断
+      if (desktopState === null) {
+        try { desktopState = require('./desktop').detect() } catch { desktopState = { running: null } }
+      }
+      out.push({
+        name: info.name,
+        type: info.type,
+        running: Boolean(desktopState && desktopState.running === true),
+        pid: null,
+        port: null,
+        startedAt: null,
+        readyAt: null,
+        external: true,
+        managedBy: info.managedBy,
+        readOnly: true,
+        externalReason: info.externalReason,
+        desktop: desktopState ? { version: desktopState.version, location: desktopState.location } : null,
+      })
+      continue
+    }
     out.push({
       name: info.name,
       type: info.type,
@@ -176,6 +210,8 @@ function snapshot() {
       startedAt: s?.startedAt || null,
       readyAt: s?.readyAt || null,
       external: s?.external || false,
+      managedBy: info.managedBy,
+      readOnly: false,
     })
   }
   return out

@@ -8,6 +8,7 @@ const state = {
   profiles: [],
   launch: { profile: 'web', args: '', port: null },
   updateInfo: null,
+  desktop: null,
 }
 
 // ---------- 工具 ----------
@@ -51,6 +52,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':
 // ---------- 初始化 ----------
 async function init() {
   state.bootstrap = await window.dshm.bootstrap()
+  state.profiles = state.bootstrap.profiles || []
   $('#dsh-version').textContent = `v${state.bootstrap.dshVersion || '?'}`
   state.launch = { profile: 'web', args: '', port: null, ...(state.bootstrap.settings.launch || {}) }
   renderLaunchPill()
@@ -73,6 +75,7 @@ async function init() {
   bindDiagnose()
   bindBalance()
   bindLogBar()
+  try { state.desktop = await window.dshm.desktopInfo() } catch { state.desktop = null }
   await refreshUpdate()
   const tail = await window.dshm.logTail()
   tail.forEach((l) => appendLog(l))
@@ -106,6 +109,46 @@ function bindOverview() {
   $('#btn-check-update').onclick = refreshUpdate
   $('#btn-do-update').onclick = doUpdate
   $('#btn-compat-check').onclick = () => runCompatCheck(false)
+  const reinst = $('#btn-reinstall-dsh')
+  if (reinst) reinst.onclick = async () => {
+    const go = await modal('强制重装 dsh CLI',
+      '将执行 <code>npm install -g @deepseek-ai/dsh@latest --force</code>。<br>' +
+      '适用于:npm 更新被 EBUSY 打断、安装树处于半更新状态、或插件兼容性检查报「全局 dsh 安装不完整」。<br>' +
+      '预检会先确认没有 dsh 进程在占用文件。',
+      [{ label: '开始重装', value: true, cls: 'primary' }, { label: '取消', value: false }])
+    if (!go) return
+    resetUpdateProgress()
+    const r = await window.dshm.reinstallDsh()
+    toast(r.ok ? `重装完成,当前版本 ${r.version}` : `重装失败: ${r.error || r.hint || ''}`, r.ok ? 'ok' : 'error')
+    if (r.hint) toast(r.hint, 'error')
+    refreshUpdate()
+    runCompatCheck(true)
+  }
+}
+
+// 官方桌面端卡片:显示版本与分工说明
+function desktopCard() {
+  const d = state.desktop
+  if (!d || !d.installed) return null
+  const running = d.running === true
+  return `
+    <div class="card">
+      <div class="card-head">
+        <h4>🪟 官方桌面端</h4>
+        <span class="pill">${esc(d.version || '?')}</span>
+      </div>
+      <div class="kv">
+        <span class="k">状态</span><span class="v"><span class="status-dot ${running ? 'on' : 'off'}"></span> ${d.running === null ? '无法确认' : running ? '运行中' : '未运行'}</span>
+        <span class="k">安装位置</span><span class="v" style="word-break:break-all">${esc(d.location || '未记录')}</span>
+        <span class="k">自带运行时</span><span class="v">${d.runtime?.node ? `Node ${esc(d.runtime.node)}` : '—'}${d.runtime?.pnpm ? ` · pnpm ${esc(d.runtime.pnpm)}` : ''}</span>
+        <span class="k">desktop profile</span><span class="v">${d.profileExists ? '已存在(桌面端独占,管理器只读)' : '尚未创建'}</span>
+      </div>
+      <button class="btn sm" data-act="open-desktop">打开官方桌面端</button>
+      <div class="muted" style="font-size:11px;margin-top:6px">
+        分工:官方桌面端自带 dsh/Node/pnpm 运行时并独占 <code>profiles/desktop</code>;管理器负责 CLI / dsh web 侧的
+        多 profile、插件、诊断、更新与回滚,不会去启动或修改 desktop profile。
+      </div>
+    </div>`
 }
 
 async function renderOverview() {
@@ -116,7 +159,19 @@ async function renderOverview() {
   const snap = state.profiles.find((s) => s.name === name)
   const running = snap ? snap.running : false
   const cards = [
-    { body: `
+    { body: p.info.external ? `
+      <div class="card-head">
+        <h4>🐳 Harness</h4>
+        <span class="pill" style="border-color:rgba(217,119,6,.5);color:#b45309">官方桌面端独占</span>
+      </div>
+      <div class="kv">
+        <span class="k">启动项</span><span class="v">${esc(name)} <span class="tag">${esc(p.info.type)}</span></span>
+        <span class="k">状态</span><span class="v"><span class="status-dot ${running ? 'on' : 'off'}"></span> ${snap?.running === null ? '无法确认' : running ? '运行中' : '未运行'}</span>
+        <span class="k">bundles</span><span class="v">${p.info.bundles.length} 个</span>
+      </div>
+      <div class="muted" style="font-size:12px">${esc(p.info.externalReason || '该 profile 由官方桌面端管理')}</div>
+      <div class="muted" style="font-size:11px;margin-top:6px">要在官方桌面端里使用 DSH,请从上面的「官方桌面端」卡片打开它;管理器不会启动/停止/改插件。</div>
+    ` : `
       <div class="card-head">
         <h4>🐳 Harness</h4>
         <button class="btn sm ghost" data-act="config">⚙ 配置启动项</button>
@@ -141,12 +196,19 @@ async function renderOverview() {
       <div id="env-actions"></div>
     ` },
   ]
+  const dc = desktopCard()
+  if (dc) cards.push({ body: dc })
   $('#status-cards').innerHTML = cards.map((c) => `<div class="card">${c.body}</div>`).join('')
 
   $('#status-cards').querySelectorAll('[data-act]').forEach((b) => {
     b.onclick = async () => {
       const act = b.dataset.act
       if (act === 'config') { openLaunchConfig(); return }
+      if (act === 'open-desktop') {
+        const r = await window.dshm.desktopOpen()
+        toast(r.ok ? '已打开官方桌面端' : `打开失败: ${r.error || ''}`, r.ok ? 'ok' : 'error')
+        return
+      }
       if (act === 'start') {
         if (name === 'web') {
           const ok = await modal('启动 web profile', '将启动 dsh web 服务(http://127.0.0.1:3080)。<br>⚠ 注意:web profile 就是当前浏览器正在使用的 DSH GUI 服务。', [
@@ -300,24 +362,74 @@ function resetUpdateProgress() {
   $('#update-log').textContent = ''
 }
 
-// 插件解析兼容性:检查 / 一键修复(新版 dsh 变更插件解析位置时的救急手段)
+// 插件解析兼容性:检查 / 一键修复
+// 结果分档(见 src/compat.js):ok / profile-only / link-dangling / missing / load-failed / loader-missing
+const COMPAT_STATE_TEXT = {
+  ok: '正常',
+  'profile-only': '仅 profile 内,需建联接',
+  'link-dangling': '全局联接已断链,需重建',
+  missing: '找不到包,需先安装该插件',
+  'load-failed': '可解析但加载失败',
+  'loader-missing': '全局 dsh 安装不完整(需重装 CLI)',
+  unknown: '未知',
+}
+
+function compatIssueLines(all) {
+  const lines = []
+  for (const p of all.profiles || []) {
+    if (p.skipped) continue
+    for (const it of p.items || []) {
+      if (it.state === 'ok') continue
+      lines.push(`${p.profile} / ${it.name} [${COMPAT_STATE_TEXT[it.state] || it.state}]\n    ${it.detail || ''}${it.loadError ? `\n    ${it.loadError}` : ''}`)
+    }
+  }
+  for (const g of (all.global && all.global.problems) || []) lines.push(`全局 dsh:${g}`)
+  return lines
+}
+
 async function runCompatCheck(auto = false) {
   const r = await window.dshm.compatCheck()
-  const bad = r.results.filter((x) => !x.ok)
-  if (!bad.length) {
-    if (!auto) toast('插件解析检查通过:所有 profile 的插件均可正常加载 ✓', 'ok')
+  const skipped = (r.profiles || []).filter((p) => p.skipped)
+  const bad = (r.profiles || []).filter((p) => !p.ok && !p.skipped)
+  if (!bad.length && r.global?.ok) {
+    if (!auto) toast(`插件解析检查通过 ✓${skipped.length ? `(已跳过官方桌面端独占的 ${skipped.map((s) => s.profile).join('、')})` : ''}`, 'ok')
     return { ok: true }
   }
-  const detail = bad.map((b) => `${b.profile}: ${b.bad.join('、')}`).join('\n')
-  const ok = await modal('插件解析异常',
-    `以下 profile 的插件在当前 dsh 版本下无法解析(启动 harness 会失败):<pre class="update-log">${esc(detail)}</pre>是否一键修复?<br><span class="muted">修复方式:在全局 node_modules 创建目录联接(不复制文件、不下载、可逆)</span>`,
-    [{ label: '一键修复', value: true, cls: 'primary' }, { label: '稍后', value: false }])
-  if (!ok) return { ok: false, bad }
+  const lines = compatIssueLines(r)
+  const globalBroken = !r.global?.ok
+  const body = `${globalBroken ? '<b>全局 dsh 安装不完整</b> —— 这种情况插件级修复救不了,需要重装 CLI。<br>' : ''}` +
+    `以下问题会让 harness 启动失败:<pre class="update-log">${esc(lines.join('\n'))}</pre>` +
+    `<span class="muted">修复方式:在全局 node_modules 建立目录联接(不复制文件、不下载、可逆),修完立即复验。</span>`
+  const buttons = [{ label: '一键修复', value: 'fix', cls: 'primary' }]
+  if (globalBroken) buttons.push({ label: '强制重装 dsh CLI', value: 'reinstall' })
+  buttons.push({ label: '稍后', value: false })
+  const choice = await modal('插件解析异常', body, buttons)
+  if (!choice) return { ok: false }
+  if (choice === 'reinstall') {
+    resetUpdateProgress()
+    const r2 = await window.dshm.reinstallDsh()
+    toast(r2.ok ? `重装完成,当前版本 ${r2.version}` : `重装失败: ${r2.error || ''}`, r2.ok ? 'ok' : 'error')
+    refreshUpdate()
+    return { ok: Boolean(r2.ok) }
+  }
   const fixed = await window.dshm.compatFix()
-  const lines = fixed.results.flatMap((x) => x.results.map((y) => `${x.profile} / ${y.pkg}: ${y.status}`))
-  toast(`修复完成,共 ${lines.length} 项:\n${lines.join('\n')}`, 'ok')
-  appendLog('[compat] ' + lines.join(' | '))
-  return { ok: true }
+  const okLines = []
+  const failLines = []
+  for (const x of fixed.results || []) {
+    if (x.skipped) { okLines.push(`${x.profile}: 跳过(${x.reason || '外部 profile'})`); continue }
+    for (const y of x.results || []) {
+      const text = `${x.profile} / ${y.pkg}: ${y.status}${y.verify && y.verify !== 'ok' ? `(复验仍失败:${COMPAT_STATE_TEXT[y.verify] || y.verify})` : ''}`
+      if (y.status === 'linked' || y.status === 'ok') okLines.push(text); else failLines.push(text)
+    }
+  }
+  appendLog('[compat] ' + [...okLines, ...failLines].join(' | '))
+  if (failLines.length) {
+    toast(`修复后仍有 ${failLines.length} 项未通过`, 'error')
+    await modal('仍有未通过项', `<pre class="update-log">${esc(failLines.join('\n'))}</pre>`, [{ label: '知道了', value: true, cls: 'primary' }])
+  } else {
+    toast(`修复完成并复验通过(${okLines.length} 项)✓`, 'ok')
+  }
+  return { ok: failLines.length === 0 }
 }
 
 async function refreshUpdate() {
@@ -354,12 +466,27 @@ async function renderBackups() {
     </div>`).join('')
   box.querySelectorAll('[data-rollback]').forEach((b) => {
     b.onclick = async () => {
-      const ok = await modal('回滚确认', `将全局重装 dsh 到备份版本 <b>v${esc(b.dataset.rollback)}</b> 对应的版本,并恢复各 profile 配置。<br>建议先停止所有运行中的 harness。`, [
-        { label: '开始回滚', value: true, cls: 'primary' }, { label: '取消', value: false },
-      ])
-      if (!ok) return
-      const r = await window.dshm.rollback(b.dataset.rollback)
-      toast(r.ok ? `回滚完成,当前版本 ${r.version}` : `回滚失败: ${r.error}`, r.ok ? 'ok' : 'error')
+      const choice = await modal('回滚确认', `将全局重装 dsh 到备份 <b>${esc(b.dataset.rollback)}</b> 记录的版本,并恢复各 profile 配置。<br>` +
+        `回滚同样会被运行中的 dsh 进程阻塞(npm EBUSY),因此会先做进程预检;官方桌面端独占的 profile 永远不会被写入。`,
+        [{ label: '预检并回滚', value: 'pre', cls: 'primary' }, { label: '取消', value: false }])
+      if (!choice) return
+      const pre = await window.dshm.updatePreflight()
+      let stopManaged = false
+      if (pre?.blocking) {
+        const go = await modal('检测到 dsh 正在运行',
+          `以下进程会阻塞回滚(EBUSY):<pre class="update-log">${esc((pre.detail || []).join('\n'))}</pre>是否先停止管理器托管的 profile 再回滚?`,
+          [{ label: '停止并回滚', value: true, cls: 'primary' }, { label: '取消', value: false }])
+        if (!go) return
+        stopManaged = true
+      }
+      const r = await window.dshm.rollback(b.dataset.rollback, { stopManaged })
+      if (r.steps?.length) {
+        const lines = r.steps.map((s) => `${s.ok ? '✔' : '✘'} ${s.name}${s.detail ? ': ' + s.detail : ''}`).join('\n')
+        appendLog('[rollback] ' + r.steps.map((s) => `${s.ok ? 'ok' : 'fail'}:${s.name}`).join(' | '))
+        await modal('回滚结果', `<pre class="update-log">${esc(lines)}</pre>`, [{ label: '关闭', value: true, cls: 'primary' }])
+      }
+      toast(r.ok ? `回滚完成,当前版本 ${r.version}` : `回滚失败: ${r.error || ''}`, r.ok ? 'ok' : 'error')
+      if (r.hint) toast(r.hint, 'error')
       if (r.warning) toast(r.warning, 'error')
       refreshUpdate()
     }
@@ -367,29 +494,57 @@ async function renderBackups() {
 }
 
 async function doUpdate() {
-  const running = state.profiles.filter((p) => p.running)
-  const confirm = await modal('更新 dsh', `将全局更新 <b>@deepseek-ai/dsh</b> 到最新版。<br>${running.length ? `⚠ 有 ${running.length} 个 profile 正在运行(${running.map((p) => p.name).join(', ')}),建议先停止。` : ''}<br>更新前会自动备份当前版本与各 profile 配置,失败可回滚。`, [
-    { label: '停止并更新', value: 'stop', cls: 'primary' }, { label: '直接更新', value: 'direct' }, { label: '取消', value: false },
-  ])
-  if (!confirm) return
-  if (confirm === 'stop') {
-    for (const p of running) await window.dshm.stopProfile(p.name, { force: false })
+  // 强预检:有 dsh 进程在跑就拒绝更新(2026-09-10 那次 EBUSY 的根因就是文件被占用)
+  let pre = null
+  try { pre = await window.dshm.updatePreflight() } catch { pre = null }
+  let stopManaged = false
+  if (pre && pre.blocking) {
+    const choice = await modal('检测到 dsh 正在运行',
+      `更新会替换全局 dsh 的安装文件,以下进程占用了这些文件,会让 <b>npm 以 EBUSY 失败</b>:<pre class="update-log">${esc((pre.detail || []).join('\n'))}</pre>` +
+      `点「全部停止并继续」会先停止<b>管理器托管的 profile</b>;<b>官方桌面端与外部 CLI 进程需要你手动关闭</b>(管理器不强杀)。<br>更新前会自动备份当前版本与各 profile 配置,失败可回滚。`,
+      [{ label: '全部停止并继续', value: 'stop', cls: 'primary' }, { label: '取消', value: false }])
+    if (!choice) return
+    stopManaged = true
+  } else {
+    const ok = await modal('更新 dsh',
+      `将全局更新 <b>@deepseek-ai/dsh</b> 到最新版。<br>预检:${esc((pre?.detail || ['没有 dsh 进程占用文件']).join(';'))}<br>` +
+      `更新前会自动备份当前版本与各 profile 配置,失败可回滚。`,
+      [{ label: '开始更新', value: true, cls: 'primary' }, { label: '取消', value: false }])
+    if (!ok) return
   }
+
   $('#btn-do-update').disabled = true
   resetUpdateProgress()
-  const r = await window.dshm.doUpdate()
-  $('#update-progress').textContent = r.ok ? `✔ 更新完成:${r.version}` : `✘ 更新失败:${r.error}`
-  if (r.ok) $('#update-progress-bar').classList.remove('indeterminate'), $('#update-progress-bar').style.width = '100%'
+  const r = await window.dshm.doUpdate({ stopManaged })
+  if (r.code === 'RUNNING') {
+    $('#update-progress').textContent = `✘ ${r.error}`
+    toast('已阻止更新:还有 dsh 进程在运行', 'error')
+    $('#btn-do-update').disabled = false
+    return
+  }
+  $('#update-progress').textContent = r.ok ? `✔ 更新完成:${r.version}` : `✘ 更新失败${r.code ? `[${r.code}]` : ''}:${r.error || ''}`
+  if (r.ok) {
+    $('#update-progress-bar').classList.remove('indeterminate')
+    $('#update-progress-bar').style.width = '100%'
+  }
   toast(r.ok ? `更新完成: v${r.version}` : '更新失败', r.ok ? 'ok' : 'error')
-  if (r.ok && r.compatIssues?.length) {
-    const detail = r.compatIssues.map((i) => `${i.profile}: ${i.bad.join('、')}`).join('\n')
-    const fix = await modal('更新后自检发现问题',
-      `新版 dsh 下以下插件无法解析,启动 harness 会失败:<pre class="update-log">${esc(detail)}</pre>是否立即一键修复?`,
-      [{ label: '一键修复', value: true, cls: 'primary' }, { label: '稍后', value: false }])
-    if (fix) {
-      await window.dshm.compatFix()
-      toast('插件兼容性修复完成 ✓', 'ok')
+  if (r.hint) toast(r.hint, 'error')
+  if (r.needsReinstall) {
+    const go = await modal('建议强制重装 dsh CLI',
+      `${esc(r.hint || '安装树可能不完整')}<br>强制重装会用 <code>npm install -g @deepseek-ai/dsh@latest --force</code> 覆盖安装树。`,
+      [{ label: '强制重装', value: true, cls: 'primary' }, { label: '稍后', value: false }])
+    if (go) {
+      resetUpdateProgress()
+      const r2 = await window.dshm.reinstallDsh()
+      toast(r2.ok ? `重装完成,当前版本 ${r2.version}` : `重装失败: ${r2.error || ''}`, r2.ok ? 'ok' : 'error')
     }
+  } else if (r.ok && r.compatOk === false) {
+    const bad = (r.compat?.profiles || []).filter((p) => !p.ok && !p.skipped)
+    const lines = bad.map((i) => `${i.profile}: ${i.bad.join('、')}`).join('\n')
+    const fix = await modal('更新后自检发现问题',
+      `新版 dsh 下以下插件无法解析,启动 harness 会失败:<pre class="update-log">${esc(lines)}</pre>是否立即一键修复?`,
+      [{ label: '一键修复', value: true, cls: 'primary' }, { label: '稍后', value: false }])
+    if (fix) await runCompatCheck(true)
   }
   refreshUpdate()
 }
@@ -418,6 +573,60 @@ function authorOf(name, url) {
   return m ? m[1] : null
 }
 
+// ---------- 删除会话插件(社区实现,官方只有归档没有删除) ----------
+const SESSION_DELETE_PKG = '@huanlin/dsh-plugin-session-delete'
+
+async function renderSessionHelper() {
+  const name = $('#plugins-select').value || state.launch.profile
+  const status = $('#session-helper-status')
+  const profEl = $('#session-helper-profile')
+  if (!name || !status) return
+  profEl.textContent = name
+  const readOnly = Boolean((state.profiles || []).find((p) => p.name === name)?.readOnly)
+  let installed = null
+  try {
+    const r = await window.dshm.listPlugins(name)
+    installed = (r.plugins || []).find((p) => p.name === SESSION_DELETE_PKG) || null
+  } catch { /* ignore */ }
+  if (readOnly) {
+    status.textContent = '该 profile 由官方桌面端独占,不能安装插件'
+  } else if (installed) {
+    status.textContent = `已安装 ${installed.version || ''}${installed.enabled === false ? '(已禁用)' : ''} — 重启该 profile 后,DSH 界面里出现删除入口`
+  } else {
+    status.textContent = '未安装'
+  }
+  $('#btn-session-helper-install').disabled = readOnly || Boolean(installed)
+  $('#btn-session-helper-remove').disabled = readOnly || !installed
+}
+
+async function installSessionHelper() {
+  const name = $('#plugins-select').value || state.launch.profile
+  if (!name) return
+  const ok = await modal('安装删除会话插件',
+    `将向 profile「${esc(name)}」安装 <code>${esc(SESSION_DELETE_PKG)}</code>。<br>` +
+    `安装后需要<b>重启该 profile</b> 才会在 DSH 界面出现入口。<br>` +
+    `<span class="muted">这是社区插件(独立开源项目),删除链路包含会话日志、投影缓存与工作区记账。</span>`,
+    [{ label: '安装', value: true, cls: 'primary' }, { label: '取消', value: false }])
+  if (!ok) return
+  toast('正在安装…')
+  const r = await window.dshm.installPlugin(name, SESSION_DELETE_PKG, { withDeps: true })
+  if (r && r.ok === false) toast(`安装失败: ${r.error || '见日志'}`, 'error')
+  else toast('安装完成,重启该 profile 后生效', 'ok')
+  renderSessionHelper()
+}
+
+async function removeSessionHelper() {
+  const name = $('#plugins-select').value || state.launch.profile
+  if (!name) return
+  const ok = await modal('卸载删除会话插件', `将从 profile「${esc(name)}」移除 ${esc(SESSION_DELETE_PKG)},DSH 界面里的删除入口随之消失。`, [
+    { label: '卸载', value: true, cls: 'primary' }, { label: '取消', value: false }])
+  if (!ok) return
+  const r = await window.dshm.uninstallPlugin(name, SESSION_DELETE_PKG)
+  if (r && r.ok === false) toast(`卸载失败: ${r.error || '见日志'}`, 'error')
+  else toast('已卸载(重启该 profile 后生效)', 'ok')
+  renderSessionHelper()
+}
+
 async function bindPlugins() {
   const sel = $('#plugins-select')
   if (!sel.options.length) {
@@ -425,8 +634,10 @@ async function bindPlugins() {
     sel.innerHTML = profiles.map((p) => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')
     if (profiles.length) sel.value = state.launch.profile
   }
-  sel.onchange = () => { pluginShowAll = false; renderPlugins() }
+  sel.onchange = () => { pluginShowAll = false; renderPlugins(); renderSessionHelper() }
   $('#plugin-filter').addEventListener('input', renderPlugins)
+  $('#btn-session-helper-install').onclick = installSessionHelper
+  $('#btn-session-helper-remove').onclick = removeSessionHelper
 }
 
 async function renderPlugins() {
@@ -435,7 +646,7 @@ async function renderPlugins() {
   // 预填搜索安装的目标 profile(优先用户设置的安装位置)
   const target = $('#search-target')
   if (target && !target.options.length) {
-    const profiles = await window.dshm.listProfiles()
+    const profiles = (await window.dshm.listProfiles()).filter((p) => !p.readOnly)
     const settings = await window.dshm.getSettings()
     const defInstall = settings.defaultInstallProfile || name
     target.innerHTML = profiles.map((p) => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('')
@@ -447,6 +658,7 @@ async function renderPlugins() {
     doSearch()
   }
   const filter = ($('#plugin-filter').value || '').trim().toLowerCase()
+  const readOnly = Boolean((state.profiles || []).find((p) => p.name === name)?.readOnly)
   const r = await window.dshm.listPlugins(name)
   let list = r.plugins
   if (filter) list = list.filter((pl) => pl.name.toLowerCase().includes(filter) || (pl.description || '').toLowerCase().includes(filter))
@@ -472,19 +684,22 @@ async function renderPlugins() {
       <td><span class="pill">${esc(pl.version)}</span></td>
       <td>
         ${pl.kind === 'bundle' ? `
-          <label class="switch"><input type="checkbox" data-toggle="${esc(pl.id)}" ${pl.enabled ? 'checked' : ''}><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" data-toggle="${esc(pl.id)}" ${pl.enabled ? 'checked' : ''} ${readOnly ? 'disabled' : ''}><span class="slider"></span></label>
         ` : '<span class="muted">—</span>'}
       </td>
       <td style="white-space:nowrap">
-        ${pl.installState === 'installed' ? `<button class="btn sm" data-update="${esc(pl.id)}">更新</button>` : ''}
+        ${pl.installState === 'installed' ? `<button class="btn sm" data-update="${esc(pl.id)}" ${readOnly ? 'disabled' : ''}>更新</button>` : ''}
         <button class="btn sm ghost" data-detail="${esc(pl.id)}">详情</button>
-        ${pl.kind === 'bundle' ? `<button class="btn sm danger-ghost" data-uninstall="${esc(pl.id)}">卸载</button>` : ''}
+        ${pl.kind === 'bundle' ? `<button class="btn sm danger-ghost" data-uninstall="${esc(pl.id)}" ${readOnly ? 'disabled' : ''}>卸载</button>` : ''}
       </td>
     </tr>`
   }).join('')
-  $('#plugins-table').innerHTML = list.length
+  const banner = readOnly
+    ? `<div class="warn-box">🔒 「${esc(name)}」由官方 DeepSeek Harness 桌面端独占(官方文档:CLI 不得启动或修改它)。本页对它只做只读展示 —— 不启停插件、不卸载、不更新,也不会对它执行兼容性修复。</div>`
+    : ''
+  $('#plugins-table').innerHTML = banner + (list.length
     ? `<table><thead><tr><th>插件</th><th>版本</th><th>启用</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>`
-    : `<div class="muted">${filter ? '没有匹配的插件' : '该 profile 还没有安装插件,去下方「搜索与安装插件」添加。'}</div>`
+    : `<div class="muted">${filter ? '没有匹配的插件' : '该 profile 还没有安装插件,去下方「搜索与安装插件」添加。'}</div>`)
   $('#plugins-expand').innerHTML = (!filter && list.length > DEFAULT_PLUGIN_SHOW)
     ? `<button class="btn sm" id="btn-plugins-expand">${pluginShowAll ? '收起' : `展开全部 (${list.length})`}</button>`
     : ''
@@ -535,6 +750,7 @@ async function renderPlugins() {
       renderPlugins()
     }
   })
+  renderSessionHelper()
 }
 
 // ---------- 搜索安装 ----------

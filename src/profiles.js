@@ -3,6 +3,13 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { profilesDir, profileDir } = require('./paths')
+const { isDesktopProfile } = require('./desktop')
+
+// 官方桌面端独占的 profile:管理器只允许查看,不启动/停止/改插件/修兼容性
+function externalReason(name) {
+  if (!isDesktopProfile(name)) return null
+  return '该 profile 由官方 DeepSeek Harness 桌面端独占(官方文档明确 CLI 不得启动或修改),管理器只做只读展示。'
+}
 
 function isValidProfile(name) {
   if (!/^[\w.-]+$/.test(name)) return false
@@ -24,6 +31,7 @@ function profileInfo(name) {
   const bundles = Array.isArray(pkg.dsh?.profile?.bundles) ? pkg.dsh.profile.bundles : []
   const dependencies = pkg.dependencies || {}
   const type = bundles.some((b) => b === '@deepseek-ai/dsh-web-app' || /^@deepseek-ai\/dsh-web/.test(b)) ? 'web' : 'custom'
+  const reason = externalReason(name)
   return {
     name,
     dir,
@@ -32,6 +40,10 @@ function profileInfo(name) {
     dependencies,
     exists: fs.existsSync(dir),
     pkg,
+    external: Boolean(reason),
+    managedBy: reason ? 'deepseek-harness-desktop' : 'manager',
+    readOnly: Boolean(reason),
+    externalReason: reason,
   }
 }
 
@@ -73,4 +85,4 @@ function removeProfile(name) {
   return true
 }
 
-module.exports = { listProfiles, profileInfo, readPackageJson, readFileText, createProfile, removeProfile, isValidProfile }
+module.exports = { listProfiles, profileInfo, readPackageJson, readFileText, createProfile, removeProfile, isValidProfile, externalReason }

@@ -35,6 +35,10 @@
           <button id="btn-check-update" class="btn">检查更新</button>
           <button id="btn-do-update" class="btn primary" disabled>更新到最新版</button>
           <button id="btn-compat-check" class="btn">插件兼容性检查</button>
+          <button id="btn-reinstall-dsh" class="btn ghost" title="npm 更新被 EBUSY 打断或安装树处于半更新状态时使用">强制重装 dsh CLI</button>
+        </div>
+        <div class="note" style="margin-top:6px">
+          更新/回滚会先做<b>进程预检</b>:检测到 harness、CLI 或官方桌面端在运行时会阻止操作,避免 npm 因文件占用而 EBUSY 失败。
         </div>
         <div id="update-progress-wrap" class="progress-wrap" hidden>
           <div class="progress-track"><div id="update-progress-bar" class="progress-bar"></div></div>
@@ -58,6 +62,22 @@
         </div>
         <div id="plugins-table"></div>
         <div id="plugins-expand" style="margin-top:8px"></div>
+      </div>
+
+      <div class="panel">
+        <h3>🧹 删除对话记录(官方界面内)</h3>
+        <div class="note">
+          官方 dsh 只提供「归档会话」(仅隐藏),没有删除。<b>删除会话</b>由社区插件
+          <code>@huanlin/dsh-plugin-session-delete</code> 提供:安装后会在 DSH 界面里加入
+          <b>会话头部垃圾桶按钮</b>与<b>侧栏会话行「…」菜单里的「删除会话」</b>,带风险确认弹窗;
+          确认后会停止运行中的会话,并删除会话日志、投影缓存与工作区记账。适用于 web 与官方桌面端。
+        </div>
+        <div class="row">
+          <span class="muted">目标 profile:</span><span id="session-helper-profile" class="pill">—</span>
+          <button id="btn-session-helper-install" class="btn primary">安装删除会话插件</button>
+          <button id="btn-session-helper-remove" class="btn ghost danger-ghost">卸载</button>
+          <span id="session-helper-status" class="muted">检查中…</span>
+        </div>
       </div>
 
       <div class="panel">
