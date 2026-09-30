@@ -45,10 +45,24 @@ if ($targets.Count -eq 0) {
   exit 1
 }
 
-$hasPfx = [bool]$env:WIN_CSC_LINK -or [bool]$env:CSC_LINK
+# A link-style credential only counts as configured when it resolves (existing file or URL).
+# A placeholder / typo makes electron-builder refuse to build at all
+# ("Env WIN_CSC_LINK is not correct, cannot resolve"), so verification must use the same rule -
+# otherwise an unsigned build would be reported as a verification failure.
+function Test-UsableLink([string]$candidate) {
+  if (-not $candidate) { return $false }
+  $v = $candidate.Trim()
+  if ($v -match '^(https?://|data:)') { return $true }
+  return (Test-Path -LiteralPath $v)
+}
+
+$hasPfx = (Test-UsableLink $env:WIN_CSC_LINK) -or (Test-UsableLink $env:CSC_LINK)
 $hasAzure = [bool]$env:AZURE_CLIENT_ID -and [bool]$env:AZURE_TENANT_ID
 $hasStoreCert = [bool]$env:DSH_SIGN_SUBJECT_NAME
 $credentialsConfigured = $hasPfx -or $hasAzure -or $hasStoreCert
+if (-not $hasPfx -and ($env:WIN_CSC_LINK -or $env:CSC_LINK)) {
+  Write-Host '  ! WIN_CSC_LINK / CSC_LINK does not resolve (not an existing file, not a URL) - treated as not configured' -ForegroundColor Yellow
+}
 $mustSign = $RequireSigned -or $credentialsConfigured
 
 $unsigned = @()

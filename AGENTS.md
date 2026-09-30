@@ -70,10 +70,15 @@ Before claiming a change works, run at least `smoke.js`, `check-docs.js --offlin
 1. Bump `version` in `package.json`, add a section to `RELEASE_NOTES.md` (and `CHANGELOG.md`).
 2. Rebuild: `npm run pack` (this writes `dist/` **and** copies the installers into the local archive
    `<archiveRoot>/v<version>/`, default `E:\Work\DSH-Manager-Releases` — the maintainer wants a local copy
-   of every published build). Its last step verifies Authenticode signatures: once signing credentials
-   (`WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD`) are configured, an unsigned artifact fails the build; without
-   them it only warns, and users get the SmartScreen "unrecognized app" prompt. See
-   [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+   of every published build). Signature verification is a **separate** step (`npm run verify-signature`,
+   strict variant `verify-signature:strict`): it stays out of `pack` so a verification hiccup can never
+   block a release, and an unresolvable `WIN_CSC_LINK` is treated as "not configured" (electron-builder
+   itself refuses to build with a bogus link: `Env WIN_CSC_LINK is not correct, cannot resolve`).
+   See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+   **Note:** `electron-builder --win nsis` fails while the app is running (NSIS aborts when a process with
+   the same executable name exists), and closing the manager must not kill the user's harness — build the
+   portable locally and let CI (or a machine where the app is closed) produce the setup, then
+   `npm run sync-releases --only v<version>`.
 3. Push a `v*` tag; `.github/workflows/release.yml` builds on `windows-latest` and publishes the GitHub
    Release (both installers plus `SHA256SUMS.txt`). CI must pass first (`.github/workflows/ci.yml`).
 4. Optional: `npm run sync-releases` mirrors every published release back into the same archive.

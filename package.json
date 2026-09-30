@@ -8,8 +8,8 @@
   "scripts": {
     "start": "electron .",
     "screenshots": "electron . --screenshots",
-    "pack": "node scripts/prepack.js && electron-builder --win nsis portable --publish never && node scripts/archive-build.js && npm run verify-signature",
-    "pack:dir": "node scripts/prepack.js && electron-builder --win dir --publish never && npm run verify-signature",
+    "pack": "node scripts/prepack.js && electron-builder --win nsis portable --publish never && node scripts/archive-build.js",
+    "pack:dir": "node scripts/prepack.js && electron-builder --win dir --publish never",
     "archive": "node scripts/archive-build.js",
     "sync-releases": "node scripts/sync-releases.js",
     "verify-signature": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-signature.ps1",

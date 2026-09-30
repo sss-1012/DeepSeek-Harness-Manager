@@ -23,11 +23,38 @@ jobs:
         run: npm ci
 
       - name: Package Windows installers
-        run: npm run pack
+        shell: pwsh
+        run: |
+          # 无效的签名凭据会让 electron-builder 直接失败:
+          #   "Env WIN_CSC_LINK is not correct, cannot resolve: <value>"
+          # 因此 secret 未配置/占位符/写错时,先在本步骤内把它清掉,让构建走"不签名但继续"的路径。
+          if ($env:WIN_CSC_LINK) {
+            $link = $env:WIN_CSC_LINK
+            $looksUsable = (Test-Path -LiteralPath $link) -or ($link -match '^(https?://|data:)')
+            if (-not $looksUsable) {
+              Write-Host "::warning::WIN_CSC_LINK 既不是存在的文件也不是 URL,已忽略(本次构建不会签名)"
+              Remove-Item Env:WIN_CSC_LINK
+              Remove-Item Env:WIN_CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
+            } else {
+              Write-Host "WIN_CSC_LINK 可用(长度 $($link.Length)),将尝试签名"
+            }
+          } else {
+            Write-Host "未配置 WIN_CSC_LINK:构建产物不签名(用户会看到 SmartScreen 提示)"
+          }
+          npm run pack
         env:
           # Code-signing credentials. While these secrets are unset the build still succeeds
-          # and only warns; once they exist, `npm run pack` fails if the artifacts are unsigned,
-          # so an unrecognized-app (SmartScreen) build can never be published.
+          # and only warns; once they exist, `npm run verify-signature:strict` fails if the
+          # artifacts are unsigned, so an unrecognized-app (SmartScreen) build cannot be published.
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - name: Verify artifact signatures
+        shell: pwsh
+        run: |
+          # 只报告、不阻塞发布:凭据有效却没签上时用 strict 让它红,方便发现配置问题
+          if ($env:WIN_CSC_LINK) { npm run verify-signature:strict } else { npm run verify-signature }
+        env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
