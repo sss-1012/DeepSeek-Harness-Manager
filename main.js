@@ -39,6 +39,30 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => showWindow())
 }
 
+// ---- 渲染后端选择(必须在 app ready 之前决定)----
+// 现场证据:窗口、进程、渲染进程全正常,但窗口内容一个像素都没画出来(只有背景色),
+// invalidate()/重画都无效 —— 这是 Chromium 合成层(GPU)没出画面。
+// 因此提供软件渲染兜底:命令行 --disable-gpu / --software-rendering,或设置里的开关(多次自愈失败后自动打开)。
+function wantsSoftwareRendering() {
+  if (process.argv.includes('--disable-gpu') || process.argv.includes('--software-rendering')) return 'command-line'
+  try { if (store.getSettings().softwareRendering) return 'settings' } catch { /* ignore */ }
+  return null
+}
+const SOFTWARE_RENDERING = wantsSoftwareRendering()
+if (SOFTWARE_RENDERING) {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('disable-gpu-compositing')
+}
+
+// GPU/工具进程崩溃是“窗口空白”的常见原因,必须留下证据(以前不记)
+app.on('child-process-gone', (_e, details) => {
+  const d = details || {}
+  log.logWarn(`子进程退出: type=${d.type} reason=${d.reason} exitCode=${d.exitCode}${d.serviceName ? ` service=${d.serviceName}` : ''}`)
+  if (d.type === 'GPU' && d.reason && d.reason !== 'clean-exit') {
+    log.logWarn('GPU 进程异常退出 → 若界面空白,可从托盘菜单选「以软件渲染重启」')
+  }
+})
+
 // 窗口尺寸兜底:隐藏到托盘期间可能因休眠/分辨率变化/DPI 切换被归零或挪到屏幕外,
 // 那会让用户看到「窗口在、内容全没了」(卡片消失)。这里统一校验并修复。
 const DEFAULT_BOUNDS = { width: 1360, height: 880 }
@@ -70,6 +94,7 @@ function showWindow() {
     mainWindow.focus()
     repaintWindow()
     log.logInfo(`窗口已显示 (${mainWindow.getBounds().width}x${mainWindow.getBounds().height})`)
+    scheduleUiChecks()   // 显示后自检:隐藏久了容易出“窗口在但画面没出来”
   } catch (e) { log.logWarn(`显示窗口失败: ${e.message}`) }
 }
 
@@ -88,11 +113,126 @@ function resetWindow() {
   } catch (e) { log.logWarn(`重置窗口失败: ${e.message}`) }
 }
 
+// 手动重载界面(托盘菜单 / 设置里的按钮):不重启进程的最轻恢复手段
+function reloadUi() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  log.logInfo('手动重载界面')
+  repaintWindow()
+  try { mainWindow.webContents.reload() } catch { /* ignore */ }
+  uiRecoveryAttempts = 0
+}
+
+// 以软件渲染重启:GPU 合成挂了时,这是最可靠的恢复手段(不关 harness)
+function restartWithSoftwareRendering() {
+  if (SOFTWARE_RENDERING) {
+    log.logInfo('当前已是软件渲染,直接重启管理器')
+  } else {
+    log.logWarn('切换到软件渲染(关闭硬件加速)并重启管理器')
+    try { store.setSettings({ softwareRendering: true }) } catch { /* ignore */ }
+  }
+  setTimeout(() => { try { app.relaunch(); app.exit(0) } catch { /* ignore */ } }, 300)
+}
+
 // 强制重绘:隐藏久了再次显示时,Chromium 可能保留旧帧或空白帧
 function repaintWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   try { mainWindow.webContents.invalidate() } catch { /* ignore */ }
   try { mainWindow.webContents.send('app:refresh') } catch { /* ignore */ }
+  // 有些驱动不吃 invalidate,轻微改尺寸能强制重排一次
+  try {
+    const b = mainWindow.getBounds()
+    mainWindow.setBounds({ ...b, width: b.width + 1 })
+    setTimeout(() => { try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBounds(b) } catch { /* ignore */ } }, 60)
+  } catch { /* ignore */ }
+}
+
+// ---- 界面健康自检 ----
+// 分辨两种“卡片不见了”:页面没加载出来(DOM 空) vs 页面正常但没画到屏幕上(合成失败)。
+// 现场实测过第二种:窗口、进程、渲染进程全正常,capturePage 只有背景色,invalidate() 无效。
+let uiRecoveryAttempts = 0
+let uiCheckTimer = null
+
+async function uiHealth() {
+  const wc = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null
+  if (!wc) return null
+  let dom
+  try {
+    dom = await wc.executeJavaScript(`(() => ({
+      ready: document.readyState,
+      bodyLen: document.body ? document.body.innerHTML.length : 0,
+      cards: document.querySelectorAll('#status-cards .card').length,
+      nav: document.querySelectorAll('.nav-item').length,
+    }))()`, true)
+  } catch (e) { dom = { error: e.message } }
+  let colorCount = null
+  try {
+    const img = await wc.capturePage()
+    const { width, height } = img.getSize()
+    if (width && height) {
+      const buf = img.toBitmap()
+      const seen = new Set()
+      const sx = Math.max(1, Math.floor(width / 32))
+      const sy = Math.max(1, Math.floor(height / 32))
+      for (let y = 0; y < height && seen.size <= 5; y += sy) {
+        for (let x = 0; x < width && seen.size <= 5; x += sx) {
+          const i = (y * width + x) * 4
+          seen.add(`${buf[i]},${buf[i + 1]},${buf[i + 2]}`)
+        }
+      }
+      colorCount = seen.size
+    }
+  } catch { colorCount = null }
+  return { dom, colorCount }
+}
+
+async function checkUi(where) {
+  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return
+  const h = await uiHealth()
+  if (!h) return
+  const dom = h.dom || {}
+  const domEmpty = !dom.error && (dom.bodyLen || 0) < 200
+  const noCards = !dom.error && (dom.cards || 0) === 0
+  const blankPaint = h.colorCount !== null && h.colorCount <= 2
+  const healthy = !dom.error && !domEmpty && !blankPaint && (dom.nav || 0) > 0
+  log.logInfo(`界面自检(${where}):ready=${dom.ready} 侧栏=${dom.nav} 卡片=${dom.cards} body=${dom.bodyLen} 颜色数=${h.colorCount}${dom.error ? ` 错误=${dom.error}` : ''}`)
+  if (healthy) { uiRecoveryAttempts = 0; return }
+  recoverUi(domEmpty || noCards ? '页面内容为空' : '窗口只有背景色(合成失败)')
+}
+
+// 恢复阶梯:重画 → 重载页面 → 重建窗口 → 软件渲染重启
+function recoverUi(reason) {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  uiRecoveryAttempts++
+  if (uiRecoveryAttempts === 1) {
+    log.logWarn(`界面异常(${reason}):第 1 次恢复 —— 强制重绘 + 重新加载页面`)
+    repaintWindow()
+    try { mainWindow.webContents.reload() } catch { /* ignore */ }
+    return
+  }
+  if (uiRecoveryAttempts === 2) {
+    log.logWarn(`界面异常(${reason}):第 2 次恢复 —— 重建窗口`)
+    recreateWindow()
+    return
+  }
+  log.logWarn(`界面异常(${reason}):多次恢复无效 —— 改为软件渲染重启管理器(判断为 GPU 合成问题)`)
+  try { store.setSettings({ softwareRendering: true }) } catch { /* ignore */ }
+  setTimeout(() => { try { app.relaunch(); app.exit(0) } catch { /* ignore */ } }, 500)
+}
+
+function recreateWindow() {
+  try {
+    const old = mainWindow
+    mainWindow = null
+    if (old && !old.isDestroyed()) old.destroy()
+  } catch { /* ignore */ }
+  createWindow()
+  showWindow()
+}
+
+function scheduleUiChecks() {
+  if (uiCheckTimer) clearTimeout(uiCheckTimer)
+  setTimeout(() => checkUi('加载后'), 2000)
+  uiCheckTimer = setTimeout(() => checkUi('延迟复检'), 9000)
 }
 
 function createWindow() {
@@ -118,15 +258,24 @@ function createWindow() {
     setTimeout(() => {
       if (!mainWindow || mainWindow.isDestroyed()) return
       try { mainWindow.webContents.invalidate() } catch { /* ignore */ }
-    }, 80)
+      scheduleUiChecks()
+    }, 200)
   })
   // 渲染进程崩溃/无响应时自愈:否则窗口会永远停在一片空白(看起来就是「卡片全没了」)
   mainWindow.webContents.on('render-process-gone', (_e, details) => {
     log.logWarn(`渲染进程退出(${details && details.reason}),正在重新加载界面`)
     try { mainWindow.webContents.reload() } catch { /* ignore */ }
+    setTimeout(() => scheduleUiChecks(), 1500)
   })
   mainWindow.webContents.on('unresponsive', () => log.logWarn('界面无响应(仍在等待渲染进程)'))
   mainWindow.webContents.on('responsive', () => log.logInfo('界面已恢复响应'))
+  // 诊断:页面到底加载成了没有(以前这些事件不记日志,出现“空白窗口”时无从判断)
+  mainWindow.webContents.on('did-finish-load', () => {
+    log.logInfo('界面页面已加载,开始自检')
+    scheduleUiChecks()
+  })
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => log.logWarn(`界面页面加载失败(${code} ${desc}): ${url}`))
+  mainWindow.webContents.on('preload-error', (_e, file, err) => log.logWarn(`preload 执行出错: ${file} - ${err && err.message}`))
   mainWindow.webContents.on('console-message', (...args) => {
     try {
       const details = args[1]
@@ -507,6 +656,8 @@ app.whenReady().then(() => {
     },
     onShow: showWindow,
     onResetWindow: resetWindow,
+    onReloadUi: reloadUi,
+    onSoftwareRestart: restartWithSoftwareRendering,
     onQuit: () => app.quit(),
     isAnyRunning: () => lastStatusJson.includes('"running":true'),
   })
@@ -516,10 +667,15 @@ app.whenReady().then(() => {
 
   // 全局快捷键之外的手动恢复入口:渲染层也可调
   ipcMain.handle('window:reset', () => { resetWindow(); return { ok: true } })
+  ipcMain.handle('window:reload', () => { reloadUi(); return { ok: true } })
+  ipcMain.handle('window:software-restart', () => { restartWithSoftwareRendering(); return { ok: true } })
   ipcMain.handle('window:info', () => {
     if (!mainWindow || mainWindow.isDestroyed()) return { ok: false }
     const b = mainWindow.getBounds()
-    return { ok: true, bounds: b, sane: boundsAreSane(b), visible: mainWindow.isVisible(), minimized: mainWindow.isMinimized() }
+    return {
+      ok: true, bounds: b, sane: boundsAreSane(b), visible: mainWindow.isVisible(), minimized: mainWindow.isMinimized(),
+      softwareRendering: Boolean(SOFTWARE_RENDERING), softwareSource: SOFTWARE_RENDERING,
+    }
   })
 
   app.on('before-quit', async (e) => {

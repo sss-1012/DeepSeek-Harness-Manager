@@ -62,6 +62,8 @@ const api = {
   openPath: (p) => ipcRenderer.invoke('open:path', p),
   openExternal: (url) => ipcRenderer.invoke('open:external', url),
   resetWindow: () => ipcRenderer.invoke('window:reset'),
+  reloadUi: () => ipcRenderer.invoke('window:reload'),
+  softwareRestart: () => ipcRenderer.invoke('window:software-restart'),
   windowInfo: () => ipcRenderer.invoke('window:info'),
   // ---- 事件订阅 ----
   onRefresh: (cb) => { ipcRenderer.on('app:refresh', () => cb()) },

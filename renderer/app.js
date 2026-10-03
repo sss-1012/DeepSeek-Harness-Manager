@@ -170,9 +170,16 @@ function desktopCard() {
 function renderCardsError(message) {
   const box = $('#status-cards')
   if (!box) return
-  box.innerHTML = `<div class="card"><div class="card-head"><h4>⚠ 概览渲染失败</h4></div><div class="muted" style="font-size:12px">${esc(message)}</div><div class="row" style="margin-top:8px"><button class="btn sm" id="btn-render-retry">重试</button><button class="btn sm ghost" id="btn-render-reset">重置窗口尺寸</button></div></div>`
+  box.innerHTML = `<div class="card"><div class="card-head"><h4>⚠ 概览渲染失败</h4></div><div class="muted" style="font-size:12px">${esc(message)}</div><div class="row" style="margin-top:8px;flex-wrap:wrap;gap:6px"><button class="btn sm" id="btn-render-retry">重试</button><button class="btn sm ghost" id="btn-render-reset">重置窗口尺寸</button><button class="btn sm ghost" id="btn-render-reload">重载界面</button><button class="btn sm ghost" id="btn-render-software">以软件渲染重启</button></div><div class="muted" style="font-size:11px;margin-top:6px">若窗口整体空白(连侧边栏也没有),多半是显卡合成问题 —— 直接点「以软件渲染重启」。</div></div>`
   $('#btn-render-retry') && ($('#btn-render-retry').onclick = () => renderOverview())
   $('#btn-render-reset') && ($('#btn-render-reset').onclick = async () => { await window.dshm.resetWindow() })
+  $('#btn-render-reload') && ($('#btn-render-reload').onclick = async () => { await window.dshm.reloadUi() })
+  $('#btn-render-software') && ($('#btn-render-software').onclick = async () => {
+    const ok = await modal('以软件渲染重启', '将关闭硬件加速(GPU)并重启管理器。<br>正在运行的 harness 与 3080 上的会话不受影响。', [
+      { label: '重启', value: true, cls: 'primary' }, { label: '取消', value: false },
+    ])
+    if (ok) await window.dshm.softwareRestart()
+  })
 }
 
 async function renderOverview() {
@@ -995,12 +1002,16 @@ async function openSettings() {
     <label class="chk" style="margin:6px 0"><input type="checkbox" id="set-gh-insecure" ${s.insecureGitHub ? 'checked' : ''}> GitHub 请求跳过证书校验(代理/证书拦截网络)</label>
     <div class="row"><span style="width:120px">GitHub Token</span><input type="password" id="set-token" value="${esc(token || '')}" placeholder="可选,提升搜索限额" style="flex:1"></div>
 
-    <h4>窗口</h4>
+    <h4>窗口与显示</h4>
     <div class="row">
       <button class="btn sm" id="set-reset-window">重置窗口尺寸</button>
-      <span class="muted">窗口在托盘隐藏很久后、或内容显示不全时用(会把窗口尺寸恢复为 1360×880 并居中)</span>
+      <button class="btn sm ghost" id="set-reload-ui">重载界面</button>
+      <button class="btn sm ghost" id="set-software-restart">以软件渲染重启</button>
     </div>
-
+    <div class="muted" style="font-size:11px;margin-top:4px">
+      窗口在托盘隐藏很久后显示空白、或内容显示不全时用。当前渲染模式:<b id="set-render-mode">读取中…</b>
+    </div>
+    <label class="chk" style="margin:6px 0"><input type="checkbox" id="set-software-rendering" ${s.softwareRendering ? 'checked' : ''}> 关闭硬件加速(软件渲染;显卡合成异常导致界面空白时勾选,下次启动生效)</label>
     <h4>数据目录</h4>
     <div class="muted">管理器数据: ${esc(state.bootstrap.managerHome)}<br>DSH_HOME: ${esc(state.bootstrap.dshHome)}</div>
   `, [
@@ -1010,12 +1021,26 @@ async function openSettings() {
   setTimeout(() => {
     const btn = $('#set-reset-window')
     if (btn) btn.onclick = async () => { await window.dshm.resetWindow(); toast('窗口尺寸已重置', 'ok') }
+    const bReload = $('#set-reload-ui')
+    if (bReload) bReload.onclick = async () => { await window.dshm.reloadUi(); toast('界面已重新加载', 'ok') }
+    const bSoft = $('#set-software-restart')
+    if (bSoft) bSoft.onclick = async () => {
+      const yes = await modal('以软件渲染重启', '将关闭硬件加速并重启管理器(运行中的 harness 不受影响)。', [
+        { label: '重启', value: true, cls: 'primary' }, { label: '取消', value: false },
+      ])
+      if (yes) await window.dshm.softwareRestart()
+    }
+    window.dshm.windowInfo().then((w) => {
+      const el = $('#set-render-mode')
+      if (el) el.textContent = w && w.softwareRendering ? `软件渲染(${w.softwareSource === 'command-line' ? '命令行参数' : '设置'})` : '默认(硬件加速)'
+    }).catch(() => {})
   }, 0)
   settingsModal.then(async (ok) => {
     if (!ok) return
     await window.dshm.setSettings({
       closeToTray: $('#set-tray').checked,
       stopProfilesOnExit: $('#set-stop-on-exit').checked,
+      softwareRendering: $('#set-software-rendering').checked,
       pollIntervalMs: Math.max(500, Number($('#set-poll').value) || 2000),
       defaultInstallProfile: $('#set-install-profile').value || null,
       insecureGitHub: $('#set-gh-insecure').checked,
