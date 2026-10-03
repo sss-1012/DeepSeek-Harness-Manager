@@ -130,11 +130,24 @@ function detect() {
     running: exe ? processRunning(path.basename(exe)) : null,
   }
 }
+// 带 TTL 的缓存版本。detect() 要跑 reg query ×3 + tasklist(实测约 160ms 同步子进程),
+// 而状态轮询每 2 秒就会问一次桌面端状态 —— 在热路径上同步跑会把主进程阻塞住,
+// 窗口重绘/界面都会卡。这里改成默认 60 秒内复用缓存,只有显式 fresh 才重新探测。
+let cache = null // { at, value }
+function detectCached({ maxAgeMs = 60000, fresh = false } = {}) {
+  const now = Date.now()
+  if (!fresh && cache && now - cache.at < maxAgeMs) return cache.value
+  const value = detect()
+  cache = { at: now, value }
+  return value
+}
+
+function invalidateCache() { cache = null }
 
 // 供更新预检使用:桌面端是否在运行(未知时返回 null)
 function desktopRunning() {
-  const info = detect()
+  const info = detectCached()
   return info.running
 }
 
-module.exports = { detect, desktopRunning, isDesktopProfile, processRunning, DESKTOP_PROFILE }
+module.exports = { detect, detectCached, invalidateCache, desktopRunning, isDesktopProfile, processRunning, DESKTOP_PROFILE }

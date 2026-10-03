@@ -57,9 +57,24 @@ async function init() {
   state.launch = { profile: 'web', args: '', port: null, ...(state.bootstrap.settings.launch || {}) }
   renderLaunchPill()
 
+  // 状态轮询回调:渲染失败不能把界面弄成半空状态
   window.dshm.onStatus((snap) => {
     state.profiles = snap
     if ($('.nav-item.active')?.dataset.view === 'overview') renderOverview()
+  })
+  // 主进程从托盘恢复窗口时会要求重画一次(隐藏久了 Chromium 可能保留旧帧/空白帧)
+  window.dshm.onRefresh(() => { try { refreshCurrentView() } catch { /* ignore */ } })
+  // 兜底:任何未处理的 Promise 拒绝都不应该只是“界面停住”,记录并自愈重画(限频)
+  let lastSelfHeal = 0
+  window.addEventListener('unhandledrejection', (ev) => {
+    const reason = ev && ev.reason
+    const msg = (reason && (reason.message || String(reason))) || 'unknown'
+    appendLog(`[renderer] 未处理的 Promise 拒绝: ${msg}`)
+    const now = Date.now()
+    if (now - lastSelfHeal > 5000) {
+      lastSelfHeal = now
+      setTimeout(() => { try { refreshCurrentView() } catch { /* ignore */ } }, 0)
+    }
   })
   window.dshm.onLog((line) => appendLog(line))
   window.dshm.onUpdateProgress((evt) => handleUpdateProgress(evt))
@@ -151,11 +166,30 @@ function desktopCard() {
     </div>`
 }
 
+// 渲染失败时给一张看得见的错误卡片,而不是让卡片区变成空白(否则用户看到的是“所有卡片消失了”)
+function renderCardsError(message) {
+  const box = $('#status-cards')
+  if (!box) return
+  box.innerHTML = `<div class="card"><div class="card-head"><h4>⚠ 概览渲染失败</h4></div><div class="muted" style="font-size:12px">${esc(message)}</div><div class="row" style="margin-top:8px"><button class="btn sm" id="btn-render-retry">重试</button><button class="btn sm ghost" id="btn-render-reset">重置窗口尺寸</button></div></div>`
+  $('#btn-render-retry') && ($('#btn-render-retry').onclick = () => renderOverview())
+  $('#btn-render-reset') && ($('#btn-render-reset').onclick = async () => { await window.dshm.resetWindow() })
+}
+
 async function renderOverview() {
   const name = state.launch.profile
   if (!name) return
-  const [p, settings] = await Promise.all([window.dshm.getProfile(name), window.dshm.getSettings()])
-  const pset = settings.profiles?.[name] || {}
+  let p, settings
+  try {
+    ;[p, settings] = await Promise.all([window.dshm.getProfile(name), window.dshm.getSettings()])
+  } catch (e) {
+    renderCardsError(`读取 profile「${name}」信息失败:${e.message}`)
+    return
+  }
+  if (!p || !p.info) {
+    renderCardsError(`profile「${name}」信息不可用(可能已被删除,或主进程暂时不可用)`)
+    return
+  }
+  const pset = (settings && settings.profiles && settings.profiles[name]) || {}
   const snap = state.profiles.find((s) => s.name === name)
   const running = snap ? snap.running : false
   const cards = [
@@ -366,7 +400,7 @@ function resetUpdateProgress() {
 // 结果分档(见 src/compat.js):ok / profile-only / link-dangling / missing / load-failed / loader-missing
 const COMPAT_STATE_TEXT = {
   ok: '正常',
-  'profile-only': '仅 profile 内,需建联接',
+  'profile-only': '仅存在于 profile 内(dsh 0.2.x 可直接解析,无需处理)',
   'link-dangling': '全局联接已断链,需重建',
   missing: '找不到包,需先安装该插件',
   'load-failed': '可解析但加载失败',
@@ -374,16 +408,18 @@ const COMPAT_STATE_TEXT = {
   unknown: '未知',
 }
 
+// 真错误(会导致启动失败)与信息项(仅 profile 内,不影响运行)分开列
 function compatIssueLines(all) {
   const lines = []
   for (const p of all.profiles || []) {
     if (p.skipped) continue
     for (const it of p.items || []) {
       if (it.state === 'ok') continue
-      lines.push(`${p.profile} / ${it.name} [${COMPAT_STATE_TEXT[it.state] || it.state}]\n    ${it.detail || ''}${it.loadError ? `\n    ${it.loadError}` : ''}`)
+      const mark = it.severity === 'info' ? 'ℹ' : '✘'
+      lines.push(`${mark} ${p.profile} / ${it.name} [${COMPAT_STATE_TEXT[it.state] || it.state}]\n    ${it.detail || ''}${it.loadError ? `\n    ${it.loadError}` : ''}`)
     }
   }
-  for (const g of (all.global && all.global.problems) || []) lines.push(`全局 dsh:${g}`)
+  for (const g of (all.global && all.global.problems) || []) lines.push(`✘ 全局 dsh:${g}`)
   return lines
 }
 
@@ -391,8 +427,13 @@ async function runCompatCheck(auto = false) {
   const r = await window.dshm.compatCheck()
   const skipped = (r.profiles || []).filter((p) => p.skipped)
   const bad = (r.profiles || []).filter((p) => !p.ok && !p.skipped)
+  const infoCount = (r.profiles || []).reduce((n, p) => n + ((p.infoItems || []).length), 0)
   if (!bad.length && r.global?.ok) {
-    if (!auto) toast(`插件解析检查通过 ✓${skipped.length ? `(已跳过官方桌面端独占的 ${skipped.map((s) => s.profile).join('、')})` : ''}`, 'ok')
+    if (!auto) {
+      const extra = [skipped.length ? `已跳过官方桌面端独占的 ${skipped.map((s) => s.profile).join('、')}` : '', infoCount ? `${infoCount} 个插件仅在 profile 内(不影响运行)` : '']
+        .filter(Boolean).join(';')
+      toast(`插件解析检查通过 ✓${extra ? `(${extra})` : ''}`, 'ok')
+    }
     return { ok: true }
   }
   const lines = compatIssueLines(r)
@@ -954,11 +995,23 @@ async function openSettings() {
     <label class="chk" style="margin:6px 0"><input type="checkbox" id="set-gh-insecure" ${s.insecureGitHub ? 'checked' : ''}> GitHub 请求跳过证书校验(代理/证书拦截网络)</label>
     <div class="row"><span style="width:120px">GitHub Token</span><input type="password" id="set-token" value="${esc(token || '')}" placeholder="可选,提升搜索限额" style="flex:1"></div>
 
+    <h4>窗口</h4>
+    <div class="row">
+      <button class="btn sm" id="set-reset-window">重置窗口尺寸</button>
+      <span class="muted">窗口在托盘隐藏很久后、或内容显示不全时用(会把窗口尺寸恢复为 1360×880 并居中)</span>
+    </div>
+
     <h4>数据目录</h4>
     <div class="muted">管理器数据: ${esc(state.bootstrap.managerHome)}<br>DSH_HOME: ${esc(state.bootstrap.dshHome)}</div>
   `, [
     { label: '保存', value: true, cls: 'primary' }, { label: '取消', value: false },
-  ]).then(async (ok) => {
+  ])
+  // 重置窗口不等待确认:它是恢复手段,点完应立即生效
+  setTimeout(() => {
+    const btn = $('#set-reset-window')
+    if (btn) btn.onclick = async () => { await window.dshm.resetWindow(); toast('窗口尺寸已重置', 'ok') }
+  }, 0)
+  settingsModal.then(async (ok) => {
     if (!ok) return
     await window.dshm.setSettings({
       closeToTray: $('#set-tray').checked,

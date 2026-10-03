@@ -15,7 +15,7 @@ function appIcon() {
   return img.isEmpty() ? nativeImage.createEmpty() : img.resize({ width: 16, height: 16 })
 }
 
-function createTray({ onStart, onStop, onShow, onQuit, isAnyRunning }) {
+function createTray({ onStart, onStop, onShow, onResetWindow, onQuit, isAnyRunning }) {
   tray = new Tray(appIcon())
   tray.setToolTip('DeepSeek Harness 管理器')
   const buildMenu = () => {
@@ -26,6 +26,7 @@ function createTray({ onStart, onStop, onShow, onQuit, isAnyRunning }) {
       { label: running ? '停止所有 harness' : '启动 web profile', click: running ? onStop : onStart },
       { type: 'separator' },
       { label: '打开管理器', click: onShow },
+      { label: '重置窗口尺寸', click: onResetWindow },
       { label: '退出', click: onQuit },
     ])
   }

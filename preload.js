@@ -61,7 +61,10 @@ const api = {
   logTail: () => ipcRenderer.invoke('logs:tail'),
   openPath: (p) => ipcRenderer.invoke('open:path', p),
   openExternal: (url) => ipcRenderer.invoke('open:external', url),
+  resetWindow: () => ipcRenderer.invoke('window:reset'),
+  windowInfo: () => ipcRenderer.invoke('window:info'),
   // ---- 事件订阅 ----
+  onRefresh: (cb) => { ipcRenderer.on('app:refresh', () => cb()) },
   onStatus: (cb) => { ipcRenderer.on('status:changed', (_e, d) => cb(d)) },
   onLog: (cb) => { ipcRenderer.on('log:line', (_e, d) => cb(d)) },
   onUpdateProgress: (cb) => { ipcRenderer.on('update:progress', (_e, d) => cb(d)) },

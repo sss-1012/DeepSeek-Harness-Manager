@@ -183,7 +183,9 @@ function snapshot() {
     if (info.external) {
       // 外部(官方桌面端)profile:不探端口(它不监听),只用桌面端进程判断
       if (desktopState === null) {
-        try { desktopState = require('./desktop').detect() } catch { desktopState = { running: null } }
+        // 用带 TTL 的缓存:snapshot() 每 2 秒被轮询调用一次,而 detect() 会同步跑
+        // reg query ×3 + tasklist(约 160ms),放在热路径上会阻塞主进程、拖慢界面重绘
+        try { desktopState = require('./desktop').detectCached() } catch { desktopState = { running: null } }
       }
       out.push({
         name: info.name,

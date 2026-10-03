@@ -171,13 +171,21 @@ async function checkBundles(profile, { deep = true } = {}) {
   }
   const items = []
   for (const b of info.bundles || []) items.push(await checkBundle(profile, b, { deep, info }))
-  const bad = items.filter((i) => i.state !== 'ok')
+  // 分档结论:
+  //   error = 真的会启动失败(联接断链 / 包不存在 / 加载失败 / loader 缺失)
+  //   info  = 仅 profile 内 —— dsh 0.2.x 能直接解析(实测:web profile 有 4 个这样的插件且运行正常),
+  //           所以不算失败;旧版 dsh 可能需要联接,修复按钮仍可手动建。
+  const SEVERITY = { ok: 'ok', 'profile-only': 'info', 'link-dangling': 'error', missing: 'error', 'load-failed': 'error', 'loader-missing': 'error', unknown: 'error' }
+  for (const i of items) i.severity = SEVERITY[i.state] || 'error'
+  const bad = items.filter((i) => i.severity === 'error')
+  const infoItems = items.filter((i) => i.severity === 'info')
   return {
     profile,
     ok: bad.length === 0,
     items,
     bad: bad.map((i) => i.name),
     badItems: bad,
+    infoItems,
     needsReinstallDsh: items.some((i) => i.state === 'loader-missing'),
   }
 }
@@ -187,6 +195,7 @@ async function checkGlobalDsh() {
   const base = loaderBase()
   const pkg = dshPkgDir()
   const problems = []
+  const warnings = []
   let version = null
   let cliError = null
   try {
@@ -195,7 +204,11 @@ async function checkGlobalDsh() {
   } catch (e) { cliError = e.message }
   if (!pkg || !fs.existsSync(path.join(pkg, 'package.json'))) problems.push('未找到全局 @deepseek-ai/dsh 安装目录')
   if (!base || !fs.existsSync(base)) problems.push('缺少 cordis-plugin-loader(loader)')
-  if (!version) problems.push(`dsh CLI 不可用${cliError ? `:${cliError}` : ''}`)
+  // 版本读不出来可能是“真损坏”,也可能只是子进程被拦/临时忙碌 —— 只在安装目录也缺失时才当错误
+  if (!version) {
+    const line = `dsh CLI 版本未能读取${cliError ? `:${cliError}` : ''}`
+    if (problems.length) problems.push(line); else warnings.push(line)
+  }
   // bin.js 与 loader 同处一个安装树:用它们的 mtime 粗判"更新是否被中途打断"
   let partial = false
   try {
@@ -211,6 +224,7 @@ async function checkGlobalDsh() {
     loader: base,
     globalNodeModules: globalNodeModules(),
     problems,
+    warnings,
   }
 }
 
@@ -266,8 +280,11 @@ function summarizeCheck(all) {
   const skipped = all.profiles.filter((p) => p.skipped)
   const parts = []
   parts.push(failed.length ? `${failed.length} 个 profile 有问题` : '所有 profile 插件解析正常')
+  const infoCount = all.profiles.reduce((n, p) => n + ((p.infoItems || []).length), 0)
+  if (infoCount) parts.push(`${infoCount} 个插件仅存在于 profile 内(dsh 0.2.x 可直接解析,无需处理)`)
   if (skipped.length) parts.push(`跳过 ${skipped.length} 个(官方桌面端独占)`)
   if (!all.global.ok) parts.push(`全局 dsh 安装异常:${all.global.problems.join(';')}`)
+  else if ((all.global.warnings || []).length) parts.push(`提示:${all.global.warnings.join(';')}`)
   return parts.join(';')
 }
 

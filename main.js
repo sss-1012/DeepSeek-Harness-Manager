@@ -1,7 +1,7 @@
 'use strict'
 // DeepSeek Harness 管理器 — Electron 主进程
 const path = require('node:path')
-const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell, nativeImage } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell, nativeImage, screen } = require('electron')
 
 const paths = require('./src/paths')
 const store = require('./src/store')
@@ -39,8 +39,60 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => showWindow())
 }
 
+// 窗口尺寸兜底:隐藏到托盘期间可能因休眠/分辨率变化/DPI 切换被归零或挪到屏幕外,
+// 那会让用户看到「窗口在、内容全没了」(卡片消失)。这里统一校验并修复。
+const DEFAULT_BOUNDS = { width: 1360, height: 880 }
+function boundsAreSane(bounds) {
+  if (!bounds) return false
+  if (!(bounds.width >= 400) || !(bounds.height >= 300)) return false
+  try {
+    const displays = screen.getAllDisplays()
+    return displays.some((d) => {
+      const a = d.workArea
+      return bounds.x < a.x + a.width && bounds.x + bounds.width > a.x &&
+        bounds.y < a.y + a.height && bounds.y + bounds.height > a.y
+    })
+  } catch { return true } // 拿不到显示器信息时不做判断,避免误重置
+}
+
+// 从托盘恢复 / 重新唤起时:修复尺寸 + 强制重绘 + 让渲染层重画当前视图
 function showWindow() {
-  if (mainWindow) { mainWindow.show(); mainWindow.focus() }
+  if (!mainWindow) { createWindow(); return }
+  try {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    const b = mainWindow.getBounds()
+    if (!boundsAreSane(b)) {
+      log.logWarn(`窗口尺寸/位置异常(${b.width}x${b.height} @ ${b.x},${b.y}),已重置为 ${DEFAULT_BOUNDS.width}x${DEFAULT_BOUNDS.height} 并居中`)
+      mainWindow.setBounds(DEFAULT_BOUNDS)
+      mainWindow.center()
+    }
+    mainWindow.show()
+    mainWindow.focus()
+    repaintWindow()
+    log.logInfo(`窗口已显示 (${mainWindow.getBounds().width}x${mainWindow.getBounds().height})`)
+  } catch (e) { log.logWarn(`显示窗口失败: ${e.message}`) }
+}
+
+// 重置窗口:用户从托盘菜单显式触发,用于自助恢复「内容不见了」的窗口
+function resetWindow() {
+  if (!mainWindow) { createWindow(); return }
+  try {
+    if (mainWindow.isFullScreen()) mainWindow.setFullScreen(false)
+    mainWindow.unmaximize()
+    mainWindow.setBounds(DEFAULT_BOUNDS)
+    mainWindow.center()
+    mainWindow.show()
+    mainWindow.focus()
+    repaintWindow()
+    log.logInfo(`窗口已重置为 ${DEFAULT_BOUNDS.width}x${DEFAULT_BOUNDS.height} 并居中`)
+  } catch (e) { log.logWarn(`重置窗口失败: ${e.message}`) }
+}
+
+// 强制重绘:隐藏久了再次显示时,Chromium 可能保留旧帧或空白帧
+function repaintWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  try { mainWindow.webContents.invalidate() } catch { /* ignore */ }
+  try { mainWindow.webContents.send('app:refresh') } catch { /* ignore */ }
 }
 
 function createWindow() {
@@ -61,6 +113,20 @@ function createWindow() {
     },
   })
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
+  // 显示时补一次重绘(异步,避开 show 的同帧)
+  mainWindow.on('show', () => {
+    setTimeout(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) return
+      try { mainWindow.webContents.invalidate() } catch { /* ignore */ }
+    }, 80)
+  })
+  // 渲染进程崩溃/无响应时自愈:否则窗口会永远停在一片空白(看起来就是「卡片全没了」)
+  mainWindow.webContents.on('render-process-gone', (_e, details) => {
+    log.logWarn(`渲染进程退出(${details && details.reason}),正在重新加载界面`)
+    try { mainWindow.webContents.reload() } catch { /* ignore */ }
+  })
+  mainWindow.webContents.on('unresponsive', () => log.logWarn('界面无响应(仍在等待渲染进程)'))
+  mainWindow.webContents.on('responsive', () => log.logInfo('界面已恢复响应'))
   mainWindow.webContents.on('console-message', (...args) => {
     try {
       const details = args[1]
@@ -269,7 +335,12 @@ function registerIpc() {
     const all = await compat.checkAll({ deep: true })
     log.logInfo(`插件兼容性检查:${all.summary}`)
     for (const p of all.profiles) {
-      for (const it of p.items || []) if (it.state !== 'ok') log.logWarn(`[兼容性] ${p.profile} / ${it.name}: ${it.state} - ${it.detail}`)
+      for (const it of p.items || []) {
+        if (it.state === 'ok') continue
+        // 仅 profile 内不算失败(dsh 0.2.x 可直接解析),只记 info,避免刷一堆吓人的 WARN
+        const line = `[兼容性] ${p.profile} / ${it.name}: ${it.state} - ${it.detail}`
+        if (it.severity === 'info') log.logInfo(line); else log.logWarn(line)
+      }
     }
     return { ok: all.global.ok && all.profiles.every((p) => p.ok), ...all }
   })
@@ -299,7 +370,8 @@ function registerIpc() {
   })
 
   // ---- 官方桌面端 ----
-  ipcMain.handle('desktop:info', () => desktop.detect())
+  // 显式询问桌面端信息时用 fresh:用户在看卡片,要的是实时值
+  ipcMain.handle('desktop:info', () => desktop.detectCached({ fresh: true }))
   ipcMain.handle('desktop:open', async () => {
     const info = desktop.detect()
     if (!info.exe) return { ok: false, error: '未找到官方桌面端可执行文件' }
@@ -434,12 +506,21 @@ app.whenReady().then(() => {
       for (const n of names) await status.stop(n, { force: false })
     },
     onShow: showWindow,
+    onResetWindow: resetWindow,
     onQuit: () => app.quit(),
     isAnyRunning: () => lastStatusJson.includes('"running":true'),
   })
 
   statusTimer = setInterval(pollStatus, store.getSettings().pollIntervalMs || 2000)
   pollStatus()
+
+  // 全局快捷键之外的手动恢复入口:渲染层也可调
+  ipcMain.handle('window:reset', () => { resetWindow(); return { ok: true } })
+  ipcMain.handle('window:info', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return { ok: false }
+    const b = mainWindow.getBounds()
+    return { ok: true, bounds: b, sane: boundsAreSane(b), visible: mainWindow.isVisible(), minimized: mainWindow.isMinimized() }
+  })
 
   app.on('before-quit', async (e) => {
     if (quitting) return
