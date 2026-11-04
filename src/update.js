@@ -20,21 +20,44 @@ function execFileAsync(cmd, args, opts = {}) {
   return execTool(cmd, args, opts)
 }
 
-async function checkUpdate() {
+// npm view 要跑 5 秒左右(走网络)—— 缓存结果,避免每次打开就一直转圈;fresh 用于手动点「检查更新」
+let updateCache = null // { at, value }
+const UPDATE_TTL_MS = 10 * 60 * 1000
+
+async function checkUpdate({ fresh = false } = {}) {
+  const now = Date.now()
+  if (!fresh && updateCache && now - updateCache.at < UPDATE_TTL_MS) {
+    // 本地版本可能已经变了(刚更新过),所以 current 总是重新读
+    const current = await version()
+    return { ...updateCache.value, current, hasUpdate: Boolean(updateCache.value.latest && current && semver.valid(current) && semver.valid(updateCache.value.latest) && semver.lt(current, updateCache.value.latest)) }
+  }
   const current = await version()
   let latest = null
   let error = null
   try {
-    const r = await execFileAsync('npm', ['view', '@deepseek-ai/dsh', 'version'], { timeout: 30000 })
-    latest = r.ok ? r.stdout.trim() : null
-    if (!r.ok) error = r.stderr || r.error
-  } catch (e) { error = e.message }
+    // 先读 dist-tags(单次请求、比 npm view 快),失败再回退到 npm view
+    const res = await fetch('https://registry.npmjs.org/-/package/@deepseek-ai%2fdsh/dist-tags', { signal: AbortSignal.timeout(8000) })
+    if (res.ok) {
+      const tags = await res.json()
+      latest = tags && tags.latest ? String(tags.latest) : null
+    }
+  } catch { /* 回退到 npm view */ }
+  if (!latest) {
+    try {
+      const r = await execFileAsync('npm', ['view', '@deepseek-ai/dsh', 'version'], { timeout: 30000 })
+      latest = r.ok ? r.stdout.trim() : null
+      if (!r.ok) error = r.stderr || r.error
+    } catch (e) { error = e.message }
+  }
   let hasUpdate = false
   if (current && latest && semver.valid(current) && semver.valid(latest)) {
     hasUpdate = semver.lt(current, latest)
   }
+  updateCache = { at: now, value: { latest, error } }
   return { current, latest, hasUpdate, error }
 }
+
+function invalidateUpdateCache() { updateCache = null }
 
 // ---- 进程预检:谁会占用全局 dsh 的文件 -------------------------------------------------
 function runningWorkloads() {
@@ -241,6 +264,97 @@ function listBackups() {
     .sort((a, b) => b.id.localeCompare(a.id))
 }
 
+
+// 备份的创建时间:优先 manifest.json 里的 createdAt,其次目录 mtime,最后从 id 解析
+function backupAge(id, dir) {
+  try {
+    const m = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'))
+    if (m.createdAt) { const t = Date.parse(m.createdAt); if (!Number.isNaN(t)) return t }
+  } catch { /* ignore */ }
+  try { return fs.statSync(dir).mtimeMs } catch { /* ignore */ }
+  // id 形如 2026-09-30T03-30-12(UTC,冒号被换成了短横)
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})$/.exec(id)
+  if (m) { const t = Date.parse(`${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`); if (!Number.isNaN(t)) return t }
+  return null
+}
+
+function dirSizeMb(dir) {
+  let total = 0
+  const walk = (d) => {
+    let entries = []
+    try { entries = fs.readdirSync(d, { withFileTypes: true }) } catch { return }
+    for (const e of entries) {
+      const full = path.join(d, e.name)
+      if (e.isDirectory()) walk(full)
+      else { try { total += fs.statSync(full).size } catch { /* ignore */ } }
+    }
+  }
+  walk(dir)
+  return total / 1024 / 1024
+}
+
+// 备份列表:带时间与体积,供界面展示与手动删除
+function backupsDetailed() {
+  return listBackups().map((b) => ({
+    ...b,
+    createdAt: backupAge(b.id, b.dir),
+    sizeMb: Math.round(dirSizeMb(b.dir) * 10) / 10,
+  }))
+}
+
+function backupStats() {
+  const items = backupsDetailed()
+  const totalMb = Math.round(items.reduce((n, b) => n + (b.sizeMb || 0), 0) * 10) / 10
+  return { count: items.length, totalMb, items }
+}
+
+// 删除单个备份(先确认 id 在备份目录下,防止路径穿越)
+function removeBackup(id) {
+  if (!id || /[\\/]|\.\./.test(String(id))) return { ok: false, error: '非法的备份 id' }
+  const dir = path.join(managerDirs.backups, String(id))
+  if (!dir.startsWith(managerDirs.backups)) return { ok: false, error: '非法的备份路径' }
+  if (!fs.existsSync(dir)) return { ok: false, error: '该备份不存在' }
+  try {
+    fs.rmSync(dir, { recursive: true, force: true })
+    log.logInfo(`已删除备份 ${id}`)
+    return { ok: true, id }
+  } catch (e) {
+    log.logWarn(`删除备份 ${id} 失败: ${e.message}`)
+    return { ok: false, error: e.message }
+  }
+}
+
+// 自动清理:删除「比保留期更老」的备份,但永远保留最新 1 份(避免把自己删空)
+function pruneBackups({ retentionDays = 0, now = Date.now() } = {}) {
+  const days = Number(retentionDays) || 0
+  if (!(days > 0)) return { ok: true, skipped: true, removed: [] }
+  const items = backupsDetailed()
+  if (items.length <= 1) return { ok: true, removed: [], kept: items.length, reason: '只有一个备份,保留' }
+  const cutoff = now - days * 24 * 60 * 60 * 1000
+  // items 已按 id 降序(新的在前),第一份永不删
+  const newest = items[0]
+  const removed = []
+  for (const b of items.slice(1)) {
+    if (b.createdAt && b.createdAt < cutoff) {
+      const r = removeBackup(b.id)
+      if (r.ok) removed.push({ id: b.id, sizeMb: b.sizeMb })
+    }
+  }
+  if (removed.length) {
+    const freed = Math.round(removed.reduce((n, x) => n + (x.sizeMb || 0), 0) * 10) / 10
+    log.logInfo(`自动清理备份:删除 ${removed.length} 个(超过 ${days} 天),释放约 ${freed} MB;保留最新 ${newest.id}`)
+  }
+  return { ok: true, removed, kept: items.length - removed.length }
+}
+
+// 手动清空:全部删除(界面会二次确认)
+function clearBackups() {
+  const items = listBackups()
+  const removed = []
+  for (const b of items) { const r = removeBackup(b.id); if (r.ok) removed.push(b.id) }
+  log.logWarn(`已清空全部备份(${removed.length} 个)`)
+  return { ok: true, removed }
+}
 // 回滚:逐步执行并记录每一步结果(旧版只有一行日志,失败也无从得知)
 async function rollback(id, { stopManaged = false } = {}) {
   const steps = []
@@ -333,6 +447,7 @@ async function rollback(id, { stopManaged = false } = {}) {
 }
 
 module.exports = {
-  checkUpdate, createBackup, doUpdate, listBackups, rollback,
+  checkUpdate, invalidateUpdateCache, createBackup, doUpdate, listBackups, rollback,
+  backupsDetailed, backupStats, removeBackup, pruneBackups, clearBackups,
   runningWorkloads, classifyNpmError, reinstallDsh, postCheck,
 }

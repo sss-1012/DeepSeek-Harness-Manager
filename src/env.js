@@ -5,26 +5,42 @@ const path = require('node:path')
 const os = require('node:os')
 const { execTool, execToolSync } = require('./tool')
 const { version } = require('./dsh')
+// execToolSync 仍在本地保留(仅用于 installNpm 里的即时校验),热路径上不再使用
 
-async function check() {
-  const node = execToolSync('node', ['--version'])
-  const npm = execToolSync('npm', ['--version'])
-  const pnpm = execToolSync('pnpm', ['--version'])
-  const dshV = await version()
-  return {
-    node: { ok: node.ok, version: node.ok ? node.stdout.trim() : null },
+// 环境检测要 spawn node/npm/pnpm/dsh —— 全部同步执行会阻塞主进程1秒以上,
+// 所以改成:异步并发 + 结果缓存(默认 30 秒),界面先出卡片再回填。
+let checkCache = null // { at, value }
+const CHECK_TTL_MS = 30 * 1000
+
+async function check({ fresh = false } = {}) {
+  const now = Date.now()
+  if (!fresh && checkCache && now - checkCache.at < CHECK_TTL_MS) return checkCache.value
+  // node/npm/pnpm 三条并发探测,不再逐个阻塞;dsh 版本用同一个子进程并发
+  const [nodeR, npmR, pnpmR, dshV] = await Promise.all([
+    execTool('node', ['--version']),
+    execTool('npm', ['--version']),
+    execTool('pnpm', ['--version']),
+    version().catch(() => null),
+  ])
+  const value = {
+    node: { ok: nodeR.ok, version: nodeR.ok ? nodeR.stdout.trim() : null },
     // 现代 Node.js 自带 npm:node 存在且 npm 可用 → 视为随 Node 内置
     npm: {
-      ok: npm.ok,
-      version: npm.ok ? npm.stdout.trim() : null,
-      bundled: node.ok && npm.ok,
-      needed: node.ok && !npm.ok,
+      ok: npmR.ok,
+      version: npmR.ok ? npmR.stdout.trim() : null,
+      bundled: nodeR.ok && npmR.ok,
+      needed: nodeR.ok && !npmR.ok,
     },
-    pnpm: { ok: pnpm.ok, version: pnpm.ok ? pnpm.stdout.trim() : null },
+    pnpm: { ok: pnpmR.ok, version: pnpmR.ok ? pnpmR.stdout.trim() : null },
     dsh: { ok: Boolean(dshV), version: dshV },
-    configured: node.ok && npm.ok && Boolean(dshV),
+    configured: nodeR.ok && npmR.ok && Boolean(dshV),
   }
+  checkCache = { at: now, value }
+  return value
 }
+
+// 安装/更新/卸载后让缓存失效,下次打开卡片能拿到真实状态
+function invalidateEnvCache() { checkCache = null }
 
 // 单独安装 npm(当 Node 存在但未捆绑 npm 时):从 registry 下载 tarball 解压到 Node 目录并生成 shim
 async function installNpm(onLog) {
@@ -170,4 +186,4 @@ async function installNode(onLog) {
   }
 }
 
-module.exports = { check, installDsh, installNode, installNpm, updateDsh, uninstallDsh, uninstallPnpm, uninstallNode }
+module.exports = { check, invalidateEnvCache, installDsh, installNode, installNpm, updateDsh, uninstallDsh, uninstallPnpm, uninstallNode }

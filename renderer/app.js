@@ -50,21 +50,35 @@ function modal(title, bodyHtml, buttons) {
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
 // ---------- 初始化 ----------
+// 首屏:先用 bootstrap(很快)把界面画出来,慢的东西(更新检查 / 环境探测 / 桌面端探测)全部后台补
+// 计时会写进日志:首屏 Xms / 全部数据就绪 Yms —— 以后疑似“变慢了”直接看日志
 async function init() {
+  const t0 = performance.now()
+  // 主题先应用,避免白屏闪一下
+  try { applyTheme((state.bootstrap && state.bootstrap.settings && state.bootstrap.settings.theme) || 'system') } catch { /* ignore */ }
   state.bootstrap = await window.dshm.bootstrap()
   state.profiles = state.bootstrap.profiles || []
   $('#dsh-version').textContent = `v${state.bootstrap.dshVersion || '?'}`
   state.launch = { profile: 'web', args: '', port: null, ...(state.bootstrap.settings.launch || {}) }
   renderLaunchPill()
 
-  // 状态轮询回调:渲染失败不能把界面弄成半空状态
+  // 主题(设置里的值优先,支持跟随系统)
+  applyTheme(state.bootstrap.settings.theme || 'system')
+  state.placeholder = state.bootstrap.settings
+
+  // ---- 事件先订阅,避免错过早期状态 ----
   window.dshm.onStatus((snap) => {
     state.profiles = snap
     if ($('.nav-item.active')?.dataset.view === 'overview') renderOverview()
   })
-  // 主进程从托盘恢复窗口时会要求重画一次(隐藏久了 Chromium 可能保留旧帧/空白帧)
   window.dshm.onRefresh(() => { try { refreshCurrentView() } catch { /* ignore */ } })
-  // 兜底:任何未处理的 Promise 拒绝都不应该只是“界面停住”,记录并自愈重画(限频)
+  window.dshm.onThemeChanged((t) => applyTheme(t))
+  // 启动后台预检发现问题时提醒(只在真有错误时)
+  window.dshm.onCompatIssue((d) => {
+    toast(`插件解析预检有问题:${d.summary || ''}`, 'error')
+    appendLog(`[启动预检] ${d.summary || ''}`)
+  })
+
   let lastSelfHeal = 0
   window.addEventListener('unhandledrejection', (ev) => {
     const reason = ev && ev.reason
@@ -90,11 +104,53 @@ async function init() {
   bindDiagnose()
   bindBalance()
   bindLogBar()
-  try { state.desktop = await window.dshm.desktopInfo() } catch { state.desktop = null }
-  await refreshUpdate()
-  const tail = await window.dshm.logTail()
-  tail.forEach((l) => appendLog(l))
+
+  // 立即出卡片(骨架),不等任何网络/子进程
   refreshCurrentView()
+  const firstMs = Math.round(performance.now() - t0)
+  appendLog(`[启动] 首屏已渲染 ${firstMs}ms(卡片先出,数据后台补)`)
+
+  // ---- 慢活全部后台进行,不再阻塞首屏 ----
+  loadSidePanels().then(() => appendLog(`[启动] 全部数据就绪 ${Math.round(performance.now() - t0)}ms`))
+}
+
+// 启动时后台加载的慢数据:桌面端、更新、日志、环境(都有各自的超时/缓存)
+async function loadSidePanels() {
+  const tasks = [
+    (async () => { try { state.desktop = await window.dshm.desktopInfo() } catch { state.desktop = null } refreshCurrentView() })(),
+    (async () => { try { await refreshUpdate() } catch { /* ignore */ } })(),
+    (async () => { try { const tail = await window.dshm.logTail(); tail.forEach((l) => appendLog(l)) } catch { /* ignore */ } })(),
+    (async () => { try { await ensureEnv() } catch { /* ignore */ } })(),
+  ]
+  await Promise.allSettled(tasks)
+}
+
+// ---- 主题 ----
+const THEME_MODES = ['system', 'light', 'dark']
+function systemPrefersDark() {
+  try { return window.matchMedia('(prefers-color-scheme: dark)').matches } catch { return false }
+}
+function applyTheme(mode) {
+  const m = THEME_MODES.includes(mode) ? mode : 'system'
+  state.theme = m
+  const dark = m === 'dark' || (m === 'system' && systemPrefersDark())
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+  document.documentElement.dataset.themeMode = m
+}
+// 跟随系统时,系统切换后界面立即跟着变
+try {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)')
+  const onChange = () => { if ((state.theme || 'system') === 'system') applyTheme('system') }
+  if (mq.addEventListener) mq.addEventListener('change', onChange)
+  else if (mq.addListener) mq.addListener(onChange)
+} catch { /* ignore */ }
+
+// 环境检查:带缓存后端 + 前端复用,避免每次切页都重新 spawn
+async function ensureEnv(force = false) {
+  if (!force && state.env && Date.now() - (state.envAt || 0) < 30000) return state.env
+  state.env = await window.dshm.envCheck()
+  state.envAt = Date.now()
+  return state.env
 }
 
 function renderLaunchPill() {
@@ -123,7 +179,8 @@ function refreshCurrentView() {
 function bindOverview() {
   $('#btn-check-update').onclick = refreshUpdate
   $('#btn-do-update').onclick = doUpdate
-  $('#btn-compat-check').onclick = () => runCompatCheck(false)
+  // 兼容性检查:先跑快速检查(秒回),用户可再点「深度检查」逐包验证能否加载
+  $('#btn-compat-check').onclick = () => runCompatCheck(false, { deep: false })
   const reinst = $('#btn-reinstall-dsh')
   if (reinst) reinst.onclick = async () => {
     const go = await modal('强制重装 dsh CLI',
@@ -277,8 +334,18 @@ async function renderOverview() {
   renderEnv()
 }
 
+// 环境卡片:先画缓存值(有的话),没有就画占位,数据到了再回填 —— 不再阻塞首屏
 async function renderEnv() {
-  const r = await window.dshm.envCheck()
+  let r = state.env
+  const cached = Boolean(r)
+  if (!r) {
+    $('#env-rows').innerHTML = `<div class="env-row"><span class="k">环境检测</span><span class="v muted">检测中…</span><span class="acts"></span></div>`
+    $('#env-actions').innerHTML = ''
+    try { r = await ensureEnv() } catch (e) {
+      $('#env-rows').innerHTML = `<div class="env-row"><span class="k">环境检测</span><span class="v" style="color:var(--red)">检测失败:${esc(e.message)}</span><span class="acts"></span></div>`
+      return
+    }
+  }
   const icon = (ok) => ok ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--red)">✗</span>'
   const btn = (data, label, cls = 'sm') => `<button class="btn ${cls}" data-env="${data}">${label}</button>`
   const rows = [
@@ -332,6 +399,7 @@ async function renderEnv() {
           ? await window.dshm[`envInstall${target[0].toUpperCase()}${target.slice(1)}`]()
           : await window.dshm.envUpdateDsh()
         toast(r2.ok ? '完成' : `失败: ${r2.error}`, r2.ok ? 'ok' : 'error')
+        state.envAt = 0   // 安装/更新后强制重新探测
       }
       renderEnv()
     }
@@ -430,36 +498,98 @@ function compatIssueLines(all) {
   return lines
 }
 
-async function runCompatCheck(auto = false) {
-  const r = await window.dshm.compatCheck()
+// 兼容性检查:结果直接渲染在面板里(可反复看、可复制),而不是只弹一个 modal
+async function runCompatCheck(auto = false, opts = {}) {
+  const deep = opts.deep !== false
+  const box = $('#compat-results')
+  if (box && !auto) box.innerHTML = `<div class="muted">${deep ? '深度检查中(逐包验证能否加载)…' : '快速检查中…'}</div>`
+  let r
+  try {
+    r = await window.dshm.compatCheck({ deep })
+  } catch (e) {
+    if (box) box.innerHTML = `<div class="warn-box">检查失败:${esc(e.message)}</div>`
+    return { ok: false, error: e.message }
+  }
   const skipped = (r.profiles || []).filter((p) => p.skipped)
   const bad = (r.profiles || []).filter((p) => !p.ok && !p.skipped)
   const infoCount = (r.profiles || []).reduce((n, p) => n + ((p.infoItems || []).length), 0)
-  if (!bad.length && r.global?.ok) {
-    if (!auto) {
-      const extra = [skipped.length ? `已跳过官方桌面端独占的 ${skipped.map((s) => s.profile).join('、')}` : '', infoCount ? `${infoCount} 个插件仅在 profile 内(不影响运行)` : '']
-        .filter(Boolean).join(';')
-      toast(`插件解析检查通过 ✓${extra ? `(${extra})` : ''}`, 'ok')
+  const globalBroken = !r.global?.ok
+  const ok = !bad.length && !globalBroken
+
+  // ---- 汇总 ----
+  const errItems = bad.reduce((n, p) => n + ((p.badItems || []).length), 0) + ((r.global?.problems || []).length)
+  const summary = ok
+    ? `✓ 全部通过${infoCount ? `(${infoCount} 个插件仅在 profile 内,不影响运行)` : ''}${skipped.length ? ` · 跳过 ${skipped.map((p) => p.profile).join('、')}` : ''}`
+    : `✘ 发现 ${errItems} 个会导致启动失败的问题${infoCount ? ` · 另有 ${infoCount} 个信息项` : ''}`
+
+  if (box) {
+    const groups = []
+    for (const p of r.profiles || []) {
+      if (p.skipped) continue
+      const rows = (p.items || []).filter((it) => it.state !== 'ok')
+      if (!rows.length) continue
+      groups.push(`<div class="compat-group">${esc(p.profile)} <span class="muted" style="font-weight:400">(${esc(p.type || 'profile')})</span></div>` +
+        rows.map((it) => {
+          const sev = it.severity === 'info' ? 'info' : 'error'
+          const icon = sev === 'info' ? 'ℹ' : '✘'
+          return `<div class="compat-item ${sev}">
+            <span class="ci-icon">${icon}</span>
+            <div class="ci-main">
+              <div class="ci-name">${esc(it.name)} <span class="tag ${sev === 'error' ? 'missing' : ''}">${esc(COMPAT_STATE_TEXT[it.state] || it.state)}</span></div>
+              ${it.detail ? `<div class="ci-detail">${esc(it.detail)}</div>` : ''}
+              ${it.loadError ? `<div class="ci-detail">${esc(it.loadError)}</div>` : ''}
+            </div>
+          </div>`
+        }).join(''))
     }
+    for (const g of (r.global && r.global.problems) || []) groups.push(`<div class="compat-item error"><span class="ci-icon">✘</span><div class="ci-main"><div class="ci-name">全局 dsh</div><div class="ci-detail">${esc(g)}</div></div></div>`)
+
+    box.innerHTML = `
+      <div class="compat-summary">
+        <span class="muted">${esc(summary)}</span>
+        <button class="btn sm ghost" id="compat-copy">复制结果</button>
+        ${!ok ? `<button class="btn sm primary" id="compat-fix">一键修复</button>` : ''}
+        <button class="btn sm ghost" id="compat-deep" ${deep ? 'disabled' : ''}>${deep ? '已深度检查' : '深度检查'}</button>
+        ${globalBroken ? `<button class="btn sm ghost" id="compat-reinstall">强制重装 dsh CLI</button>` : ''}
+        <button class="btn sm ghost" id="compat-toggle-info" hidden></button>
+      </div>
+      <div id="compat-body">${groups.length ? groups.join('') : '<div class="muted">没有发现问题。</div>'}</div>`
+
+    const copyBtn = $('#compat-copy')
+    if (copyBtn) copyBtn.onclick = async () => {
+      const text = [`插件兼容性检查 · ${new Date().toLocaleString()}`, `dsh ${r.global?.version || '?'}`, summary, '', ...compatIssueLines(r)].join('\n')
+      try { await navigator.clipboard.writeText(text); toast('结果已复制到剪贴板', 'ok') }
+      catch { await modal('检查结果', `<pre class="update-log">${esc(text)}</pre>`, [{ label: '关闭', value: true, cls: 'primary' }]) }
+    }
+    const fixBtn = $('#compat-fix')
+    if (fixBtn) fixBtn.onclick = () => doCompatFix()
+    const deepBtn = $('#compat-deep')
+    if (deepBtn && !deep) deepBtn.onclick = () => runCompatCheck(false, { deep: true })
+    const reBtn = $('#compat-reinstall')
+    if (reBtn) reBtn.onclick = async () => {
+      const yes = await modal('强制重装 dsh CLI', '将执行 <code>npm install -g @deepseek-ai/dsh@latest</code> 修复安装树。<br>运行中的 harness 会阻塞 npm(EBUSY),需先停。', [
+        { label: '重装', value: true, cls: 'primary' }, { label: '取消', value: false },
+      ])
+      if (!yes) return
+      resetUpdateProgress()
+      const r2 = await window.dshm.reinstallDsh()
+      toast(r2.ok ? `重装完成,当前版本 ${r2.version}` : `重装失败: ${r2.error || ''}`, r2.ok ? 'ok' : 'error')
+      refreshUpdate()
+      runCompatCheck(false, { deep: true })
+    }
+  }
+
+  if (ok) {
+    if (!auto) toast(`插件解析检查通过 ✓`, 'ok')
     return { ok: true }
   }
-  const lines = compatIssueLines(r)
-  const globalBroken = !r.global?.ok
-  const body = `${globalBroken ? '<b>全局 dsh 安装不完整</b> —— 这种情况插件级修复救不了,需要重装 CLI。<br>' : ''}` +
-    `以下问题会让 harness 启动失败:<pre class="update-log">${esc(lines.join('\n'))}</pre>` +
-    `<span class="muted">修复方式:在全局 node_modules 建立目录联接(不复制文件、不下载、可逆),修完立即复验。</span>`
-  const buttons = [{ label: '一键修复', value: 'fix', cls: 'primary' }]
-  if (globalBroken) buttons.push({ label: '强制重装 dsh CLI', value: 'reinstall' })
-  buttons.push({ label: '稍后', value: false })
-  const choice = await modal('插件解析异常', body, buttons)
-  if (!choice) return { ok: false }
-  if (choice === 'reinstall') {
-    resetUpdateProgress()
-    const r2 = await window.dshm.reinstallDsh()
-    toast(r2.ok ? `重装完成,当前版本 ${r2.version}` : `重装失败: ${r2.error || ''}`, r2.ok ? 'ok' : 'error')
-    refreshUpdate()
-    return { ok: Boolean(r2.ok) }
-  }
+  if (auto) return { ok: false, summary }
+  // 手动检查时不再弹 modal —— 结果就在面板里,用户可直接点「一键修复」
+  return { ok: false, summary }
+}
+
+// 一键修复(建目录联接 → 立即复验)
+async function doCompatFix() {
   const fixed = await window.dshm.compatFix()
   const okLines = []
   const failLines = []
@@ -477,6 +607,7 @@ async function runCompatCheck(auto = false) {
   } else {
     toast(`修复完成并复验通过(${okLines.length} 项)✓`, 'ok')
   }
+  runCompatCheck(false, { deep: true })
   return { ok: failLines.length === 0 }
 }
 
@@ -502,16 +633,77 @@ async function refreshUpdate() {
   renderBackups()
 }
 
+// 备份列表:带时间/体积,可逐个删除、可清空;顶部显示保留策略
+function fmtTime(ts) {
+  if (!ts) return '未知时间'
+  const d = new Date(ts)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
 async function renderBackups() {
-  const list = await window.dshm.listBackups()
+  let stats
+  try { stats = await window.dshm.backupStats() } catch (e) { stats = { count: 0, totalMb: 0, items: [] } }
+  const s = state.bootstrap?.settings || {}
+  const retention = String(s.backupRetention || 'off')
+  const retentionText = retention === 'off' ? '关闭(不自动删除)' : `超过 ${retention} 天自动删除(保留最新 1 份)`
   const box = $('#backup-list')
-  if (!list.length) { box.textContent = '暂无备份'; box.className = 'muted'; return }
+  if (!stats.count) {
+    box.className = 'muted'
+    box.innerHTML = `<div class="empty-state">暂无备份<br><span style="font-size:11.5px">每次更新/回滚前会自动创建一份</span></div>`
+    return
+  }
   box.className = ''
-  box.innerHTML = list.map((b) => `
-    <div class="row" style="margin:4px 0">
-      <span>${esc(b.id)} <span class="pill">v${esc(b.version)}</span></span>
-      <button class="btn sm" data-rollback="${esc(b.id)}">回滚到此版本</button>
-    </div>`).join('')
+  box.innerHTML = `
+    <div class="compat-summary">
+      <span class="muted">共 <b>${stats.count}</b> 份,占用 <b>${stats.totalMb}</b> MB</span>
+      <span class="pill" title="在设置里修改">自动清理:${esc(retentionText)}</span>
+      <button class="btn sm ghost" id="btn-prune-backups" ${retention === 'off' ? 'disabled title="请先在设置里开启自动清理"' : ''}>立即清理</button>
+      <button class="btn sm ghost danger-ghost" id="btn-clear-backups">清空全部</button>
+    </div>
+    ${stats.items.map((b) => `
+      <div class="backup-row">
+        <div class="bk-main">
+          <span class="bk-ver">v${esc(b.version || '?')}</span>
+          <span class="bk-time">${esc(fmtTime(b.createdAt))}</span>
+          <span class="bk-size">${b.sizeMb} MB</span>
+          <span class="muted" style="font-size:11px">${esc(b.id)}</span>
+        </div>
+        <div class="bk-acts">
+          <button class="btn sm" data-rollback="${esc(b.id)}">回滚到此版本</button>
+          <button class="btn sm ghost danger-ghost" data-delbackup="${esc(b.id)}">删除</button>
+        </div>
+      </div>`).join('')}`
+
+  const pruneBtn = $('#btn-prune-backups')
+  if (pruneBtn) pruneBtn.onclick = async () => {
+    const r = await window.dshm.pruneBackups()
+    const n = (r.removed || []).length
+    toast(r.skipped ? '自动清理当前为关闭,未删除任何备份' : (n ? `已清理 ${n} 份旧备份` : '没有超过保留期的备份'), r.skipped ? 'error' : 'ok')
+    renderBackups()
+  }
+  const clearBtn = $('#btn-clear-backups')
+  if (clearBtn) clearBtn.onclick = async () => {
+    const ok = await modal('清空全部备份', `将永久删除 <b>${stats.count}</b> 份回滚备份(共 ${stats.totalMb} MB),<br>删除后<b>无法再回滚到旧版本</b>。确定吗?`, [
+      { label: '全部删除', value: true, cls: 'primary' }, { label: '取消', value: false },
+    ])
+    if (!ok) return
+    const r = await window.dshm.clearBackups()
+    toast(`已删除 ${(r.removed || []).length} 份备份`, 'ok')
+    renderBackups()
+  }
+  box.querySelectorAll('[data-delbackup]').forEach((el) => {
+    el.onclick = async () => {
+      const id = el.dataset.delbackup
+      const ok = await modal('删除备份', `将删除备份 <b>${esc(id)}</b>。<br>删除后无法再用它回滚。`, [
+        { label: '删除', value: true, cls: 'primary' }, { label: '取消', value: false },
+      ])
+      if (!ok) return
+      const r = await window.dshm.removeBackup(id)
+      toast(r.ok ? '已删除该备份' : `删除失败: ${r.error || ''}`, r.ok ? 'ok' : 'error')
+      renderBackups()
+    }
+  })
   box.querySelectorAll('[data-rollback]').forEach((b) => {
     b.onclick = async () => {
       const choice = await modal('回滚确认', `将全局重装 dsh 到备份 <b>${esc(b.dataset.rollback)}</b> 记录的版本,并恢复各 profile 配置。<br>` +
@@ -980,11 +1172,32 @@ async function openSettings() {
   const profiles = await window.dshm.listProfiles()
   const defInstall = s.defaultInstallProfile || state.launch.profile
   modal('设置', `
+    <h4>外观</h4>
+    <div class="row">
+      <span style="width:120px">主题</span>
+      <div class="seg" id="set-theme-seg">
+        <button data-theme-val="system" class="${(s.theme || 'system') === 'system' ? 'active' : ''}">跟随系统</button>
+        <button data-theme-val="light" class="${s.theme === 'light' ? 'active' : ''}">浅色</button>
+        <button data-theme-val="dark" class="${s.theme === 'dark' ? 'active' : ''}">深色</button>
+      </div>
+    </div>
+    <div class="muted">切换到「跟随系统」后,Windows 切换深浅色时界面会自动跟随。</div>
+
     <h4>通用</h4>
     <label class="chk" style="margin:6px 0"><input type="checkbox" id="set-tray" ${s.closeToTray ? 'checked' : ''}> 关闭窗口时最小化到托盘</label>
     <label class="chk" style="margin:6px 0"><input type="checkbox" id="set-stop-on-exit" ${s.stopProfilesOnExit ? 'checked' : ''}> 退出管理器时停止 harness</label>
     <div class="muted">默认<b>不停止</b>:管理器只是控制台,关掉它不应打断正在使用的 DSH 会话(如 3080 上的 GUI)。</div>
     <div class="row"><span style="width:120px">状态轮询(ms)</span><input type="text" id="set-poll" value="${s.pollIntervalMs || 2000}" style="max-width:120px"></div>
+
+    <h4>回滚备份</h4>
+    <div class="row">
+      <span style="width:120px">自动清理</span>
+      <select id="set-backup-retention" style="flex:1">
+        ${[['off', '关闭(不自动删除)'], ['7', '超过 7 天删除'], ['30', '超过 1 个月(30 天)删除'], ['90', '超过 3 个月(90 天)删除']]
+          .map(([v, label]) => `<option value="${v}" ${String(s.backupRetention || 'off') === v ? 'selected' : ''}>${label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="muted">按保留期删除更老的备份;无论怎么选,<b>永远保留最新 1 份</b>,不会把自己删空。启动时与修改设置后自动执行。</div>
 
     <h4>插件安装位置</h4>
     <div class="row"><span style="width:120px">默认安装 profile</span>
@@ -1030,6 +1243,17 @@ async function openSettings() {
       ])
       if (yes) await window.dshm.softwareRestart()
     }
+    // 主题分段按钮:点击立即预览(不等保存),保存后落盘
+    let chosenTheme = s.theme || 'system'
+    const seg = $('#set-theme-seg')
+    if (seg) seg.querySelectorAll('button').forEach((b) => {
+      b.onclick = () => {
+        chosenTheme = b.dataset.themeVal
+        seg.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b))
+        applyTheme(chosenTheme)
+      }
+    })
+    window.__settingsChosenTheme = () => chosenTheme
     window.dshm.windowInfo().then((w) => {
       const el = $('#set-render-mode')
       if (el) el.textContent = w && w.softwareRendering ? `软件渲染(${w.softwareSource === 'command-line' ? '命令行参数' : '设置'})` : '默认(硬件加速)'
@@ -1044,6 +1268,8 @@ async function openSettings() {
       pollIntervalMs: Math.max(500, Number($('#set-poll').value) || 2000),
       defaultInstallProfile: $('#set-install-profile').value || null,
       insecureGitHub: $('#set-gh-insecure').checked,
+      theme: window.__settingsChosenTheme ? window.__settingsChosenTheme() : (s.theme || 'system'),
+      backupRetention: $('#set-backup-retention').value || 'off',
     })
     await window.dshm.setGithubToken($('#set-token').value.trim() || null)
     const key = $('#set-apikey').value.trim()
@@ -1052,6 +1278,8 @@ async function openSettings() {
       if (!kr.ok) { toast(`API Key 保存失败: ${kr.error}`, 'error'); return }
     }
     toast('设置已保存', 'ok')
+    state.bootstrap.settings = { ...(state.bootstrap.settings || {}), theme: window.__settingsChosenTheme ? window.__settingsChosenTheme() : (s.theme || 'system'), backupRetention: $('#set-backup-retention').value || 'off' }
+    renderBackups()
     renderOverview()
   })
 }

@@ -12,6 +12,9 @@ const DEFAULTS = {
     insecureGitHub: false, // 网络代理/证书拦截环境下,GitHub 请求跳过证书校验
     stopProfilesOnExit: false, // 退出管理器时是否连带停止它启动的 harness:默认 false —— 关闭管理器不应打断正在用的 DSH 会话
     softwareRendering: false, // 关闭硬件加速(GPU 合成失败会导致“窗口在、内容全白”)——界面自检多次失败会自动打开
+    theme: 'system', // system | light | dark
+    // 回滚备份自动清理:删除比保留期更老的备份(永远保留最新 1 份)。off = 不自动删
+    backupRetention: 'off', // off | 7 | 30 | 90(天)
     profiles: {}, // { profileName: { port: null, args: '' } }
   },
 }

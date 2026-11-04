@@ -457,7 +457,8 @@ function registerIpc() {
     return r
   })
 
-  ipcMain.handle('update:check', () => update.checkUpdate())
+  // 手动检查更新 → fresh;启动时由渲染层异步调用 → 命中缓存秒回
+  ipcMain.handle('update:check', (_e, opts = {}) => update.checkUpdate({ fresh: Boolean(opts && opts.fresh) }))
 
   ipcMain.handle('update:do', async (_e, opts = {}) => {
     return update.doUpdate((evt) => {
@@ -480,8 +481,10 @@ function registerIpc() {
   ipcMain.handle('update:preflight', () => update.runningWorkloads())
 
   // ---- 插件解析兼容性(新版 dsh 变更解析位置) ----
-  ipcMain.handle('compat:check', async () => {
-    const all = await compat.checkAll({ deep: true })
+  ipcMain.handle('compat:check', async (_e, opts = {}) => {
+    // quick = 只做解析层面的快速检查(不逐包真实加载),供启动时后台静默预检使用
+    const deep = opts && opts.deep === false ? false : true
+    const all = await compat.checkAll({ deep })
     log.logInfo(`插件兼容性检查:${all.summary}`)
     for (const p of all.profiles) {
       for (const it of p.items || []) {
@@ -518,6 +521,17 @@ function registerIpc() {
     return r
   })
 
+  // ---- 备份管理:手动删除 / 清空 / 立即按保留期清理 ----
+  ipcMain.handle('backup:stats', () => update.backupStats())
+  ipcMain.handle('backup:remove', (_e, id) => update.removeBackup(id))
+  ipcMain.handle('backup:clear', () => update.clearBackups())
+  ipcMain.handle('backup:prune', () => {
+    const days = Number(store.getSettings().backupRetention) || 0
+    const r = update.pruneBackups({ retentionDays: days })
+    log.logInfo(`立即清理备份:${r.skipped ? '保留策略为关闭,未删除' : `删除 ${(r.removed || []).length} 个`}`)
+    return { ...r, retentionDays: days }
+  })
+
   // ---- 官方桌面端 ----
   // 显式询问桌面端信息时用 fresh:用户在看卡片,要的是实时值
   ipcMain.handle('desktop:info', () => desktop.detectCached({ fresh: true }))
@@ -529,7 +543,19 @@ function registerIpc() {
 
   // ---- 设置 ----
   ipcMain.handle('settings:get', () => store.getSettings())
-  ipcMain.handle('settings:set', (_e, patch) => store.setSettings(patch))
+  ipcMain.handle('settings:set', (_e, patch) => {
+    const r = store.setSettings(patch)
+    // 主题变更立即广播,渲染层无需重启即生效
+    if (patch && Object.prototype.hasOwnProperty.call(patch, 'theme')) {
+      try { broadcast('theme:changed', store.getSettings().theme) } catch { /* ignore */ }
+    }
+    // 保留期变更后立即执行一次清理,用户不必等到下次启动
+    if (patch && Object.prototype.hasOwnProperty.call(patch, 'backupRetention')) {
+      const days = Number(store.getSettings().backupRetention) || 0
+      if (days > 0) { setTimeout(() => { try { update.pruneBackups({ retentionDays: days }) } catch { /* ignore */ } }, 200) }
+    }
+    return r
+  })
   ipcMain.handle('settings:profile', (_e, name, patch) => store.setProfileSetting(name, patch))
 
   ipcMain.handle('github:token', () => store.getGithubToken())
@@ -557,23 +583,33 @@ function registerIpc() {
   })
   ipcMain.handle('env:installNpm', async () => {
     log.logInfo('一键安装 npm')
-    return env.installNpm((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    const r = await env.installNpm((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    env.invalidateEnvCache()
+    return r
   })
   ipcMain.handle('env:updateDsh', async () => {
     log.logInfo('更新 dsh')
-    return env.updateDsh((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    const r = await env.updateDsh((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    env.invalidateEnvCache(); update.invalidateUpdateCache()
+    return r
   })
   ipcMain.handle('env:uninstallDsh', async () => {
     log.logInfo('卸载 dsh')
-    return env.uninstallDsh((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    const r = await env.uninstallDsh((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    env.invalidateEnvCache(); update.invalidateUpdateCache()
+    return r
   })
   ipcMain.handle('env:uninstallPnpm', async () => {
     log.logInfo('卸载 pnpm')
-    return env.uninstallPnpm((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    const r = await env.uninstallPnpm((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    env.invalidateEnvCache()
+    return r
   })
   ipcMain.handle('env:uninstallNode', async () => {
     log.logInfo('卸载 Node.js')
-    return env.uninstallNode((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    const r = await env.uninstallNode((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    env.invalidateEnvCache()
+    return r
   })
 
   // ---- 日志 / 系统 ----
@@ -664,6 +700,28 @@ app.whenReady().then(() => {
 
   statusTimer = setInterval(pollStatus, store.getSettings().pollIntervalMs || 2000)
   pollStatus()
+
+  // 启动后延迟做两件后台维护工作(避开首屏,不阻塞界面):
+  //  1) 按保留期自动清理旧备份  2) 静默快速插件兼容性预检
+  setTimeout(async () => {
+    try {
+      const days = Number(store.getSettings().backupRetention) || 0
+      if (days > 0) {
+        const r = update.pruneBackups({ retentionDays: days })
+        if ((r.removed || []).length) log.logInfo(`启动自动清理备份:删除 ${r.removed.length} 个(保留最近 ${days} 天)`)
+      }
+    } catch (e) { log.logWarn(`自动清理备份失败: ${e.message}`) }
+    try {
+      const all = await compat.checkAll({ deep: false })   // 快速检查:只验证解析,不逐包真实加载
+      const bad = all.profiles.filter((p) => !p.ok && !p.skipped)
+      if (bad.length || !all.global.ok) {
+        log.logWarn(`启动预检发现插件解析问题:${all.summary}`)
+        broadcast('compat:issue', { summary: all.summary, bad: bad.map((p) => p.profile) })
+      } else {
+        log.logInfo(`启动预检通过:${all.summary}`)
+      }
+    } catch (e) { log.logWarn(`启动预检失败: ${e.message}`) }
+  }, 4000)
 
   // 全局快捷键之外的手动恢复入口:渲染层也可调
   ipcMain.handle('window:reset', () => { resetWindow(); return { ok: true } })
