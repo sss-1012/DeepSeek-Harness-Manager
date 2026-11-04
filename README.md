@@ -44,9 +44,11 @@ DSH Manager puts the whole lifecycle in one window:
 | 🚀 | **Launch & manage** | Harness status, PID and port; start/stop; pick which profile to launch |
 | 🧩 | **Plugin management** | Install from npm / GitHub / local, enable or disable without uninstalling, update, uninstall, jump to the plugin's source |
 | 🩺 | **Diagnostics** | Environment, profiles, plugin resolution, ports, credentials and permissions — with a Markdown report |
-| 🔄 | **Update & rollback** | Version detection, backup before updating, live progress, one-click rollback |
-| 🧷 | **Compatibility repair** | After a DSH update, self-check whether your plugins still resolve — and repair in one click |
+| 🔄 | **Update & rollback** | Version detection, backup before updating, live progress, one-click rollback; backups can be deleted and auto-pruned |
+| ⚙ | **Compatibility check** | After a DSH update, self-check whether your plugins still resolve — quick/deep modes, one-click repair with re-verification |
+| 🌙 | **Dark mode** | Follow system / light / dark, switches instantly |
 | 🔐 | **Credentials & permissions** | Windows-encrypted secret storage, plaintext audits, one-click file-permission hardening |
+| ⚡ | **Instant start** | Cards render immediately (measured 1–2 ms); update/env probes fill in afterwards in the background |
 
 ### Full feature list
 
@@ -59,7 +61,10 @@ DSH Manager puts the whole lifecycle in one window:
 | Dependency resolver | Detects plugin dependencies during installation |
 | Diagnostics | Node/npm/pnpm/dsh, profile integrity, plugin resolution, port, credentials, file permissions + Markdown report |
 | Updates | Detect newer versions, back up, update with live output, roll back to a backup. Updates and rollbacks run a **process pre-flight** first: while any harness, CLI or the official desktop app is running, the operation is blocked (that is what makes npm fail with `EBUSY`), and npm failures are classified with a concrete next step |
-| Compatibility | Plugin-resolution self-check that **really** resolves from the loader (the loader path used to be computed one level too high, so the old check always reported "OK"): per-bundle classification (resolvable / profile-only / dangling junction / missing package / broken global install), an isolated **load probe**, one-click junction repair, **immediate re-verification**, and it skips the official desktop profile |
+| Performance | The first paint never waits on the network: cards render immediately (measured 1–2 ms) and update/env/desktop probes fill in afterwards in the background; environment detection runs concurrently and is cached (it used to be three blocking `spawnSync` calls, ~1.1 s) |
+| Compatibility | Plugin-resolution self-check that **really** resolves from the loader (the loader path used to be computed one level too high, so the old check always reported "OK"): per-bundle classification (resolvable / profile-only / dangling junction / missing package / broken global install), an isolated **load probe**, one-click junction repair, **immediate re-verification**, and it skips the official desktop profile. Results render inline (grouped per profile, errors vs. informational split), with **quick / deep** modes and **copy results**; a silent quick check runs 4 s after startup and only speaks up when something is really broken |
+| Backup cleanup | Delete a single backup or clear them all; auto-prune can be **off / 7 days / 1 month / 3 months**, only removes expired ones and **always keeps the newest** |
+| Theme | Follow system / light / dark; switches automatically when Windows toggles its theme |
 | Official desktop | Detects the official DeepSeek Harness desktop app (registry + version + bundled runtime), shows it on the dashboard with an "open" action, and treats `profiles/desktop` as **read-only** — no start/stop, no plugin changes, no junction repair (upstream: the CLI must not start or modify that profile) |
 | Session deletion | One-click install/uninstall of the community plugin `@huanlin/dsh-plugin-session-delete`, which adds **delete-session** entries inside the DSH UI (conversation-header trash button + session-row "…" menu + risk-consent dialog). The official dsh only *archives* sessions |
 | Profiles | List profiles, choose the launch target, manage plugins per profile |
