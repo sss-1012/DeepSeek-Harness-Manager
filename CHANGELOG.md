@@ -2,7 +2,9 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/);版本号与 GitHub Release 的 tag 一致。
 安装版 / 绿色免安装版构建产物见 [Releases](https://github.com/sss-1012/DeepSeek-Harness-Manager/releases)。
-## [0.4.4] - 2026-11-06(待发布)
+## [0.4.4] - 2026-11-06
+
+> 0.4.0～0.4.3 是内部测试构建(未单独发 Release),改动已全部包含在本版。
 
 ### 修复
 
