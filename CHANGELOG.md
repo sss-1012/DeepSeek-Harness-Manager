@@ -2,6 +2,20 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/);版本号与 GitHub Release 的 tag 一致。
 安装版 / 绿色免安装版构建产物见 [Releases](https://github.com/sss-1012/DeepSeek-Harness-Manager/releases)。
+## [0.4.4] - 2026-11-06(待发布)
+
+### 修复
+
+- 🐞 **退出时不弹「是否关闭 dsh」**:`snapshot()` 把「不是本管理器启动的进程」(按端口认领)
+  也写进了 `external` 字段,而退出询问用 `running && !external` 过滤 —— 只要你打开过「概览」
+  (`profile:get` → `isRunning()` 会认领 PID),正在跑的 web 就被当成「外部托管」跳过,
+  于是判定「没有运行中的 harness」并静默退出。现在 `external` 只表示「由别的程序(官方桌面端)托管」,
+  认领状态另用 `adopted` 表示。
+- 🐞 **同一个 bug 还让更新预检漏检**:dsh 在跑时预检误判「没在跑」→ 直接进 npm 安装 → EBUSY。已一并修正。
+- 🛡 **退出判定加兜底**:除 `snapshot()` 外再用 **TCP 直连探端口**(不依赖 netstat/PID),
+  并在日志里记下 `退出前检测:web=运行中(…)` 便于排查;检测抛错也不再静默当成「没在跑」。
+- 🪟 弹窗前若窗口已最小化到托盘,先 `show()` 再弹,避免对话框藏在后面看不见。
+
 ## [0.4.3] - 2026-11-06(待发布)
 
 ### 修复

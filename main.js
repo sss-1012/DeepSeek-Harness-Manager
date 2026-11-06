@@ -347,6 +347,37 @@ async function pollStatus() {
   } catch { /* ignore */ }
 }
 
+// 退出前判定「哪些 harness 还在跑」。三条路都走一遍,任一命中就算在跑:
+//  ① snapshot(主路径) ② TCP 直连端口(不依赖 netstat/PID 缓存) ③ snapshot 整体失败时直接探 web 端口
+async function runningForQuit() {
+  let snap = []
+  let snapError = null
+  try { snap = status.snapshot() } catch (e) { snapError = e; log.logWarn(`退出前状态检测失败:${e.message}`) }
+  const mine = snap.filter((s) => !s.external)
+  const running = mine.filter((s) => s.running)
+  const seen = new Set(running.map((s) => s.name))
+  for (const s of mine) {
+    if (seen.has(s.name) || s.type !== 'web') continue
+    let port = s.port
+    try { port = port || status.effectivePort(s.name) } catch { /* ignore */ }
+    if (!port) continue
+    try {
+      if (await status.portOpen(port, 700)) { running.push({ ...s, running: true, port }); seen.add(s.name) }
+    } catch { /* ignore */ }
+  }
+  if (snapError && !running.length) {
+    try {
+      const port = status.effectivePort('web')
+      if (port && await status.portOpen(port, 700)) running.push({ name: 'web', type: 'web', port, running: true, external: false })
+    } catch { /* ignore */ }
+  }
+  const detail = snap.length
+    ? snap.map((s) => `${s.name}=${s.running ? '运行中' : '未运行'}${s.external ? '(外部托管)' : ''}`).join('; ')
+    : '(拿不到 profile 列表)'
+  log.logInfo(`退出前检测:${detail}${running.length ? ` → 需要询问 ${running.length} 个` : ' → 无需询问'}`)
+  return running
+}
+
 function registerIpc() {
   // ---- 基础 ----
   ipcMain.handle('app:bootstrap', async () => {
@@ -826,21 +857,24 @@ app.whenReady().then(() => {
 
   // 退出时询问是否一并关掉 dsh:直接退出会让人以为“管理器是控制台”,
   // 但用户可能并不想断掉正在用的会话 —— 每次退出都问一下。
+  // 注意:这里的“在跑”必须用 snapshot 的 external(托管方)判断,而不是 adopted
+  // (是不是本管理器启动的)——后者会把按端口认领到的 web 误当成外部 profile。
   app.on('before-quit', async (e) => {
     if (quitting) return
     e.preventDefault()
     if (statusTimer) clearInterval(statusTimer)
 
-    let running = []
-    try { running = (await status.snapshot()).filter((s) => s.running && !s.external) } catch { /* ignore */ }
+    // 判定“有没有在跑”必须可靠:探测失败也绝不静默当成“没在跑”,
+    // 并且额外用 TCP 探端口兜底(不依赖 netstat / PID 缓存)。
+    const running = await runningForQuit()
     quitting = true
-
     if (!running.length) {
       log.logInfo('退出管理器(没有运行中的 harness)')
       app.exit(0)
       return
     }
-
+    // 窗口可能已最小化到托盘:把窗口拿出来再弹模态框,否则对话框可能藏在后面
+    try { if (mainWindow && !mainWindow.isVisible()) mainWindow.show() } catch { /* ignore */ }
     const names = running.map((s) => s.name).join('、')
     const choice = dialog.showMessageBoxSync(mainWindow, {
       type: 'question',

@@ -210,10 +210,14 @@ function snapshot() {
       type: info.type,
       running: Boolean(s && pidAlive(s.pid)) || Boolean(portPid),
       pid: s?.pid || portPid,
+      // external 只表示「这个 profile 由别的程序(官方桌面端)托管」——不能拿它表示
+      // 「不是本管理器启动的」。后者是 adopted。两者混用会让退出询问、更新预检
+      // 把正在跑的 web 当成外部 profile 直接忽略(实测:退出时不弹窗、直接退出)。
+      external: Boolean(info.external),
+      adopted: Boolean(s && s.external),
       port: effectivePort(info.name),
       startedAt: s?.startedAt || null,
       readyAt: s?.readyAt || null,
-      external: s?.external || false,
       managedBy: info.managedBy,
       readOnly: false,
     })
