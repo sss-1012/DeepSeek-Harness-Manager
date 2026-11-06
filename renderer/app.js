@@ -40,8 +40,11 @@ function modal(title, bodyHtml, buttons) {
     root.querySelectorAll('.modal .btn').forEach((b) => {
       b.onclick = () => {
         const v = b.dataset.val
-        root.innerHTML = ''
+        // 先 resolve 再清 DOM:调用方的 .then 需要读弹窗里的表单值。
+        // 旧代码先 root.innerHTML = '' 再 resolve,导致 $('#set-tray').checked 全部为 null
+        // —— 所有设置项保存都会静默失败(用户报告「点了没反应」的另一个根因)。
         resolve(v === 'true' ? true : v === 'false' ? false : v)
+        setTimeout(() => { try { root.innerHTML = '' } catch { /* ignore */ } }, 0)
       }
     })
   })
@@ -177,7 +180,12 @@ function refreshCurrentView() {
 
 // ---------- 概览 ----------
 function bindOverview() {
-  $('#btn-check-update').onclick = refreshUpdate
+  // 取消长任务(安装/更新/重装)
+  const cancelBtn = $('#btn-cancel-install')
+  if (cancelBtn) cancelBtn.onclick = async () => {
+    const r = await window.dshm.cancelInstall()
+    toast(r.ok ? '已请求取消…' : (r.error || '没有可取消的任务'), r.ok ? 'ok' : 'error')
+  }
   $('#btn-do-update').onclick = doUpdate
   // 兼容性检查:先跑快速检查(秒回),用户可再点「深度检查」逐包验证能否加载
   $('#btn-compat-check').onclick = () => runCompatCheck(false, { deep: false })
@@ -376,7 +384,9 @@ async function renderEnv() {
     ? `<button class="btn" data-env="checkupdate">检查更新</button>`
     : `<span class="muted">环境未就绪,请先安装缺失项</span>`
   $('#env-actions').innerHTML = `<div class="row">${footer}</div>`
-  $('#env-actions').querySelectorAll('[data-env]').forEach((b) => {
+  // 行内按钮(一键安装/更新/卸载)与 footer 按钮都要绑定 —— 之前只绑了 #env-actions,
+  // 导致卡片里点「一键安装」「卸载」完全没反应(用户报告的问题)
+  document.querySelectorAll('#status-cards [data-env]').forEach((b) => {
     b.onclick = async () => {
       const [kind, target] = b.dataset.env.split(':')
       if (kind === 'checkupdate') {
@@ -390,15 +400,36 @@ async function renderEnv() {
           { label: '卸载', value: true, cls: 'primary' }, { label: '取消', value: false },
         ])
         if (!ok) return
-        toast('正在执行,请稍候…(详情看日志)')
+        resetUpdateProgress(`正在卸载 ${target}…`)
         const r2 = await window.dshm[`envUninstall${target[0].toUpperCase()}${target.slice(1)}`]()
+        setInstallRunning(false)
         toast(r2.ok ? '已卸载' : `卸载失败: ${r2.error}`, r2.ok ? 'ok' : 'error')
       } else {
-        toast('正在执行,请稍候…(详情看日志)')
+        // 走进度面板:流式输出 + 心跳 + 可取消(以前只有一句 toast,看起来像没反应)
+        const label = kind === 'install' ? `正在安装 ${target}…` : '正在更新 dsh…'
+        resetUpdateProgress(label)
         const r2 = kind === 'install'
           ? await window.dshm[`envInstall${target[0].toUpperCase()}${target.slice(1)}`]()
           : await window.dshm.envUpdateDsh()
-        toast(r2.ok ? '完成' : `失败: ${r2.error}`, r2.ok ? 'ok' : 'error')
+        setInstallRunning(false)
+        if (r2.cancelled) toast('已取消', 'ok')
+        else toast(r2.ok ? '完成' : `失败: ${r2.error}`, r2.ok ? 'ok' : 'error')
+        // 失败时给一条明路:国内网络常见就是 registry 连不上
+        if (!r2.ok && !r2.cancelled && /ECONN|ETIMEDOUT|ENOTFOUND|timeout|network|EAI_AGAIN|socket/i.test(String(r2.error || ''))) {
+          const goMirror = await modal('网络连接失败', '连接 npm 官方源失败或超时。<br>可以改用国内镜像(npmmirror)重试。', [
+            { label: '改用镜像重试', value: true, cls: 'primary' }, { label: '取消', value: false },
+          ])
+          if (goMirror) {
+            await window.dshm.setSettings({ npmRegistry: 'npmmirror' })
+            state.bootstrap.settings = { ...(state.bootstrap.settings || {}), npmRegistry: 'npmmirror' }
+            resetUpdateProgress(`${label}(镜像)`)
+            const r3 = kind === 'install'
+              ? await window.dshm[`envInstall${target[0].toUpperCase()}${target.slice(1)}`]()
+              : await window.dshm.envUpdateDsh()
+            setInstallRunning(false)
+            toast(r3.ok ? '完成(已使用镜像)' : `仍然失败: ${r3.error}`, r3.ok ? 'ok' : 'error')
+          }
+        }
         state.envAt = 0   // 安装/更新后强制重新探测
       }
       renderEnv()
@@ -460,15 +491,26 @@ function handleUpdateProgress(evt) {
     if (lines.length > 300) logEl.textContent = lines.slice(-200).join('\n')
     logEl.scrollTop = logEl.scrollHeight
   }
+  // 结束态:关掉「取消」按钮,避免用户误以为还能取消
+  const phase = typeof evt === 'object' && evt ? evt.phase : null
+  if (phase === 'done' || phase === 'failed') setInstallRunning(false)
 }
 
-function resetUpdateProgress() {
+// 运行中显示「取消」按钮:长任务不能没有出口
+function setInstallRunning(running) {
+  const cancelBtn = $('#btn-cancel-install')
+  if (cancelBtn) cancelBtn.hidden = !running
+  state.installRunning = Boolean(running)
+}
+
+function resetUpdateProgress(label = '准备开始…') {
   $('#update-progress-wrap').hidden = false
   const bar = $('#update-progress-bar')
   bar.classList.add('indeterminate')
   bar.style.width = '0'
-  $('#update-progress').textContent = '准备开始…'
+  $('#update-progress').textContent = label
   $('#update-log').textContent = ''
+  setInstallRunning(true)
 }
 
 // 插件解析兼容性:检查 / 一键修复
@@ -1171,7 +1213,7 @@ async function openSettings() {
   const hasKey = await window.dshm.hasApiKey()
   const profiles = await window.dshm.listProfiles()
   const defInstall = s.defaultInstallProfile || state.launch.profile
-  modal('设置', `
+  const settingsModal = modal('设置', `
     <h4>外观</h4>
     <div class="row">
       <span style="width:120px">主题</span>
@@ -1198,6 +1240,16 @@ async function openSettings() {
       </select>
     </div>
     <div class="muted">按保留期删除更老的备份;无论怎么选,<b>永远保留最新 1 份</b>,不会把自己删空。启动时与修改设置后自动执行。</div>
+
+    <h4>npm 下载源</h4>
+    <div class="row">
+      <span style="width:120px">安装/更新 dsh</span>
+      <select id="set-npm-registry" style="flex:1">
+        ${[['', '官方 registry.npmjs.org'], ['npmmirror', '国内镜像 registry.npmmirror.com']]
+          .map(([v, label]) => `<option value="${v}" ${String(s.npmRegistry || '') === v ? 'selected' : ''}>${label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="muted">国内网络直连官方源可能长时间无响应(看起来像「没反应」)。安装/更新/强制重装都会按这里的选择加 <code>--registry</code>。</div>
 
     <h4>插件安装位置</h4>
     <div class="row"><span style="width:120px">默认安装 profile</span>
@@ -1270,6 +1322,7 @@ async function openSettings() {
       insecureGitHub: $('#set-gh-insecure').checked,
       theme: window.__settingsChosenTheme ? window.__settingsChosenTheme() : (s.theme || 'system'),
       backupRetention: $('#set-backup-retention').value || 'off',
+      npmRegistry: $('#set-npm-registry').value || null,
     })
     await window.dshm.setGithubToken($('#set-token').value.trim() || null)
     const key = $('#set-apikey').value.trim()

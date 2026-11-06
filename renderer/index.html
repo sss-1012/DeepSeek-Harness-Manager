@@ -43,7 +43,10 @@
         <div id="compat-results" style="margin-top:6px"></div>
         <div id="update-progress-wrap" class="progress-wrap" hidden>
           <div class="progress-track"><div id="update-progress-bar" class="progress-bar"></div></div>
-          <div id="update-progress" class="muted">—</div>
+          <div class="row" style="margin:6px 0 0;justify-content:space-between">
+            <div id="update-progress" class="muted">—</div>
+            <button id="btn-cancel-install" class="btn sm ghost danger-ghost" hidden>取消</button>
+          </div>
           <pre id="update-log" class="update-log"></pre>
         </div>
         <h4>备份与回滚</h4>

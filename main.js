@@ -299,6 +299,39 @@ function broadcast(channel, data) {
   }
 }
 
+// ---- 安装/更新类长任务:统一走「进度面板 + 心跳 + 可取消」----
+// 之前一键安装用的是不流式的 execTool,npm 静默下载期间界面完全没反馈,
+// 用户只能看到「没反应」;这里改成与更新面板同一条通道。
+let activeInstallChild = null
+function cancelActiveInstall() {
+  const child = activeInstallChild
+  if (!child) return { ok: false, error: '当前没有正在执行的安装任务' }
+  try { if (child.__cancel) child.__cancel(); else child.kill() } catch { /* ignore */ }
+  return { ok: true }
+}
+
+async function runEnvInstall(fn, label) {
+  const registry = store.getSettings().npmRegistry || null
+  const emit = (line) => {
+    log.logInfo(line)
+    broadcast('update:progress', { phase: 'install', percent: null, line })
+    broadcast('log:line', line)
+  }
+  emit(`${label}…${registry ? `(镜像 ${env.NPM_REGISTRY[registry] || registry})` : ''}`)
+  try {
+    const r = await env[fn]({ onLog: emit, registry, onChild: (child) => { activeInstallChild = child } })
+    if (r && r.cancelled) { broadcast('update:progress', { phase: 'failed', percent: 100, line: '⏹ 已取消' }); return r }
+    broadcast('update:progress', { phase: r && r.ok ? 'done' : 'failed', percent: 100, line: r && r.ok ? '✔ 完成' : `✘ 失败: ${(r && r.error) || '未知错误'}` })
+    return r
+  } catch (e) {
+    log.logWarn(`${label}失败: ${e.message}`)
+    broadcast('update:progress', { phase: 'failed', percent: 100, line: `✘ 失败: ${e.message}` })
+    return { ok: false, error: e.message }
+  } finally {
+    activeInstallChild = null
+  }
+}
+
 async function pollStatus() {
   try {
     const snap = await status.snapshot()
@@ -465,17 +498,27 @@ function registerIpc() {
       const line = typeof evt === 'string' ? evt : evt?.line
       if (line) log.logInfo(line)
       broadcast('update:progress', evt)
-    }, { stopManaged: Boolean(opts.stopManaged) })
+    }, {
+      stopManaged: Boolean(opts.stopManaged),
+      registry: opts.registry || store.getSettings().npmRegistry || null,
+      onChild: (child) => { activeInstallChild = child },
+    }).finally(() => { activeInstallChild = null })
   })
 
   // 强制重装全局 dsh(npm 半更新 / EBUSY 之后的可靠修法)
-  ipcMain.handle('update:reinstallDsh', async () => {
+  ipcMain.handle('update:reinstallDsh', async (_e, opts = {}) => {
     return update.reinstallDsh((evt) => {
       const line = typeof evt === 'string' ? evt : evt?.line
       if (line) log.logInfo(line)
       broadcast('update:progress', evt)
-    })
+    }, {
+      registry: (opts && opts.registry) || store.getSettings().npmRegistry || null,
+      onChild: (child) => { activeInstallChild = child },
+    }).finally(() => { activeInstallChild = null })
   })
+
+  // 取消正在进行的安装/更新(用户点「取消」时调)
+  ipcMain.handle('install:cancel', () => cancelActiveInstall())
 
   // 更新/回滚前的进程预检(谁在占用全局 dsh)
   ipcMain.handle('update:preflight', () => update.runningWorkloads())
@@ -573,9 +616,10 @@ function registerIpc() {
 
   // ---- 环境检测 / 一键安装 ----
   ipcMain.handle('env:check', () => env.check())
+  // 一键安装 dsh:流式输出 + 进度面板(以前用不流式的 execTool,用户只看到「没反应」)
   ipcMain.handle('env:installDsh', async () => {
     log.logInfo('一键安装 dsh')
-    return env.installDsh((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    return runEnvInstall('installDsh', '正在安装 dsh')
   })
   ipcMain.handle('env:installNode', async () => {
     log.logInfo('一键安装 Node.js')
@@ -589,13 +633,13 @@ function registerIpc() {
   })
   ipcMain.handle('env:updateDsh', async () => {
     log.logInfo('更新 dsh')
-    const r = await env.updateDsh((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    const r = await runEnvInstall('updateDsh', '正在更新 dsh')
     env.invalidateEnvCache(); update.invalidateUpdateCache()
     return r
   })
   ipcMain.handle('env:uninstallDsh', async () => {
     log.logInfo('卸载 dsh')
-    const r = await env.uninstallDsh((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
+    const r = await runEnvInstall('uninstallDsh', '正在卸载 dsh')
     env.invalidateEnvCache(); update.invalidateUpdateCache()
     return r
   })

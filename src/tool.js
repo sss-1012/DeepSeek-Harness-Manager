@@ -106,6 +106,12 @@ function nodeInstallDir() {
 function resolveJsTool(cmd) {
   if (cache.has(cmd)) return cache.get(cmd)
   let entry = null
+  // 直接传了存在的绝对路径(如 process.execPath):就用它,不要再去 where 里猜
+  if (/[\\/]/.test(cmd) && /\.(exe|cmd|js|cjs|mjs)$/i.test(cmd) && fs.existsSync(cmd)) {
+    entry = /\.cmd$/i.test(cmd) ? jsEntryFromShim(cmd) : cmd
+    cache.set(cmd, entry || null)
+    return entry
+  }
   const all = whereAll(cmd)
   // 优先 .cmd shim;npm 有扩展名 shim 时优先 node_modules 形式
   const cmdPath = all.find((p) => /\.cmd$/i.test(p)) || all[0]
@@ -133,7 +139,9 @@ function resolveJsTool(cmd) {
 }
 
 // 流式执行工具:实时把输出行回调给调用方(用于更新进度展示)
-function execToolStream(cmd, args, { onLine, timeout = 600000, cwd } = {}) {
+// heartbeatMs:长时间无输出时定期上报心跳 —— npm 静默下载时界面不能看起来像卡死
+// onChild:把子进程句柄交给调用方,以便支持「取消」
+function execToolStream(cmd, args, { onLine, timeout = 600000, cwd, heartbeatMs = 5000, onChild, registry } = {}) {
   return new Promise((resolve) => {
     const entry = resolveJsTool(cmd)
     if (!entry) {
@@ -149,14 +157,28 @@ function execToolStream(cmd, args, { onLine, timeout = 600000, cwd } = {}) {
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
+    try { onChild?.(child) } catch { /* ignore */ }
     let stdout = ''
     let stderr = ''
+    let cancelled = false
+    let lastOutputAt = Date.now()
+    const startedAt = Date.now()
     const timer = setTimeout(() => {
       try { child.kill() } catch { /* ignore */ }
       onLine?.(`⏱ 执行超时(${Math.round(timeout / 1000)}s),已终止`)
     }, timeout)
+    // 心跳:让界面知道「它还活着」,而不是没反应
+    const hb = heartbeatMs > 0 ? setInterval(() => {
+      const silentFor = Math.round((Date.now() - lastOutputAt) / 1000)
+      const totalFor = Math.round((Date.now() - startedAt) / 1000)
+      if (silentFor >= Math.max(3, Math.round(heartbeatMs / 1000))) {
+        onLine?.(`⏳ 仍在执行…已 ${totalFor}s(最近 ${silentFor}s 无新输出;npm 下载/解包时属正常,可点「取消」终止)`)
+        lastOutputAt = Date.now()
+      }
+    }, heartbeatMs) : null
     const handle = (buf, isErr) => {
       const text = String(buf)
+      lastOutputAt = Date.now()
       if (isErr) stderr += text; else stdout += text
       for (const raw of text.split(/\r?\n/)) {
         const line = raw.trim()
@@ -166,13 +188,20 @@ function execToolStream(cmd, args, { onLine, timeout = 600000, cwd } = {}) {
     child.stdout.on('data', (b) => handle(b, false))
     child.stderr.on('data', (b) => handle(b, true))
     child.on('error', (e) => {
-      clearTimeout(timer)
+      clearTimeout(timer); if (hb) clearInterval(hb)
       resolve({ ok: false, code: 'SPAWN', stdout, stderr, error: e.message })
     })
-    child.on('close', (code) => {
-      clearTimeout(timer)
+    child.on('close', (code, signal) => {
+      clearTimeout(timer); if (hb) clearInterval(hb)
+      // kill() 在 Windows 上会让 code 为 null、signal 为 SIGTERM:当成用户取消,而不是神秘失败
+      const wasCancelled = cancelled || (code == null && Boolean(signal))
+      if (wasCancelled) {
+        return resolve({ ok: false, code: 'CANCELLED', cancelled: true, stdout, stderr, error: '已取消' })
+      }
       resolve({ ok: code === 0, code: code == null ? 1 : code, stdout, stderr, error: code === 0 ? null : `退出码 ${code}` })
     })
+    // 暴露取消入口(不阻塞原有 Promise 语义)
+    try { child.__cancel = () => { cancelled = true; try { child.kill() } catch { /* ignore */ } } } catch { /* ignore */ }
   })
 }
 

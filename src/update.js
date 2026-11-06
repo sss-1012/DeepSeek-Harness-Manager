@@ -107,6 +107,15 @@ function classifyNpmError(text) {
   if (/ETARGET|No matching version/i.test(t)) {
     return { code: 'ETARGET', hint: 'npm 上没有这个版本,请检查版本号或网络源。', needsReinstall: false }
   }
+  // 网络类:国内直连 registry.npmjs.org 最常见的“没反应”就是这个
+  if (/ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|network|fetch failed|request to .* failed|ERR_SOCKET|timed out/i.test(t)) {
+    return {
+      code: 'NETWORK',
+      hint: '连接 npm 源失败/超时:可在「设置 → npm 下载源」改用国内镜像(npmRegistry=npmmirror)后重试。',
+      needsReinstall: false,
+      network: true,
+    }
+  }
   return { code: 'UNKNOWN', hint: null, needsReinstall: false }
 }
 
@@ -161,7 +170,7 @@ async function postCheck(emit) {
   }
 }
 
-async function doUpdate(onProgress, { stopManaged = false } = {}) {
+async function doUpdate(onProgress, { stopManaged = false, registry = null, onChild = null } = {}) {
   const emit = (phase, percent, line) => onProgress?.({ phase, percent, line })
   const oldVersion = await version()
 
@@ -201,10 +210,19 @@ async function doUpdate(onProgress, { stopManaged = false } = {}) {
   }
 
   emit('install', 20, '正在全局安装最新版(输出实时显示如下)…')
-  const r = await execToolStream('npm', ['install', '-g', '@deepseek-ai/dsh@latest'], {
+  const envMod = require('./env')
+  const regArgs = registry && envMod.NPM_REGISTRY[registry] ? [`--registry=${envMod.NPM_REGISTRY[registry]}`] : []
+  if (registry) emit('install', 20, `使用 npm 镜像:${envMod.NPM_REGISTRY[registry] || registry}`)
+  const r = await execToolStream('npm', ['install', '-g', '@deepseek-ai/dsh@latest', ...regArgs], {
     timeout: 900000,
+    heartbeatMs: 5000,
+    onChild,
     onLine: (line) => emit('install', null, line),
   })
+  if (r.cancelled) {
+    emit('failed', 100, '⏹ 已取消更新')
+    return { ok: false, cancelled: true, backup, error: '已取消' }
+  }
   if (!r.ok) {
     const cls = classifyNpmError(`${r.stderr || ''}\n${r.stdout || ''}\n${r.error || ''}`)
     log.logWarn(`更新失败(${cls.code}):${(r.stderr || r.error || '').slice(0, 400)}`)
@@ -227,7 +245,7 @@ async function doUpdate(onProgress, { stopManaged = false } = {}) {
 }
 
 // 强制重装:半更新状态下唯一可靠的修法
-async function reinstallDsh(onProgress) {
+async function reinstallDsh(onProgress, opts = {}) {
   const emit = (phase, percent, line) => onProgress?.({ phase, percent, line })
   const pre = runningWorkloads()
   if (pre.blocking) {
@@ -236,10 +254,19 @@ async function reinstallDsh(onProgress) {
     return { ok: false, code: 'RUNNING', error: msg, preflight: pre }
   }
   emit('install', 5, '正在强制重装 @deepseek-ai/dsh@latest(忽略缓存与锁)…')
-  const r = await execToolStream('npm', ['install', '-g', '@deepseek-ai/dsh@latest', '--force'], {
+  const env = require('./env')
+  const regArgs = opts.registry && env.NPM_REGISTRY[opts.registry] ? [`--registry=${env.NPM_REGISTRY[opts.registry]}`] : []
+  if (opts.registry) emit('install', 5, `使用 npm 镜像:${env.NPM_REGISTRY[opts.registry] || opts.registry}`)
+  const r = await execToolStream('npm', ['install', '-g', '@deepseek-ai/dsh@latest', '--force', ...regArgs], {
     timeout: 1200000,
+    heartbeatMs: 5000,
+    onChild: opts.onChild,
     onLine: (line) => emit('install', null, line),
   })
+  if (r.cancelled) {
+    emit('failed', 100, '⏹ 已取消重装')
+    return { ok: false, cancelled: true, error: '已取消' }
+  }
   if (!r.ok) {
     const cls = classifyNpmError(`${r.stderr || ''}\n${r.stdout || ''}\n${r.error || ''}`)
     log.logWarn(`重装失败(${cls.code}):${(r.stderr || r.error || '').slice(0, 300)}`)

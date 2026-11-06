@@ -3,7 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
-const { execTool, execToolSync } = require('./tool')
+const { execTool, execToolSync, execToolStream } = require('./tool')
 const { version } = require('./dsh')
 // execToolSync 仍在本地保留(仅用于 installNpm 里的即时校验),热路径上不再使用
 
@@ -93,25 +93,55 @@ function resolveNodeExe() {
   } catch { return null }
 }
 
-async function installDsh(onLog) {
-  onLog?.('正在安装 @deepseek-ai/dsh ...')
-  const r = await execTool('npm', ['install', '-g', '@deepseek-ai/dsh@latest'], { timeout: 600000 })
-  onLog?.(r.ok ? '✔ dsh 安装完成' : `✘ 安装失败: ${(r.stderr || r.error || '').slice(0, 400)}`)
+// npm 镜像:国内网络直连 registry.npmjs.org 常长时间无响应,看起来就像「没反应」
+const NPM_REGISTRY = {
+  official: 'https://registry.npmjs.org',
+  npmmirror: 'https://registry.npmmirror.com',
+}
+function registryArgs(registry) {
+  const url = NPM_REGISTRY[registry]
+  return url ? [`--registry=${url}`] : []
+}
+
+// 统一的 dsh 安装/更新执行器:流式输出 + 心跳 + 可取消,界面永远不会「没反应」
+async function runDshInstall({ onLog, registry, onChild, force = false, timeout = 1200000, label }) {
+  const args = ['install', '-g', '@deepseek-ai/dsh@latest', ...registryArgs(registry)]
+  if (force) args.push('--force')
+  const where = registry ? `(镜像 ${NPM_REGISTRY[registry] || registry})` : ''
+  onLog?.(`${label}${where}…`)
+  return execToolStream('npm', args, {
+    timeout,
+    heartbeatMs: 5000,
+    onChild,
+    onLine: (line) => onLog?.(line),
+  })
+}
+
+async function installDsh(opts = {}) {
+  const o = typeof opts === 'function' ? { onLog: opts } : opts   // 兼容旧签名 installDsh(onLog)
+  const r = await runDshInstall({ ...o, label: '正在安装 @deepseek-ai/dsh' })
+  if (r.cancelled) { o.onLog?.('已取消安装'); return { ok: false, cancelled: true, error: '已取消' } }
+  o.onLog?.(r.ok ? '✔ dsh 安装完成' : `✘ 安装失败: ${(r.stderr || r.error || '').slice(0, 400)}`)
   return { ok: r.ok, error: r.ok ? null : (r.stderr || r.error || '未知错误') }
 }
 
-async function updateDsh(onLog) {
-  onLog?.('正在更新 @deepseek-ai/dsh ...')
-  const r = await execTool('npm', ['install', '-g', '@deepseek-ai/dsh@latest'], { timeout: 600000 })
+async function updateDsh(opts = {}) {
+  const o = typeof opts === 'function' ? { onLog: opts } : opts
+  const r = await runDshInstall({ ...o, label: '正在更新 @deepseek-ai/dsh' })
+  if (r.cancelled) { o.onLog?.('已取消更新'); return { ok: false, cancelled: true, error: '已取消' } }
   const v = await version()
-  onLog?.(r.ok ? `✔ dsh 更新完成,当前版本: ${v}` : `✘ 更新失败: ${(r.stderr || r.error || '').slice(0, 400)}`)
+  o.onLog?.(r.ok ? `✔ dsh 更新完成,当前版本: ${v}` : `✘ 更新失败: ${(r.stderr || r.error || '').slice(0, 400)}`)
   return { ok: r.ok, version: v, error: r.ok ? null : (r.stderr || r.error || '未知错误') }
 }
 
-async function uninstallDsh(onLog) {
-  onLog?.('正在卸载 @deepseek-ai/dsh ...')
-  const r = await execTool('npm', ['uninstall', '-g', '@deepseek-ai/dsh'], { timeout: 300000 })
-  onLog?.(r.ok ? '✔ dsh 已卸载' : `✘ 卸载失败: ${(r.stderr || r.error || '').slice(0, 300)}`)
+async function uninstallDsh(opts = {}) {
+  const o = typeof opts === 'function' ? { onLog: opts } : opts
+  o.onLog?.('正在卸载 @deepseek-ai/dsh …')
+  const r = await execToolStream('npm', ['uninstall', '-g', '@deepseek-ai/dsh'], {
+    timeout: 600000, heartbeatMs: 5000, onChild: o.onChild, onLine: (l) => o.onLog?.(l),
+  })
+  if (r.cancelled) { o.onLog?.('已取消卸载'); return { ok: false, cancelled: true, error: '已取消' } }
+  o.onLog?.(r.ok ? '✔ dsh 已卸载' : `✘ 卸载失败: ${(r.stderr || r.error || '').slice(0, 300)}`)
   return { ok: r.ok, error: r.ok ? null : (r.stderr || r.error || '未知错误') }
 }
 
@@ -186,4 +216,4 @@ async function installNode(onLog) {
   }
 }
 
-module.exports = { check, invalidateEnvCache, installDsh, installNode, installNpm, updateDsh, uninstallDsh, uninstallPnpm, uninstallNode }
+module.exports = { check, invalidateEnvCache, NPM_REGISTRY, installDsh, installNode, installNpm, updateDsh, uninstallDsh, uninstallPnpm, uninstallNode }

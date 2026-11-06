@@ -15,6 +15,8 @@ const DEFAULTS = {
     theme: 'system', // system | light | dark
     // 回滚备份自动清理:删除比保留期更老的备份(永远保留最新 1 份)。off = 不自动删
     backupRetention: 'off', // off | 7 | 30 | 90(天)
+    // npm 源:国内直连 registry.npmjs.org 常长时间无响应,看起来就像「没反应」
+    npmRegistry: null, // null(官方) | 'official' | 'npmmirror'
     profiles: {}, // { profileName: { port: null, args: '' } }
   },
 }
