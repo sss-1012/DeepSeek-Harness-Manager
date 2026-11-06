@@ -50,6 +50,36 @@ function modal(title, bodyHtml, buttons) {
   })
 }
 
+// 文本输入弹窗(modal 只能放按钮):返回输入值或 null
+function promptText(title, defaultValue = '', placeholder = '') {
+  return new Promise((resolve) => {
+    const root = $('#modal-root')
+    root.innerHTML = `
+      <div class="overlay">
+        <div class="modal">
+          <h3>${esc(title)}</h3>
+          <div class="modal-body">
+            <input type="text" id="prompt-input" value="${esc(defaultValue)}" placeholder="${esc(placeholder)}" style="width:100%">
+          </div>
+          <div class="row" style="justify-content:flex-end">
+            <button class="btn primary" data-ok="1">确定</button>
+            <button class="btn" data-ok="0">取消</button>
+          </div>
+        </div>
+      </div>`
+    const input = $('#prompt-input')
+    if (input) { input.focus(); input.select() }
+    const finish = (val) => { root.innerHTML = ''; resolve(val) }
+    root.querySelectorAll('[data-ok]').forEach((b) => {
+      b.onclick = () => finish(b.dataset.ok === '1' ? (input ? input.value.trim() : '') : null)
+    })
+    if (input) input.onkeydown = (e) => {
+      if (e.key === 'Enter') finish(input.value.trim())
+      if (e.key === 'Escape') finish(null)
+    }
+  })
+}
+
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
 // ---------- 初始化 ----------
@@ -302,6 +332,24 @@ function bindOverview() {
     const v = sel ? sel.value : 'latest'
     if (!v || v === 'latest') return doUpdate()
     return doUpdate()
+  }
+  // 手动输入版本:即使拿不到版本列表(代理/镜像问题)也能装指定版本
+  const manualBtn = $('#btn-update-manual')
+  if (manualBtn) manualBtn.onclick = async () => {
+    const ok = await modal('指定版本',
+      '输入要安装的 dsh 版本(例如 <code>0.2.1-rc.5</code>)。<br>' +
+      '适用于上游最新版发残缺、或版本列表拉不到的情况。',
+      [{ label: '继续', value: true, cls: 'primary' }, { label: '取消', value: false }])
+    if (!ok) return
+    const ver = await promptText('输入版本号', state.updateInfo?.current || '')
+    if (!ver) return
+    const sel = $('#update-version')
+    if (sel) {
+      const exists = [...sel.options].some((o) => o.value === ver)
+      if (!exists) sel.insertAdjacentHTML('afterbegin', `<option value="${esc(ver)}">${esc(ver)} (手动)</option>`)
+      sel.value = ver
+    }
+    doUpdate()
   }
   // 兼容性检查:先跑快速检查(秒回),用户可再点「深度检查」逐包验证能否加载
   $('#btn-compat-check').onclick = () => runCompatCheck(false, { deep: false })
@@ -813,12 +861,22 @@ async function loadVersionOptions(force = false) {
   const btn = $('#btn-update-version')
   if (!sel) return
   if (!force && Date.now() - versionOptionsLoadedAt < 60000 && sel.options.length > 1) return
+  const hint = $('#update-version-hint')
+  if (hint) hint.textContent = '正在获取版本列表…'
   try {
     const r = await window.dshm.listVersions()
-    if (!r || !r.ok) return
-    versionOptionsLoadedAt = Date.now()
     const cur = state.updateInfo?.current || ''
-    const latest = r.distTags?.latest || state.updateInfo?.latest || ''
+    const latest = (r && r.distTags && r.distTags.latest) || state.updateInfo?.latest || ''
+    if (!r || !r.ok || !r.versions || !r.versions.length) {
+      // 拿不到列表:至少把「当前版本」放进去,并明确告诉用户为什么
+      const opts = [`<option value="latest">最新版 latest${latest ? ` (${esc(latest)})` : ''}</option>`]
+      if (cur) opts.push(`<option value="${esc(cur)}">${esc(cur)} (当前,可重试)</option>`)
+      sel.innerHTML = opts.join('')
+      if (btn) btn.disabled = false
+      if (hint) hint.innerHTML = `<span style="color:var(--yellow)">版本列表获取失败:${esc((r && r.error) || '未知错误')}</span>`
+      return
+    }
+    versionOptionsLoadedAt = Date.now()
     const opts = [`<option value="latest">最新版 latest${latest ? ` (${esc(latest)})` : ''}</option>`]
     for (const v of r.versions) {
       const marks = []
@@ -828,7 +886,10 @@ async function loadVersionOptions(force = false) {
     }
     sel.innerHTML = opts.join('')
     if (btn) btn.disabled = false
-  } catch { /* 拿不到版本列表就保持只有 latest */ }
+    if (hint) hint.textContent = `共 ${r.versions.length} 个版本${r.via === 'npm' ? '(经 npm 获取)' : ''}`
+  } catch (e) {
+    if (hint) hint.innerHTML = `<span style="color:var(--yellow)">版本列表获取失败:${esc(e.message)}</span>`
+  }
 }
 
 // 备份列表:带时间/体积,可逐个删除、可清空;顶部显示保留策略

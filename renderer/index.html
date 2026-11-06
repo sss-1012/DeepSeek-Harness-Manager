@@ -42,6 +42,8 @@
           <span class="muted">目标版本:</span>
           <select id="update-version" style="min-width:200px"><option value="latest">最新版(latest)</option></select>
           <button id="btn-update-version" class="btn" disabled>更新到该版本</button>
+          <button id="btn-update-manual" class="btn ghost">手动输入版本…</button>
+          <span id="update-version-hint" class="muted" style="font-size:11.5px"></span>
         </div>
         <div class="note" style="margin-top:6px">
           更新/回滚会先做<b>进程预检</b>:检测到 harness、CLI 或官方桌面端在运行时会阻止操作,避免 npm 因文件占用而 EBUSY 失败。

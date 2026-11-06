@@ -64,17 +64,41 @@ function invalidateUpdateCache() { updateCache = null }
 async function listVersions({ registry = null } = {}) {
   const base = registry === 'npmmirror' ? 'https://registry.npmmirror.com'
     : (registry && registry !== 'official' ? registry : 'https://registry.npmjs.org')
+  const errors = []
+  // ① 直接读 registry。注意:Electron 主进程的 fetch 不走系统代理,
+  //    在有代理/证书拦截的环境下会失败 —— 所以必须准备回退。
   try {
     const res = await fetch(`${base}/@deepseek-ai%2fdsh`, { signal: AbortSignal.timeout(15000) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const j = await res.json()
-    const all = Object.keys(j.versions || {})
-    const distTags = j['dist-tags'] || {}
-    const sorted = all.filter((v) => semver.valid(v)).sort((a, b) => semver.rcompare(a, b))
-    return { ok: true, versions: sorted.slice(0, 60), distTags, registry: base }
+    const sorted = Object.keys(j.versions || {}).filter((v) => semver.valid(v)).sort((a, b) => semver.rcompare(a, b))
+    if (!sorted.length) throw new Error('registry 返回的版本列表为空')
+    return { ok: true, versions: sorted.slice(0, 60), distTags: j['dist-tags'] || {}, registry: base, via: 'fetch' }
   } catch (e) {
-    return { ok: false, error: e.message, versions: [], distTags: {}, registry: base }
+    errors.push(`fetch: ${e.message}`)
   }
+  // ② 回退到 npm CLI:npm 会读用户自己的 .npmrc/代理/镜像配置,更可靠
+  try {
+    const args = ['view', '@deepseek-ai/dsh', 'versions', '--json']
+    if (base !== 'https://registry.npmjs.org') args.push(`--registry=${base}`)
+    const r = await execTool('npm', args, { timeout: 45000 })
+    if (!r.ok) throw new Error((r.stderr || r.error || 'npm view 失败').slice(0, 200))
+    const text = String(r.stdout || '').trim()
+    const parsed = JSON.parse(text)
+    const all = Array.isArray(parsed) ? parsed : [parsed]
+    const sorted = all.filter((v) => semver.valid(v)).sort((a, b) => semver.rcompare(a, b))
+    if (!sorted.length) throw new Error('npm view 没有返回可用版本')
+    // 顺手拿 dist-tags(拿不到不影响列表)
+    let distTags = {}
+    try {
+      const rt = await execTool('npm', ['view', '@deepseek-ai/dsh', 'dist-tags', '--json'], { timeout: 30000 })
+      if (rt.ok) distTags = JSON.parse(String(rt.stdout || '{}'))
+    } catch { /* ignore */ }
+    return { ok: true, versions: sorted.slice(0, 60), distTags, registry: base, via: 'npm' }
+  } catch (e) {
+    errors.push(`npm: ${e.message}`)
+  }
+  return { ok: false, error: errors.join(' | '), versions: [], distTags: {}, registry: base }
 }
 
 // ---- 进程预检:谁会占用全局 dsh 的文件 -------------------------------------------------
@@ -499,7 +523,7 @@ async function rollback(id, { stopManaged = false } = {}) {
 }
 
 module.exports = {
-  checkUpdate, invalidateUpdateCache, createBackup, doUpdate, listBackups, rollback,
+  checkUpdate, invalidateUpdateCache, listVersions, createBackup, doUpdate, listBackups, rollback,
   backupsDetailed, backupStats, removeBackup, pruneBackups, clearBackups,
   runningWorkloads, classifyNpmError, reinstallDsh, postCheck,
 }
