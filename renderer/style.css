@@ -125,6 +125,38 @@ input[type=text] { flex: 1; min-width: 160px; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
 .chk { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 13px; cursor: pointer; }
 .inline-select { width: auto; }
+
+/* ---- 自定义下拉(原生 select 弹层由系统绘制:高度不可控、放不下会向上翻) ---- */
+.dd { position: relative; display: inline-block; }
+.dd-btn {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-width: 200px; max-width: 340px; padding: 7px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg2); color: var(--text);
+  font-size: 13px; font-family: inherit; text-align: left; cursor: pointer; outline: none;
+}
+.dd-btn:hover:not(:disabled) { border-color: var(--accent); }
+.dd-btn:disabled { opacity: .45; cursor: not-allowed; }
+.dd.open .dd-btn { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.16); }
+.dd-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd-caret { flex: none; opacity: .55; transition: transform .15s ease; }
+.dd.open .dd-caret { transform: rotate(180deg); }
+.dd-menu {
+  position: fixed; z-index: 200; padding: 4px; box-sizing: border-box;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: var(--shadow-lg); overflow-y: auto; overscroll-behavior: contain;
+}
+.dd-menu::-webkit-scrollbar { width: 8px; }
+.dd-menu::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.dd-menu::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+.dd-item {
+  height: 30px; line-height: 30px; padding: 0 10px; border-radius: 6px;
+  font-size: 13px; cursor: pointer; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; color: var(--text);
+}
+.dd-item:hover, .dd-item.hi { background: var(--bg3); }
+.dd-item.active { color: var(--accent); font-weight: 600; }
+.dd-item[aria-disabled='true'] { opacity: .45; cursor: default; }
+.dd-item[aria-disabled='true']:hover { background: transparent; }
 .muted { color: var(--muted); font-size: 12.5px; }
 .note {
   font-size: 12.5px; color: var(--muted); padding: 8px 12px; border-radius: 8px;

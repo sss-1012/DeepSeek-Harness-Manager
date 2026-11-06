@@ -2,7 +2,34 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/);版本号与 GitHub Release 的 tag 一致。
 安装版 / 绿色免安装版构建产物见 [Releases](https://github.com/sss-1012/DeepSeek-Harness-Manager/releases)。
+## [0.4.2] - 2026-11-06(待发布)
 
+### 修复
+
+- 🐞 **保存设置报错 `Cannot read properties of null`**:弹窗在 resolve 后就被清空 DOM,
+  旧代码在 `await setSettings()` 之后才去读 `$('#set-token')` → 元素已是 null。
+  设置其实已经存了,但 token 保存、成功提示、界面刷新全部中断。现在**先把值全读出来再做 IPC**。
+- 🐞 **目标版本下拉向上翻且长到屏幕外**:原生 `<select>` 的弹层由系统绘制,40+ 个版本会撑成一长条,
+  下方放不下就自动向上翻。换成自绘下拉:**固定 5 行高、超出滚动、始终向下展开**,
+  键盘 ↑↓/Enter/Esc 可用,当前版本置灰不可选。
+- 🐞 **端口探测把 `:80` 误匹配成 `:8080`**:`line.includes(':80')` 是子串匹配。
+  改为解析 `Local Address` 的最后一段端口号。
+
+### 变更
+
+- 移除「手动输入版本…」:版本列表拉不到时直接在旁边报错,不再提供手输兜底。
+
+### 性能
+
+- ⚡ **首屏少等数百毫秒**:`dsh.version()` 以前每次都要 spawn `npm prefix -g` + `dsh --version` 两个进程,
+  而 `app:bootstrap` 会 await 它。现在直接读全局安装目录里的 `package.json`(实测 0~1ms),
+  `dshBin()` 也先做纯 fs 探测、命中就不 spawn npm。
+- ⚡ **主进程不再每 2 秒卡一下**:`findPidByPort()` 同步跑 `netstat -ano`(100~300ms),
+  而 `snapshot()` 每 2 秒轮询、每个 web profile 还问两次。现在解析成 `port → pid` 映射并缓存 1.5 秒,
+  一次 netstat 服务所有查询,`snapshot()` 内也改成只问一次。
+- ⚡ **日志刷屏不再掉帧**:`appendLog` 从「每行 `textContent +=` + 整体 split」(O(n²))
+  改为 `appendChild(TextNode)` + 批量裁剪(O(1))。实测 3000 行:**872ms → 17ms(约 51×)**。
+- ⚡ **启动少一次网络往返**:目标版本列表改为**点开下拉时才加载**(带 60 秒缓存),不再开机就请求 registry。
 ## [0.4.0] - 2026-11-06(待发布)
 
 ### 新增

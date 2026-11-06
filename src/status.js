@@ -203,11 +203,13 @@ function snapshot() {
       })
       continue
     }
+    // 端口探测一次就够:原来 running 与 pid 各调一次 findPidByPort(每次都跑 netstat)
+    const portPid = info.type === 'web' ? findPidByPort(effectivePort(info.name)) : null
     out.push({
       name: info.name,
       type: info.type,
-      running: Boolean(s && pidAlive(s.pid)) || Boolean(info.type === 'web' && findPidByPort(effectivePort(info.name))),
-      pid: s?.pid || (info.type === 'web' ? findPidByPort(effectivePort(info.name)) : null),
+      running: Boolean(s && pidAlive(s.pid)) || Boolean(portPid),
+      pid: s?.pid || portPid,
       port: effectivePort(info.name),
       startedAt: s?.startedAt || null,
       readyAt: s?.readyAt || null,

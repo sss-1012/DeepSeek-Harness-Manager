@@ -50,35 +50,6 @@ function modal(title, bodyHtml, buttons) {
   })
 }
 
-// 文本输入弹窗(modal 只能放按钮):返回输入值或 null
-function promptText(title, defaultValue = '', placeholder = '') {
-  return new Promise((resolve) => {
-    const root = $('#modal-root')
-    root.innerHTML = `
-      <div class="overlay">
-        <div class="modal">
-          <h3>${esc(title)}</h3>
-          <div class="modal-body">
-            <input type="text" id="prompt-input" value="${esc(defaultValue)}" placeholder="${esc(placeholder)}" style="width:100%">
-          </div>
-          <div class="row" style="justify-content:flex-end">
-            <button class="btn primary" data-ok="1">确定</button>
-            <button class="btn" data-ok="0">取消</button>
-          </div>
-        </div>
-      </div>`
-    const input = $('#prompt-input')
-    if (input) { input.focus(); input.select() }
-    const finish = (val) => { root.innerHTML = ''; resolve(val) }
-    root.querySelectorAll('[data-ok]').forEach((b) => {
-      b.onclick = () => finish(b.dataset.ok === '1' ? (input ? input.value.trim() : '') : null)
-    })
-    if (input) input.onkeydown = (e) => {
-      if (e.key === 'Enter') finish(input.value.trim())
-      if (e.key === 'Escape') finish(null)
-    }
-  })
-}
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 
@@ -317,6 +288,176 @@ function bindSelfUpdate() {
 }
 
 // ---------- 概览 ----------
+// ---------- 自定义下拉(替代原生 select) ----------
+// 原生 <select> 的弹层由系统绘制:高度不可控(40+ 个版本会撑成一长条),
+// 下方放不下时还会自动向上翻。这里改成 body 级 fixed 弹层:
+// 固定 5 行高、超出滚动、始终向下展开(下方太挤就先把按钮滚到视口中部)。
+const DD_ROW = 30   // 单行高度,与 style.css 的 .dd-item 保持一致
+const DD_ROWS = 5   // 可见行数
+let ddOpen = null   // 同时只允许展开一个
+
+function makeDropdown(root, opts = {}) {
+  const onChange = opts.onChange || null
+  const onOpen = opts.onOpen || null
+  let items = Array.isArray(opts.items) ? opts.items.slice() : []
+  let value = opts.value || (items[0] ? items[0].value : '')
+  let hi = -1
+  let placing = false
+
+  root.classList.add('dd')
+  root.innerHTML =
+    '<button type="button" class="dd-btn" aria-haspopup="listbox" aria-expanded="false">' +
+    '<span class="dd-label"></span>' +
+    '<svg class="dd-caret" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">' +
+    '<path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+    '</button>'
+  const btn = root.querySelector('.dd-btn')
+  const label = root.querySelector('.dd-label')
+  const menu = document.createElement('div')
+  menu.className = 'dd-menu'
+  menu.setAttribute('role', 'listbox')
+  menu.hidden = true
+  document.body.appendChild(menu)
+
+  function labelOf(v) {
+    const hit = items.find((i) => i.value === v)
+    return hit ? hit.label : (items[0] ? items[0].label : '—')
+  }
+  function render() {
+    const text = labelOf(value)
+    label.textContent = text
+    btn.title = text
+    menu.innerHTML = items.map((it, i) => {
+      const cls = 'dd-item' + (it.value === value ? ' active' : '') + (i === hi ? ' hi' : '')
+      return `<div class="${cls}" role="option" data-v="${esc(it.value)}" aria-selected="${it.value === value}"` +
+        `${it.disabled ? ' aria-disabled="true"' : ''}>${esc(it.label)}</div>`
+    }).join('')
+  }
+  function scrollHiIntoView() {
+    const el = menu.children[hi]
+    if (!el) return
+    if (el.offsetTop < menu.scrollTop) menu.scrollTop = el.offsetTop
+    else if (el.offsetTop + el.offsetHeight > menu.scrollTop + menu.clientHeight)
+      menu.scrollTop = el.offsetTop + el.offsetHeight - menu.clientHeight
+  }
+  // 定位:永远从按钮下沿往下展开,高度最多 5 行
+  function place(retried) {
+    const r = btn.getBoundingClientRect()
+    const gap = 4
+    const space = window.innerHeight - r.bottom - gap - 10
+    if (space < DD_ROW * 3 && !retried) {
+      placing = true
+      try { root.scrollIntoView({ block: 'center' }) } catch { /* ignore */ }
+      placing = false
+      return place(true)
+    }
+    const minW = Math.max(r.width, 190)
+    const h = Math.max(DD_ROW * 2 + 8, Math.min(DD_ROW * DD_ROWS + 8, space))
+    menu.style.maxHeight = `${Math.round(h)}px`
+    menu.style.minWidth = `${Math.round(minW)}px`
+    menu.style.left = `${Math.round(Math.max(8, Math.min(r.left, window.innerWidth - minW - 8)))}px`
+    menu.style.top = `${Math.round(r.bottom + gap)}px`
+  }
+  function open() {
+    if (ddOpen && ddOpen !== inst) ddOpen.close()
+    if (onOpen) { try { onOpen() } catch { /* ignore */ } }
+    const idx = items.findIndex((i) => i.value === value && !i.disabled)
+    hi = idx >= 0 ? idx : items.findIndex((i) => !i.disabled)
+    render()
+    menu.hidden = false
+    root.classList.add('open')
+    btn.setAttribute('aria-expanded', 'true')
+    place(false)
+    scrollHiIntoView()
+    ddOpen = inst
+  }
+  function close() {
+    if (menu.hidden) return
+    menu.hidden = true
+    root.classList.remove('open')
+    btn.setAttribute('aria-expanded', 'false')
+    if (ddOpen === inst) ddOpen = null
+  }
+  function setValue(v, fire) {
+    value = v
+    render()
+    if (fire && onChange) onChange(v)
+  }
+  function move(step) {
+    if (!items.length) return
+    let i = hi
+    for (let n = 0; n < items.length; n++) {
+      i = (i + step + items.length) % items.length
+      if (!items[i].disabled) break
+    }
+    hi = i
+    render()
+    scrollHiIntoView()
+  }
+  btn.onclick = (e) => { e.stopPropagation(); menu.hidden ? open() : close() }
+  btn.onkeydown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (menu.hidden) { open(); return }
+      move(e.key === 'ArrowDown' ? 1 : -1)
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      if (!menu.hidden) {
+        e.preventDefault()
+        const it = items[hi]
+        if (it && !it.disabled) { setValue(it.value, true); close() }
+      }
+    }
+  }
+  menu.onclick = (e) => {
+    const el = e.target.closest('.dd-item')
+    if (!el || el.getAttribute('aria-disabled') === 'true') return
+    setValue(el.dataset.v, true)
+    close()
+    btn.focus()
+  }
+  function onDocDown(e) {
+    if (menu.hidden) return
+    if (menu.contains(e.target) || root.contains(e.target)) return
+    close()
+  }
+  function onKeyDown(e) {
+    if (e.key === 'Escape' && !menu.hidden) { close(); btn.focus() }
+  }
+  function onViewportChange(e) {
+    if (menu.hidden || placing) return
+    if (e && e.target && (e.target === menu || menu.contains(e.target))) return
+    place(true)
+  }
+  document.addEventListener('pointerdown', onDocDown, true)
+  document.addEventListener('keydown', onKeyDown, true)
+  window.addEventListener('resize', onViewportChange)
+  window.addEventListener('scroll', onViewportChange, true)
+
+  const inst = {
+    el: root,
+    getValue: () => value,
+    setValue,
+    setItems(list, nextValue) {
+      items = Array.isArray(list) ? list.slice() : []
+      if (nextValue != null) value = nextValue
+      if (!items.some((i) => i.value === value)) value = items[0] ? items[0].value : ''
+      render()
+      if (!menu.hidden) place(true)
+    },
+    close,
+    destroy() {
+      close()
+      menu.remove()
+      document.removeEventListener('pointerdown', onDocDown, true)
+      document.removeEventListener('keydown', onKeyDown, true)
+      window.removeEventListener('resize', onViewportChange)
+      window.removeEventListener('scroll', onViewportChange, true)
+    },
+  }
+  render()
+  return inst
+}
+
 function bindOverview() {
   // 取消长任务(安装/更新/重装)
   const cancelBtn = $('#btn-cancel-install')
@@ -325,31 +466,13 @@ function bindOverview() {
     toast(r.ok ? '已请求取消…' : (r.error || '没有可取消的任务'), r.ok ? 'ok' : 'error')
   }
   $('#btn-do-update').onclick = doUpdate
+  ensureVersionDd()   // 先把下拉控件画出来(默认 latest),版本列表等用户点开再拉
   // 按所选版本更新
   const verBtn = $('#btn-update-version')
   if (verBtn) verBtn.onclick = async () => {
-    const sel = $('#update-version')
-    const v = sel ? sel.value : 'latest'
-    if (!v || v === 'latest') return doUpdate()
+    const v = pickedVersion()
+    if (!v) return
     return doUpdate()
-  }
-  // 手动输入版本:即使拿不到版本列表(代理/镜像问题)也能装指定版本
-  const manualBtn = $('#btn-update-manual')
-  if (manualBtn) manualBtn.onclick = async () => {
-    const ok = await modal('指定版本',
-      '输入要安装的 dsh 版本(例如 <code>0.2.1-rc.5</code>)。<br>' +
-      '适用于上游最新版发残缺、或版本列表拉不到的情况。',
-      [{ label: '继续', value: true, cls: 'primary' }, { label: '取消', value: false }])
-    if (!ok) return
-    const ver = await promptText('输入版本号', state.updateInfo?.current || '')
-    if (!ver) return
-    const sel = $('#update-version')
-    if (sel) {
-      const exists = [...sel.options].some((o) => o.value === ver)
-      if (!exists) sel.insertAdjacentHTML('afterbegin', `<option value="${esc(ver)}">${esc(ver)} (手动)</option>`)
-      sel.value = ver
-    }
-    doUpdate()
   }
   // 兼容性检查:先跑快速检查(秒回),用户可再点「深度检查」逐包验证能否加载
   $('#btn-compat-check').onclick = () => runCompatCheck(false, { deep: false })
@@ -851,40 +974,62 @@ async function refreshUpdate() {
     ? `⚠ 检查失败: ${esc(r.error)}`
     : `当前 <b>${esc(r.current || '?')}</b> → 最新 <b>${esc(r.latest || '?')}</b>`
   renderBackups()
-  loadVersionOptions()
+  // 版本列表改为懒加载:用户点开下拉时才去 registry 取,
+  // 启动时不再白花一次网络往返
 }
 
 // 目标版本下拉:列 registry 上的版本(ETARGET 时用来回退到已知可用版本)
 let versionOptionsLoadedAt = 0
+let versionItems = [{ value: 'latest', label: '最新版(latest)' }]
+let versionDd = null
+
+function ensureVersionDd() {
+  if (versionDd) return versionDd
+  const box = $('#update-version-dd')
+  if (!box) return null
+  versionDd = makeDropdown(box, { items: versionItems, value: 'latest', onOpen: () => { loadVersionOptions() } })
+  return versionDd
+}
+
+// 当前选中的目标版本('latest' 表示跟随 latest 标签)
+function pickedVersion() {
+  return versionDd ? versionDd.getValue() : 'latest'
+}
+
+function setVersionItems(items, value) {
+  versionItems = items
+  const dd = ensureVersionDd()
+  if (dd) dd.setItems(items, value)
+}
+
 async function loadVersionOptions(force = false) {
-  const sel = $('#update-version')
+  const dd = ensureVersionDd()
   const btn = $('#btn-update-version')
-  if (!sel) return
-  if (!force && Date.now() - versionOptionsLoadedAt < 60000 && sel.options.length > 1) return
+  if (!dd) return
+  if (!force && Date.now() - versionOptionsLoadedAt < 60000 && versionItems.length > 1) return
   const hint = $('#update-version-hint')
+  const cur = state.updateInfo?.current || ''
+  const keep = dd.getValue()
   if (hint) hint.textContent = '正在获取版本列表…'
   try {
     const r = await window.dshm.listVersions()
-    const cur = state.updateInfo?.current || ''
     const latest = (r && r.distTags && r.distTags.latest) || state.updateInfo?.latest || ''
     if (!r || !r.ok || !r.versions || !r.versions.length) {
-      // 拿不到列表:至少把「当前版本」放进去,并明确告诉用户为什么
-      const opts = [`<option value="latest">最新版 latest${latest ? ` (${esc(latest)})` : ''}</option>`]
-      if (cur) opts.push(`<option value="${esc(cur)}">${esc(cur)} (当前,可重试)</option>`)
-      sel.innerHTML = opts.join('')
+      // 拿不到列表:下拉只留「最新版」,并在旁边直接报错(不做其它兜底)
+      setVersionItems([{ value: 'latest', label: `最新版 latest${latest ? ` (${latest})` : ''}` }], 'latest')
       if (btn) btn.disabled = false
       if (hint) hint.innerHTML = `<span style="color:var(--yellow)">版本列表获取失败:${esc((r && r.error) || '未知错误')}</span>`
       return
     }
     versionOptionsLoadedAt = Date.now()
-    const opts = [`<option value="latest">最新版 latest${latest ? ` (${esc(latest)})` : ''}</option>`]
+    const items = [{ value: 'latest', label: `最新版 latest${latest ? ` (${latest})` : ''}` }]
     for (const v of r.versions) {
       const marks = []
       if (v === latest) marks.push('latest')
       if (v === cur) marks.push('当前')
-      opts.push(`<option value="${esc(v)}"${v === cur ? ' disabled' : ''}>${esc(v)}${marks.length ? ` (${marks.join(' / ')})` : ''}</option>`)
+      items.push({ value: v, label: `${v}${marks.length ? ` (${marks.join(' / ')})` : ''}`, disabled: v === cur })
     }
-    sel.innerHTML = opts.join('')
+    setVersionItems(items, keep)
     if (btn) btn.disabled = false
     if (hint) hint.textContent = `共 ${r.versions.length} 个版本${r.via === 'npm' ? '(经 npm 获取)' : ''}`
   } catch (e) {
@@ -1013,7 +1158,7 @@ async function doUpdate() {
   }
 
   $('#btn-do-update').disabled = true
-  const target = $('#update-version') ? $('#update-version').value : 'latest'
+  const target = pickedVersion()
   const targetVersion = target && target !== 'latest' ? target : null
   resetUpdateProgress(targetVersion ? `正在更新到 ${targetVersion}…` : '正在更新到最新版…')
   const r = await window.dshm.doUpdate({ stopManaged, targetVersion })
@@ -1033,15 +1178,19 @@ async function doUpdate() {
   // ETARGET 常见于上游 latest 的依赖没发全:直接把版本选择器推到用户面前
   if (r.code === 'ETARGET' && !r.ok) {
     await loadVersionOptions(true)
-    const sel = $('#update-version')
-    const pick = await modal('该版本装不上',
+    // modal 的 DOM 是同步插入的:先拿 promise 挂下拉,再等用户选择
+    const pickP = modal('该版本装不上',
       `${esc(r.hint || '')}<br><br>可改选一个已知可用的版本重试(已自动列出 npm 上的版本)。` +
       `<div class="row" style="margin-top:10px"><span class="muted">目标版本:</span>` +
-      `<select id="etarget-version" style="flex:1">${sel ? sel.innerHTML : '<option value="latest">latest</option>'}</select></div>`,
+      `<div id="etarget-dd"></div></div>`,
       [{ label: '用该版本重试', value: true, cls: 'primary' }, { label: '稍后', value: false }])
+    const eddBox = $('#etarget-dd')
+    const edd = eddBox ? makeDropdown(eddBox, { items: versionItems, value: pickedVersion() }) : null
+    const pick = await pickP
+    const chosen = edd ? edd.getValue() : 'latest'
+    if (edd) edd.destroy()
     if (pick) {
-      const chosen = $('#etarget-version') ? $('#etarget-version').value : 'latest'
-      if (sel) sel.value = chosen
+      if (versionDd) versionDd.setValue(chosen)
       if (chosen && chosen !== 'latest') {
         resetUpdateProgress(`正在更新到 ${chosen}…`)
         const r2 = await window.dshm.doUpdate({ stopManaged, targetVersion: chosen })
@@ -1552,27 +1701,37 @@ async function openSettings() {
   }, 0)
   settingsModal.then(async (ok) => {
     if (!ok) return
-    await window.dshm.setSettings({
+    // 弹窗 DOM 在 resolve 后会被 setTimeout 清掉:先把所有值读出来再做 IPC。
+    // 旧代码在 await setSettings 之后才读 $('#set-token'),此时元素已是 null,
+    // 于是抛 Cannot read properties of null(设置其实存了,但提示和刷新全断了)。
+    const theme = window.__settingsChosenTheme ? window.__settingsChosenTheme() : (s.theme || 'system')
+    const patch = {
       closeToTray: $('#set-tray').checked,
       stopProfilesOnExit: $('#set-stop-on-exit').checked,
       softwareRendering: $('#set-software-rendering').checked,
       pollIntervalMs: Math.max(500, Number($('#set-poll').value) || 2000),
       defaultInstallProfile: $('#set-install-profile').value || null,
       insecureGitHub: $('#set-gh-insecure').checked,
-      theme: window.__settingsChosenTheme ? window.__settingsChosenTheme() : (s.theme || 'system'),
+      theme,
       backupRetention: $('#set-backup-retention').value || 'off',
       npmRegistry: $('#set-npm-registry').value || null,
-    })
-    await window.dshm.setGithubToken($('#set-token').value.trim() || null)
-    const key = $('#set-apikey').value.trim()
-    if (key) {
-      const kr = await window.dshm.setApiKey(key)
-      if (!kr.ok) { toast(`API Key 保存失败: ${kr.error}`, 'error'); return }
     }
-    toast('设置已保存', 'ok')
-    state.bootstrap.settings = { ...(state.bootstrap.settings || {}), theme: window.__settingsChosenTheme ? window.__settingsChosenTheme() : (s.theme || 'system'), backupRetention: $('#set-backup-retention').value || 'off' }
-    renderBackups()
-    renderOverview()
+    const token = $('#set-token').value.trim() || null
+    const key = $('#set-apikey').value.trim()
+    try {
+      await window.dshm.setSettings(patch)
+      await window.dshm.setGithubToken(token)
+      if (key) {
+        const kr = await window.dshm.setApiKey(key)
+        if (!kr.ok) { toast(`API Key 保存失败: ${kr.error}`, 'error'); return }
+      }
+      toast('设置已保存', 'ok')
+      state.bootstrap.settings = { ...(state.bootstrap.settings || {}), ...patch }
+      renderBackups()
+      renderOverview()
+    } catch (e) {
+      toast(`保存设置失败: ${e.message}`, 'error')
+    }
   })
 }
 
@@ -1583,15 +1742,24 @@ function bindLogBar() {
     bar.classList.toggle('collapsed')
     $('#btn-log-toggle').textContent = bar.classList.contains('collapsed') ? '展开' : '收起'
   }
-  $('#btn-log-clear').onclick = () => { $('#log-console').textContent = '' }
+  $('#btn-log-clear').onclick = () => { $('#log-console').textContent = ''; logLineCount = 0 }
 }
 
+// 日志追加:O(1)。旧实现每行都 `textContent += line` 再整体 split,
+// 2000 行时每行要复制 ~200KB 文本 —— 日志刷屏(安装/更新)时明显掉帧。
+const LOG_MAX_LINES = 2200
+const LOG_TRIM_TO = 2000
+let logLineCount = 0
 function appendLog(line) {
   const el = $('#log-console')
+  if (!el) return
   const autoScroll = el.scrollTop + el.clientHeight >= el.scrollHeight - 40
-  el.textContent += line + '\n'
-  const lines = el.textContent.split('\n')
-  if (lines.length > 2200) el.textContent = lines.slice(-2000).join('\n')
+  el.appendChild(document.createTextNode(line + '\n'))
+  logLineCount++
+  if (logLineCount > LOG_MAX_LINES) {
+    let drop = logLineCount - LOG_TRIM_TO
+    while (drop-- > 0 && el.firstChild) { el.removeChild(el.firstChild); logLineCount-- }
+  }
   if (autoScroll) el.scrollTop = el.scrollHeight
 }
 

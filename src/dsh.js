@@ -8,19 +8,27 @@ const { execToolSync } = require('./tool')
 
 let binCache = null
 
+// 全局安装目录候选:先纯 fs 探测常见位置(<1ms),
+// 都没命中才去 spawn 一次 `npm prefix -g`(Windows 上要 300~800ms)
+function dshDirCandidates() {
+  const dirs = []
+  if (process.env.APPDATA) dirs.push(path.join(process.env.APPDATA, 'npm', 'node_modules', '@deepseek-ai', 'dsh'))
+  if (process.env.LOCALAPPDATA) dirs.push(path.join(process.env.LOCALAPPDATA, 'npm', 'node_modules', '@deepseek-ai', 'dsh'))
+  if (process.env.ProgramFiles) dirs.push(path.join(process.env.ProgramFiles, 'nodejs', 'node_modules', '@deepseek-ai', 'dsh'))
+  return dirs
+}
+
 function dshBin() {
   if (binCache) return binCache
-  const candidates = []
-  if (process.env.DSH_CLI_BIN) candidates.push(process.env.DSH_CLI_BIN)
+  if (process.env.DSH_CLI_BIN && fs.existsSync(process.env.DSH_CLI_BIN)) { binCache = process.env.DSH_CLI_BIN; return binCache }
+  for (const dir of dshDirCandidates()) {
+    const c = path.join(dir, 'lib', 'bin.js')
+    if (fs.existsSync(c)) { binCache = c; return c }
+  }
   const r = execToolSync('npm', ['prefix', '-g'])
   if (r.ok) {
-    const prefix = r.stdout.trim()
-    candidates.push(path.join(prefix, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'))
-  }
-  // 常见全局路径兜底
-  candidates.push(path.join(process.env.APPDATA || '', 'npm', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'))
-  for (const c of candidates) {
-    if (c && fs.existsSync(c)) { binCache = c; return c }
+    const c = path.join(r.stdout.trim(), 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+    if (fs.existsSync(c)) { binCache = c; return c }
   }
   throw new Error('未找到 dsh CLI:请确认已全局安装 @deepseek-ai/dsh')
 }
@@ -64,6 +72,14 @@ function execDsh(args, opts = {}) {
 }
 
 async function version() {
+  // 快路径:直接读全局安装目录里的 package.json(毫秒级、结果总是最新的)。
+  // 之前每次都要 spawn `npm prefix -g` + `dsh --version` 两个进程,
+  // 而 app:bootstrap 会 await 它 —— 首屏因此白白多等数百毫秒。
+  try {
+    const pkgFile = path.join(path.dirname(path.dirname(dshBin())), 'package.json')
+    const v = JSON.parse(fs.readFileSync(pkgFile, 'utf8')).version
+    if (v) return String(v).trim()
+  } catch { /* 读不到就退回 spawn */ }
   const r = await execDsh(['--version'], { timeout: 20000 })
   return r.ok ? r.stdout.trim() : null
 }
@@ -139,18 +155,33 @@ function pidAlive(pid) {
   try { process.kill(pid, 0); return true } catch { return false }
 }
 
-function findPidByPort(port) {
+// netstat -ano 是同步阻塞调用(Windows 上 100~300ms)。snapshot() 每 2 秒轮询一次、
+// 每个 web profile 还会问两次,之前等于每 2 秒把主进程卡住几百毫秒(界面卡顿主因)。
+// 现在把输出解析成 port -> pid 映射并缓存 1.5 秒:一次 netstat 服务所有查询。
+let portMapCache = { at: 0, map: null }
+function portPidMap() {
+  const now = Date.now()
+  if (portMapCache.map && now - portMapCache.at < 1500) return portMapCache.map
+  const map = new Map()
   try {
     const out = require('node:child_process').execFileSync('netstat', ['-ano'], { encoding: 'utf8', windowsHide: true, timeout: 10000 })
     for (const line of out.split('\n')) {
-      if (line.includes(`:${port}`) && line.includes('LISTENING')) {
-        const parts = line.trim().split(/\s+/)
-        const pid = Number(parts[parts.length - 1])
-        if (pid > 0) return pid
-      }
+      if (!line.includes('LISTENING')) continue
+      const parts = line.trim().split(/\s+/)
+      if (parts.length < 5) continue
+      const local = parts[1] || ''
+      const port = Number(local.slice(local.lastIndexOf(':') + 1))
+      const pid = Number(parts[parts.length - 1])
+      if (port > 0 && pid > 0 && !map.has(port)) map.set(port, pid)
     }
   } catch { /* ignore */ }
-  return null
+  portMapCache = { at: now, map }
+  return map
+}
+
+function findPidByPort(port) {
+  if (!port) return null
+  return portPidMap().get(Number(port)) || null
 }
 
 module.exports = { dshBin, execDsh, version, spawnProfile, killPid, pidAlive, findPidByPort, envFor }
