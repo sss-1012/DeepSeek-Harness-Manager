@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 // 更新模块:版本检测 / 更新前备份 / 全局更新 / 回滚
 //
 // 针对 2026-09-10 那次真实失败(npm EBUSY:copyfile koffi.node,npm 清理 ENOTEMPTY,全局 dsh 半更新,
@@ -59,6 +59,24 @@ async function checkUpdate({ fresh = false } = {}) {
 
 function invalidateUpdateCache() { updateCache = null }
 
+// 列出 registry 上可安装的 dsh 版本(供「更新到指定版本」使用)。
+// 上游偶发「latest 指向一个依赖没发全的版本」(npm ETARGET),这时只能回退到已知可用版本。
+async function listVersions({ registry = null } = {}) {
+  const base = registry === 'npmmirror' ? 'https://registry.npmmirror.com'
+    : (registry && registry !== 'official' ? registry : 'https://registry.npmjs.org')
+  try {
+    const res = await fetch(`${base}/@deepseek-ai%2fdsh`, { signal: AbortSignal.timeout(15000) })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const j = await res.json()
+    const all = Object.keys(j.versions || {})
+    const distTags = j['dist-tags'] || {}
+    const sorted = all.filter((v) => semver.valid(v)).sort((a, b) => semver.rcompare(a, b))
+    return { ok: true, versions: sorted.slice(0, 60), distTags, registry: base }
+  } catch (e) {
+    return { ok: false, error: e.message, versions: [], distTags: {}, registry: base }
+  }
+}
+
 // ---- 进程预检:谁会占用全局 dsh 的文件 -------------------------------------------------
 function runningWorkloads() {
   const out = { managed: [], cli: [], desktop: null, unknown: false, blocking: false, detail: [] }
@@ -105,7 +123,13 @@ function classifyNpmError(text) {
     return { code: 'EPERM', hint: '权限不足:请关闭占用进程,或以管理员身份重试。', needsReinstall: false }
   }
   if (/ETARGET|No matching version/i.test(t)) {
-    return { code: 'ETARGET', hint: 'npm 上没有这个版本,请检查版本号或网络源。', needsReinstall: false }
+    return {
+      code: 'ETARGET',
+      // 最常见成因:上游 latest 指向一个依赖未同步/未发布的版本(如 0.2.2-rc.1 的某个子包),
+      // 或镜像源尚未同步到该版本。给用户可操作的出路,而不是只说“失败”。
+      hint: 'npm 上找不到这个版本(常因上游最新版的依赖未发布/未同步,或镜像尚未同步)。可在「目标版本」里选一个已知可用的版本重试;若正在用镜像,也可切回官方源。',
+      needsReinstall: false,
+    }
   }
   // 网络类:国内直连 registry.npmjs.org 最常见的“没反应”就是这个
   if (/ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|network|fetch failed|request to .* failed|ERR_SOCKET|timed out/i.test(t)) {
@@ -170,8 +194,8 @@ async function postCheck(emit) {
   }
 }
 
-async function doUpdate(onProgress, { stopManaged = false, registry = null, onChild = null } = {}) {
-  const emit = (phase, percent, line) => onProgress?.({ phase, percent, line })
+async function doUpdate(onProgress, { stopManaged = false, registry = null, onChild = null, targetVersion = null } = {}) {
+  const emit = (phase, percent, line, meta) => onProgress?.({ phase, percent, line, ...(meta || {}) })
   const oldVersion = await version()
 
   // 1. 强制预检:有 harness 在跑就拒绝(EBUSY 的根因)
@@ -209,15 +233,16 @@ async function doUpdate(onProgress, { stopManaged = false, registry = null, onCh
     emit('backup', 15, `⚠ 备份失败(继续更新): ${e.message}`)
   }
 
-  emit('install', 20, '正在全局安装最新版(输出实时显示如下)…')
+  const spec = targetVersion ? `@deepseek-ai/dsh@${targetVersion}` : '@deepseek-ai/dsh@latest'
+  emit('install', 20, `正在全局安装 ${spec}(输出实时显示如下)…`)
   const envMod = require('./env')
   const regArgs = registry && envMod.NPM_REGISTRY[registry] ? [`--registry=${envMod.NPM_REGISTRY[registry]}`] : []
   if (registry) emit('install', 20, `使用 npm 镜像:${envMod.NPM_REGISTRY[registry] || registry}`)
-  const r = await execToolStream('npm', ['install', '-g', '@deepseek-ai/dsh@latest', ...regArgs], {
+  const r = await execToolStream('npm', ['install', '-g', spec, ...regArgs], {
     timeout: 900000,
     heartbeatMs: 5000,
     onChild,
-    onLine: (line) => emit('install', null, line),
+    onLine: (line, meta) => emit('install', null, line, meta),
   })
   if (r.cancelled) {
     emit('failed', 100, '⏹ 已取消更新')
@@ -246,7 +271,7 @@ async function doUpdate(onProgress, { stopManaged = false, registry = null, onCh
 
 // 强制重装:半更新状态下唯一可靠的修法
 async function reinstallDsh(onProgress, opts = {}) {
-  const emit = (phase, percent, line) => onProgress?.({ phase, percent, line })
+  const emit = (phase, percent, line, meta) => onProgress?.({ phase, percent, line, ...(meta || {}) })
   const pre = runningWorkloads()
   if (pre.blocking) {
     const msg = `重装被阻止:${pre.detail.join(';')}。请先停止它们。`
@@ -261,7 +286,7 @@ async function reinstallDsh(onProgress, opts = {}) {
     timeout: 1200000,
     heartbeatMs: 5000,
     onChild: opts.onChild,
-    onLine: (line) => emit('install', null, line),
+    onLine: (line, meta) => emit('install', null, line, meta),
   })
   if (r.cancelled) {
     emit('failed', 100, '⏹ 已取消重装')

@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 // DeepSeek Harness 管理器 — Electron 主进程
 const path = require('node:path')
 const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell, nativeImage, screen } = require('electron')
@@ -15,6 +15,7 @@ const resolver = require('./src/plugins/resolver')
 const history = require('./src/history')
 const diagnose = require('./src/diagnose')
 const update = require('./src/update')
+const selfupdate = require('./src/selfupdate')
 const balance = require('./src/balance')
 const env = require('./src/env')
 const compat = require('./src/compat')
@@ -312,10 +313,12 @@ function cancelActiveInstall() {
 
 async function runEnvInstall(fn, label) {
   const registry = store.getSettings().npmRegistry || null
-  const emit = (line) => {
-    log.logInfo(line)
-    broadcast('update:progress', { phase: 'install', percent: null, line })
-    broadcast('log:line', line)
+  const emit = (line, meta) => {
+    const hb = Boolean(meta && meta.heartbeat)
+    // 心跳只刷界面,不写日志文件(否则几小时就刷出成百上千行)
+    if (!hb) log.logInfo(line)
+    broadcast('update:progress', { phase: 'install', percent: null, line, heartbeat: hb })
+    if (!hb) broadcast('log:line', line)
   }
   emit(`${label}…${registry ? `(镜像 ${env.NPM_REGISTRY[registry] || registry})` : ''}`)
   try {
@@ -492,14 +495,18 @@ function registerIpc() {
 
   // 手动检查更新 → fresh;启动时由渲染层异步调用 → 命中缓存秒回
   ipcMain.handle('update:check', (_e, opts = {}) => update.checkUpdate({ fresh: Boolean(opts && opts.fresh) }))
+  // 可选版本列表(ETARGET 时的出路:回退到已知可用版本)
+  ipcMain.handle('update:versions', () => update.listVersions({ registry: store.getSettings().npmRegistry || null }))
 
   ipcMain.handle('update:do', async (_e, opts = {}) => {
     return update.doUpdate((evt) => {
       const line = typeof evt === 'string' ? evt : evt?.line
-      if (line) log.logInfo(line)
+      // 心跳不写日志文件(避免刷屏),只进界面进度
+      if (line && !(evt && evt.heartbeat)) log.logInfo(line)
       broadcast('update:progress', evt)
     }, {
       stopManaged: Boolean(opts.stopManaged),
+      targetVersion: opts.targetVersion || null,
       registry: opts.registry || store.getSettings().npmRegistry || null,
       onChild: (child) => { activeInstallChild = child },
     }).finally(() => { activeInstallChild = null })
@@ -509,7 +516,8 @@ function registerIpc() {
   ipcMain.handle('update:reinstallDsh', async (_e, opts = {}) => {
     return update.reinstallDsh((evt) => {
       const line = typeof evt === 'string' ? evt : evt?.line
-      if (line) log.logInfo(line)
+      // 心跳不写日志文件(避免刷屏),只进界面进度
+      if (line && !(evt && evt.heartbeat)) log.logInfo(line)
       broadcast('update:progress', evt)
     }, {
       registry: (opts && opts.registry) || store.getSettings().npmRegistry || null,
@@ -519,6 +527,42 @@ function registerIpc() {
 
   // 取消正在进行的安装/更新(用户点「取消」时调)
   ipcMain.handle('install:cancel', () => cancelActiveInstall())
+
+  // ---- 管理器自更新 ----
+  ipcMain.handle('self:check', async () => {
+    const r = await selfupdate.checkLatest()
+    log.logInfo(`管理器更新检查:当前 ${r.current},最新 ${r.latest || '未知'}${r.error ? `(${r.error})` : ''}`)
+    return r
+  })
+  ipcMain.handle('self:download', async (_e, kind = 'setup') => {
+    const info = await selfupdate.checkLatest()
+    if (info.error) return { ok: false, error: info.error }
+    const asset = selfupdate.pickAsset(info.assets, kind)
+    if (!asset) return { ok: false, error: `该版本没有${kind === 'portable' ? '便携版' : '安装版'}资产` }
+    const emit = (percent, received, total) => {
+      broadcast('self:progress', { phase: 'download', percent, received, total, line: `下载中 ${(received / 1048576).toFixed(1)} / ${(total / 1048576).toFixed(1)} MB` })
+    }
+    try {
+      const r = await selfupdate.download(asset, { onProgress: emit })
+      broadcast('self:progress', { phase: 'downloaded', percent: 100, line: '✔ 下载完成,可立即安装' })
+      return { ok: true, path: r.path, size: r.size, version: info.latest, kind }
+    } catch (e) {
+      log.logWarn(`下载管理器更新包失败: ${e.message}`)
+      broadcast('self:progress', { phase: 'failed', percent: 100, line: `✘ 下载失败: ${e.message}` })
+      return { ok: false, error: e.message }
+    }
+  })
+  ipcMain.handle('self:install', (_e, filePath) => {
+    const r = selfupdate.launchInstaller(filePath)
+    if (r.ok) {
+      log.logInfo('安装程序已启动,管理器即将退出')
+      // 先让安装程序起来,再退出,避免安装时文件被占用
+      setTimeout(() => { quitting = true; app.quit() }, 800)
+    }
+    return r
+  })
+  ipcMain.handle('self:openRelease', () => selfupdate.openReleasePage())
+  ipcMain.handle('self:version', () => ({ version: selfupdate.currentVersion(), page: selfupdate.RELEASES_PAGE }))
 
   // 更新/回滚前的进程预检(谁在占用全局 dsh)
   ipcMain.handle('update:preflight', () => update.runningWorkloads())

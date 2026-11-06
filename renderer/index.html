@@ -21,6 +21,7 @@
     <button class="nav-item" data-view="plugins">🧩 插件</button>
     <button class="nav-item" data-view="diagnose">🩺 诊断</button>
     <button class="nav-item" data-view="balance">💰 余额</button>
+    <button class="nav-item" data-view="self">⬆ 更新管理器</button>
   </nav>
 
   <main id="content">
@@ -37,20 +38,48 @@
           <button id="btn-compat-check" class="btn">插件兼容性检查</button>
           <button id="btn-reinstall-dsh" class="btn ghost" title="npm 更新被 EBUSY 打断或安装树处于半更新状态时使用">强制重装 dsh CLI</button>
         </div>
+        <div class="row">
+          <span class="muted">目标版本:</span>
+          <select id="update-version" style="min-width:200px"><option value="latest">最新版(latest)</option></select>
+          <button id="btn-update-version" class="btn" disabled>更新到该版本</button>
+        </div>
         <div class="note" style="margin-top:6px">
           更新/回滚会先做<b>进程预检</b>:检测到 harness、CLI 或官方桌面端在运行时会阻止操作,避免 npm 因文件占用而 EBUSY 失败。
         </div>
         <div id="compat-results" style="margin-top:6px"></div>
         <div id="update-progress-wrap" class="progress-wrap" hidden>
           <div class="progress-track"><div id="update-progress-bar" class="progress-bar"></div></div>
-          <div class="row" style="margin:6px 0 0;justify-content:space-between">
+          <div class="progress-line">
             <div id="update-progress" class="muted">—</div>
-            <button id="btn-cancel-install" class="btn sm ghost danger-ghost" hidden>取消</button>
+            <button id="btn-cancel-install" class="btn sm danger-ghost" hidden>取消</button>
           </div>
           <pre id="update-log" class="update-log"></pre>
         </div>
         <h4>备份与回滚</h4>
         <div id="backup-list" class="muted">暂无备份</div>
+      </div>
+    </section>
+
+    <!-- 管理器自身更新(与 harness 更新分开,不会碰 dsh/profile) -->
+    <section id="view-self" class="view">
+      <h2>更新管理器</h2>
+      <div class="panel">
+        <div class="row">
+          <div id="self-info" class="muted">当前版本 —</div>
+          <button id="btn-self-check" class="btn">检查更新</button>
+          <button id="btn-self-download" class="btn primary" disabled>下载并安装</button>
+          <button id="btn-self-portable" class="btn ghost" disabled>下载便携版</button>
+          <button id="btn-self-release" class="btn ghost">打开发布页</button>
+        </div>
+        <div class="note" style="margin-top:6px">
+          只会替换<b>管理器自身</b>,不会动 dsh、profile、插件或正在运行的 harness。
+          安装时会退出管理器(默认不停止 harness)。
+        </div>
+        <div id="self-progress-wrap" class="progress-wrap" hidden>
+          <div class="progress-track"><div id="self-progress-bar" class="progress-bar"></div></div>
+          <div id="self-progress" class="muted">—</div>
+        </div>
+        <div id="self-notes" class="muted" style="margin-top:8px;white-space:pre-wrap"></div>
       </div>
     </section>
 

@@ -350,3 +350,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, .nav-item:focus
 .env-row .k { width: 78px; }
 .env-row .v { flex: 1 1 auto; }
 .env-row .acts .btn.sm { padding: 4px 8px; font-size: 11.5px; }
+/* 进度行:状态文字占满,取消按钮固定在最右且不换行 —— 以前放在 .row 里会被长文字挤走 */
+.progress-line { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; flex-wrap: nowrap; }
+.progress-line #update-progress { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.progress-line #btn-cancel-install { flex: 0 0 auto; }
+.progress-line #btn-cancel-install[hidden] { display: none; }

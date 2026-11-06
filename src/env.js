@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 // 环境检测与一键安装(node / npm / dsh),面向新手使用
 const fs = require('node:fs')
 const path = require('node:path')
@@ -113,7 +113,7 @@ async function runDshInstall({ onLog, registry, onChild, force = false, timeout 
     timeout,
     heartbeatMs: 5000,
     onChild,
-    onLine: (line) => onLog?.(line),
+    onLine: (line, meta) => onLog?.(line, meta),
   })
 }
 
@@ -138,7 +138,7 @@ async function uninstallDsh(opts = {}) {
   const o = typeof opts === 'function' ? { onLog: opts } : opts
   o.onLog?.('正在卸载 @deepseek-ai/dsh …')
   const r = await execToolStream('npm', ['uninstall', '-g', '@deepseek-ai/dsh'], {
-    timeout: 600000, heartbeatMs: 5000, onChild: o.onChild, onLine: (l) => o.onLog?.(l),
+    timeout: 600000, heartbeatMs: 5000, onChild: o.onChild, onLine: (l, meta) => o.onLog?.(l, meta),
   })
   if (r.cancelled) { o.onLog?.('已取消卸载'); return { ok: false, cancelled: true, error: '已取消' } }
   o.onLog?.(r.ok ? '✔ dsh 已卸载' : `✘ 卸载失败: ${(r.stderr || r.error || '').slice(0, 300)}`)

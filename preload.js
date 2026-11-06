@@ -24,7 +24,15 @@ const api = {
   // ---- 历史 / 诊断 / 更新 ----
   listHistory: (profile) => ipcRenderer.invoke('history:list', profile),
   runDiagnostics: () => ipcRenderer.invoke('diagnose:run'),
-  checkUpdate: () => ipcRenderer.invoke('update:check'),
+  checkUpdate: (opts) => ipcRenderer.invoke('update:check', opts),
+  listVersions: () => ipcRenderer.invoke('update:versions'),
+  // ---- 管理器自更新 ----
+  selfCheck: () => ipcRenderer.invoke('self:check'),
+  selfDownload: (kind) => ipcRenderer.invoke('self:download', kind),
+  selfInstall: (filePath) => ipcRenderer.invoke('self:install', filePath),
+  selfOpenRelease: () => ipcRenderer.invoke('self:openRelease'),
+  selfVersion: () => ipcRenderer.invoke('self:version'),
+  onSelfProgress: (cb) => { ipcRenderer.on('self:progress', (_e, d) => cb(d)) },
   doUpdate: (opts) => ipcRenderer.invoke('update:do', opts),
   updatePreflight: () => ipcRenderer.invoke('update:preflight'),
   reinstallDsh: (opts) => ipcRenderer.invoke('update:reinstallDsh', opts),

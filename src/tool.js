@@ -172,7 +172,8 @@ function execToolStream(cmd, args, { onLine, timeout = 600000, cwd, heartbeatMs 
       const silentFor = Math.round((Date.now() - lastOutputAt) / 1000)
       const totalFor = Math.round((Date.now() - startedAt) / 1000)
       if (silentFor >= Math.max(3, Math.round(heartbeatMs / 1000))) {
-        onLine?.(`⏳ 仍在执行…已 ${totalFor}s(最近 ${silentFor}s 无新输出;npm 下载/解包时属正常,可点「取消」终止)`)
+        // 心跳带 meta 标记:界面只刷新一行,日志文件不写入(避免刷屏)
+        onLine?.(`⏳ 仍在执行…已 ${totalFor}s(最近 ${silentFor}s 无新输出;可点「取消」终止)`, { heartbeat: true })
         lastOutputAt = Date.now()
       }
     }, heartbeatMs) : null
@@ -182,7 +183,7 @@ function execToolStream(cmd, args, { onLine, timeout = 600000, cwd, heartbeatMs 
       if (isErr) stderr += text; else stdout += text
       for (const raw of text.split(/\r?\n/)) {
         const line = raw.trim()
-        if (line) onLine?.(line)
+        if (line) onLine?.(line, { heartbeat: false })
       }
     }
     child.stdout.on('data', (b) => handle(b, false))

@@ -106,6 +106,7 @@ async function init() {
   bindSearch()
   bindDiagnose()
   bindBalance()
+  bindSelfUpdate()
   bindLogBar()
 
   // 立即出卡片(骨架),不等任何网络/子进程
@@ -124,6 +125,17 @@ async function loadSidePanels() {
     (async () => { try { await refreshUpdate() } catch { /* ignore */ } })(),
     (async () => { try { const tail = await window.dshm.logTail(); tail.forEach((l) => appendLog(l)) } catch { /* ignore */ } })(),
     (async () => { try { await ensureEnv() } catch { /* ignore */ } })(),
+    // 静默检查管理器自身有没有新版(不影响首屏;失败不打扰)
+    (async () => {
+      try {
+        const r = await window.dshm.selfCheck()
+        if (r && r.hasUpdate) {
+          state.selfInfo = r
+          appendLog(`[管理器更新] 发现新版本 v${r.latest}(当前 v${r.current}),可在左侧「更新管理器」里安装`)
+          toast(`管理器有新版本 v${r.latest},可在左侧「更新管理器」里升级`, 'ok')
+        }
+      } catch { /* ignore */ }
+    })(),
   ]
   await Promise.allSettled(tasks)
 }
@@ -176,6 +188,102 @@ function refreshCurrentView() {
   const active = $('.nav-item.active')?.dataset.view
   if (active === 'overview') renderOverview()
   if (active === 'plugins') renderPlugins()
+  if (active === 'self') renderSelfUpdate()
+}
+
+// ---------- 管理器自更新 ----------
+async function renderSelfUpdate() {
+  const info = $('#self-info')
+  if (!info) return
+  let v
+  try { v = await window.dshm.selfVersion() } catch { v = { version: state.bootstrap?.appVersion || '?' } }
+  state.selfVersion = v.version
+  info.innerHTML = `当前版本 <b>v${esc(v.version)}</b>`
+  if (state.selfInfo) applySelfInfo(state.selfInfo)
+}
+
+function applySelfInfo(r) {
+  state.selfInfo = r
+  const info = $('#self-info')
+  const dl = $('#btn-self-download')
+  const pl = $('#btn-self-portable')
+  const notes = $('#self-notes')
+  if (!info) return
+  if (r.error) {
+    info.innerHTML = `当前版本 <b>v${esc(r.current)}</b> · <span style="color:var(--yellow)">检查失败:${esc(r.error)}</span>`
+    if (dl) dl.disabled = true
+    if (pl) pl.disabled = true
+    return
+  }
+  if (r.hasUpdate) {
+    info.innerHTML = `当前 <b>v${esc(r.current)}</b> → 最新 <b style="color:var(--green)">v${esc(r.latest)}</b>`
+    if (dl) { dl.disabled = false; dl.textContent = `下载并安装 v${r.latest}` }
+    if (pl) pl.disabled = false
+  } else {
+    info.innerHTML = `当前 <b>v${esc(r.current)}</b> · 已是最新版本`
+    if (dl) { dl.disabled = true; dl.textContent = '下载并安装' }
+    if (pl) pl.disabled = true
+  }
+  if (notes && r.notes) notes.textContent = r.notes
+}
+
+async function checkSelfUpdate(auto = false) {
+  const dl = $('#btn-self-download')
+  if (dl && !auto) { dl.disabled = true }
+  const r = await window.dshm.selfCheck()
+  applySelfInfo(r)
+  if (!auto) {
+    if (r.error) toast(`检查失败: ${r.error}`, 'error')
+    else toast(r.hasUpdate ? `发现管理器新版本 v${r.latest}` : '管理器已是最新版本', r.hasUpdate ? 'ok' : 'ok')
+  }
+  return r
+}
+
+function bindSelfUpdate() {
+  const check = $('#btn-self-check')
+  if (check) check.onclick = () => checkSelfUpdate(false)
+  const rel = $('#btn-self-release')
+  if (rel) rel.onclick = () => window.dshm.selfOpenRelease()
+
+  const startDownload = async (kind) => {
+    const wrap = $('#self-progress-wrap')
+    const bar = $('#self-progress-bar')
+    const text = $('#self-progress')
+    wrap.hidden = false
+    bar.classList.add('indeterminate')
+    text.textContent = '正在下载…'
+    const r = await window.dshm.selfDownload(kind)
+    bar.classList.remove('indeterminate')
+    if (!r.ok) { text.textContent = `下载失败:${r.error}`; toast(`下载失败: ${r.error}`, 'error'); return }
+    bar.style.width = '100%'
+    text.textContent = `已下载 v${r.version}(${(r.size / 1048576).toFixed(1)} MB)`
+    const go = await modal('下载完成', `已下载 <b>v${esc(r.version)}</b> ${kind === 'portable' ? '便携版' : '安装版'}。<br><br>` +
+      (kind === 'portable'
+        ? '便携版不会自动覆盖当前安装,会在下载目录里打开。'
+        : '点击「立即安装」后管理器会退出,并运行安装程序完成替换(默认不停止 harness)。'), [
+      { label: kind === 'portable' ? '打开文件' : '立即安装', value: true, cls: 'primary' }, { label: '稍后', value: false },
+    ])
+    if (!go) return
+    if (kind === 'portable') { await window.dshm.openPath(r.path); return }
+    const ir = await window.dshm.selfInstall(r.path)
+    if (!ir.ok) toast(`启动安装程序失败: ${ir.error}`, 'error')
+    else toast('安装程序已启动,管理器即将退出…', 'ok')
+  }
+
+  const dl = $('#btn-self-download')
+  if (dl) dl.onclick = () => startDownload('setup')
+  const pl = $('#btn-self-portable')
+  if (pl) pl.onclick = () => startDownload('portable')
+
+  window.dshm.onSelfProgress((evt) => {
+    const wrap = $('#self-progress-wrap')
+    if (!wrap) return
+    wrap.hidden = false
+    const bar = $('#self-progress-bar')
+    if (evt.percent != null) { bar.classList.remove('indeterminate'); bar.style.width = `${evt.percent}%` }
+    const text = $('#self-progress')
+    if (text) text.textContent = evt.line || text.textContent
+  })
 }
 
 // ---------- 概览 ----------
@@ -187,6 +295,14 @@ function bindOverview() {
     toast(r.ok ? '已请求取消…' : (r.error || '没有可取消的任务'), r.ok ? 'ok' : 'error')
   }
   $('#btn-do-update').onclick = doUpdate
+  // 按所选版本更新
+  const verBtn = $('#btn-update-version')
+  if (verBtn) verBtn.onclick = async () => {
+    const sel = $('#update-version')
+    const v = sel ? sel.value : 'latest'
+    if (!v || v === 'latest') return doUpdate()
+    return doUpdate()
+  }
   // 兼容性检查:先跑快速检查(秒回),用户可再点「深度检查」逐包验证能否加载
   $('#btn-compat-check').onclick = () => runCompatCheck(false, { deep: false })
   const reinst = $('#btn-reinstall-dsh')
@@ -473,6 +589,12 @@ function handleUpdateProgress(evt) {
   const logEl = $('#update-log')
   if (!wrap || !bar) return
   wrap.hidden = false
+  // 只要还在进行中就显示「取消」——不依赖某一条调用路径手动开关(以前会漏)
+  if (evt && typeof evt === 'object' && evt.phase) {
+    setInstallRunning(evt.phase !== 'done' && evt.phase !== 'failed')
+  } else if (typeof evt === 'string') {
+    setInstallRunning(true)
+  }
   if (typeof evt === 'string') {
     text.textContent = evt
     logEl.textContent += (logEl.textContent ? '\n' : '') + evt
@@ -484,7 +606,15 @@ function handleUpdateProgress(evt) {
     bar.classList.remove('indeterminate')
     bar.style.width = `${Math.max(0, Math.min(100, evt.percent))}%`
   }
-  if (evt.line) {
+  if (evt.heartbeat) {
+    // 心跳:只刷新状态行 + 就地替换日志最后一行(不累积刷屏)
+    text.textContent = evt.line
+    const lines = logEl.textContent.split('\n')
+    if (lines.length && lines[lines.length - 1].startsWith('⏳')) {
+      lines[lines.length - 1] = evt.line
+      logEl.textContent = lines.join('\n')
+    }
+  } else if (evt.line) {
     text.textContent = evt.line.split('\n')[0]
     logEl.textContent += (logEl.textContent ? '\n' : '') + evt.line
     const lines = logEl.textContent.split('\n')
@@ -673,6 +803,32 @@ async function refreshUpdate() {
     ? `⚠ 检查失败: ${esc(r.error)}`
     : `当前 <b>${esc(r.current || '?')}</b> → 最新 <b>${esc(r.latest || '?')}</b>`
   renderBackups()
+  loadVersionOptions()
+}
+
+// 目标版本下拉:列 registry 上的版本(ETARGET 时用来回退到已知可用版本)
+let versionOptionsLoadedAt = 0
+async function loadVersionOptions(force = false) {
+  const sel = $('#update-version')
+  const btn = $('#btn-update-version')
+  if (!sel) return
+  if (!force && Date.now() - versionOptionsLoadedAt < 60000 && sel.options.length > 1) return
+  try {
+    const r = await window.dshm.listVersions()
+    if (!r || !r.ok) return
+    versionOptionsLoadedAt = Date.now()
+    const cur = state.updateInfo?.current || ''
+    const latest = r.distTags?.latest || state.updateInfo?.latest || ''
+    const opts = [`<option value="latest">最新版 latest${latest ? ` (${esc(latest)})` : ''}</option>`]
+    for (const v of r.versions) {
+      const marks = []
+      if (v === latest) marks.push('latest')
+      if (v === cur) marks.push('当前')
+      opts.push(`<option value="${esc(v)}"${v === cur ? ' disabled' : ''}>${esc(v)}${marks.length ? ` (${marks.join(' / ')})` : ''}</option>`)
+    }
+    sel.innerHTML = opts.join('')
+    if (btn) btn.disabled = false
+  } catch { /* 拿不到版本列表就保持只有 latest */ }
 }
 
 // 备份列表:带时间/体积,可逐个删除、可清空;顶部显示保留策略
@@ -796,8 +952,10 @@ async function doUpdate() {
   }
 
   $('#btn-do-update').disabled = true
-  resetUpdateProgress()
-  const r = await window.dshm.doUpdate({ stopManaged })
+  const target = $('#update-version') ? $('#update-version').value : 'latest'
+  const targetVersion = target && target !== 'latest' ? target : null
+  resetUpdateProgress(targetVersion ? `正在更新到 ${targetVersion}…` : '正在更新到最新版…')
+  const r = await window.dshm.doUpdate({ stopManaged, targetVersion })
   if (r.code === 'RUNNING') {
     $('#update-progress').textContent = `✘ ${r.error}`
     toast('已阻止更新:还有 dsh 进程在运行', 'error')
@@ -811,6 +969,26 @@ async function doUpdate() {
   }
   toast(r.ok ? `更新完成: v${r.version}` : '更新失败', r.ok ? 'ok' : 'error')
   if (r.hint) toast(r.hint, 'error')
+  // ETARGET 常见于上游 latest 的依赖没发全:直接把版本选择器推到用户面前
+  if (r.code === 'ETARGET' && !r.ok) {
+    await loadVersionOptions(true)
+    const sel = $('#update-version')
+    const pick = await modal('该版本装不上',
+      `${esc(r.hint || '')}<br><br>可改选一个已知可用的版本重试(已自动列出 npm 上的版本)。` +
+      `<div class="row" style="margin-top:10px"><span class="muted">目标版本:</span>` +
+      `<select id="etarget-version" style="flex:1">${sel ? sel.innerHTML : '<option value="latest">latest</option>'}</select></div>`,
+      [{ label: '用该版本重试', value: true, cls: 'primary' }, { label: '稍后', value: false }])
+    if (pick) {
+      const chosen = $('#etarget-version') ? $('#etarget-version').value : 'latest'
+      if (sel) sel.value = chosen
+      if (chosen && chosen !== 'latest') {
+        resetUpdateProgress(`正在更新到 ${chosen}…`)
+        const r2 = await window.dshm.doUpdate({ stopManaged, targetVersion: chosen })
+        toast(r2.ok ? `更新完成: v${r2.version}` : `仍然失败: ${r2.error || ''}`, r2.ok ? 'ok' : 'error')
+        if (r2.ok) { refreshUpdate(); return }
+      }
+    }
+  }
   if (r.needsReinstall) {
     const go = await modal('建议强制重装 dsh CLI',
       `${esc(r.hint || '安装树可能不完整')}<br>强制重装会用 <code>npm install -g @deepseek-ai/dsh@latest --force</code> 覆盖安装树。`,
