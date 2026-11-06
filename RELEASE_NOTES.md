@@ -1,6 +1,9 @@
 ## DeepSeek Harness Manager
 
 由 GitHub Actions 自动构建发布的 Windows 桌面版。
+### v0.4.3 更新(修「检查更新」没反应)
+- 🐞 **「检查更新」按钮根本没绑事件** —— 点了完全没反应。现在强制绕过缓存重查 + 「检查中…」状态 + toast 反馈
+- 🔍 全量审计:`index.html` 里 22 个按钮都确认有事件绑定
 
 ### v0.4.2 更新(修 bug + 整体提速)
 - 🐞 **保存设置报错 `Cannot read properties of null`** —— 设置其实存进去了,但后续提示/刷新全断。已修

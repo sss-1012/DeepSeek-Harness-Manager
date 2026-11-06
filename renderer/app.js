@@ -467,6 +467,9 @@ function bindOverview() {
   }
   $('#btn-do-update').onclick = doUpdate
   ensureVersionDd()   // 先把下拉控件画出来(默认 latest),版本列表等用户点开再拉
+  // 「检查更新」之前根本没绑事件(点了完全没反应):现在强制绕过缓存重查,并给 toast 反馈
+  const checkBtn = $('#btn-check-update')
+  if (checkBtn) checkBtn.onclick = () => refreshUpdate(true, { quiet: false })
   // 按所选版本更新
   const verBtn = $('#btn-update-version')
   if (verBtn) verBtn.onclick = async () => {
@@ -954,9 +957,20 @@ async function doCompatFix() {
   return { ok: failLines.length === 0 }
 }
 
-async function refreshUpdate() {
-  $('#update-info').textContent = '检查中…'
-  const r = await window.dshm.checkUpdate()
+// fresh=true 时绕过 10 分钟缓存,真的去问一次 registry(「检查更新」按钮用);
+// quiet=false 时才弹 toast(启动时的静默刷新不打扰)
+async function refreshUpdate(fresh = false, opts = {}) {
+  const quiet = opts.quiet !== false
+  const info = $('#update-info')
+  const checkBtn = $('#btn-check-update')
+  if (info) info.textContent = '检查中…'
+  if (checkBtn) { checkBtn.disabled = true; checkBtn.textContent = '检查中…' }
+  let r
+  try {
+    r = await window.dshm.checkUpdate({ fresh })
+  } finally {
+    if (checkBtn) { checkBtn.disabled = false; checkBtn.textContent = '检查更新' }
+  }
   state.updateInfo = r
   const badge = $('#update-badge')
   if (r.hasUpdate) {
@@ -973,6 +987,11 @@ async function refreshUpdate() {
   $('#update-info').innerHTML = r.error
     ? `⚠ 检查失败: ${esc(r.error)}`
     : `当前 <b>${esc(r.current || '?')}</b> → 最新 <b>${esc(r.latest || '?')}</b>`
+  if (!quiet) {
+    if (r.error) toast(`检查更新失败: ${r.error}`, 'error')
+    else if (r.hasUpdate) toast(`发现新版本 ${r.latest}`, 'ok')
+    else toast(`已是最新版本${r.latest ? `(${r.latest})` : ''}`, 'ok')
+  }
   renderBackups()
   // 版本列表改为懒加载:用户点开下拉时才去 registry 取,
   // 启动时不再白花一次网络往返
