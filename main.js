@@ -824,32 +824,42 @@ app.whenReady().then(() => {
     }
   })
 
+  // 退出时询问是否一并关掉 dsh:直接退出会让人以为“管理器是控制台”,
+  // 但用户可能并不想断掉正在用的会话 —— 每次退出都问一下。
   app.on('before-quit', async (e) => {
     if (quitting) return
     e.preventDefault()
-    quitting = true
     if (statusTimer) clearInterval(statusTimer)
-    // 默认「退出管理器不停止 harness」:管理器只是控制台,关掉它不该打断正在使用的 DSH 会话
-    // (曾经默认 stopAll,导致关闭管理器连带断开 3080 上的会话)。需要旧行为可在设置里打开。
-    if (!store.getSettings().stopProfilesOnExit) {
-      log.logInfo('退出管理器(保留正在运行的 harness)')
+
+    let running = []
+    try { running = (await status.snapshot()).filter((s) => s.running && !s.external) } catch { /* ignore */ }
+    quitting = true
+
+    if (!running.length) {
+      log.logInfo('退出管理器(没有运行中的 harness)')
       app.exit(0)
       return
     }
-    const running = (await status.snapshot()).filter((s) => s.running && !s.external)
-    if (running.length) {
-      const choice = dialog.showMessageBoxSync(mainWindow, {
-        type: 'warning',
-        title: '退出管理器',
-        message: `仍有 ${running.length} 个 harness 在运行(${running.map((s) => s.name).join(', ')})`,
-        detail: '设置里开启了「退出时停止 harness」,退出管理器将停止这些进程。要继续吗?',
-        buttons: ['停止并退出', '取消'],
-        defaultId: 1,
-        cancelId: 1,
-      })
-      if (choice !== 0) { quitting = false; return }
+
+    const names = running.map((s) => s.name).join('、')
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'question',
+      title: '退出管理器',
+      message: `仍有 ${running.length} 个 harness 在运行(${names})`,
+      detail: '是否同时关闭它们?\n\n· 只退出管理器:dsh 继续运行,正在使用的界面(如 3080)不受影响。\n· 退出并关闭 dsh:这些进程会被停止,相关会话断开。',
+      buttons: ['只退出管理器', '退出并关闭 dsh', '取消'],
+      defaultId: 0,
+      cancelId: 2,
+      noLink: true,
+    })
+
+    if (choice === 2) { quitting = false; return }
+    if (choice === 1) {
+      log.logInfo('退出管理器:同时停止 harness')
+      try { await status.stopAll() } catch (err) { log.logWarn(`停止 harness 失败: ${err.message}`) }
+    } else {
+      log.logInfo('退出管理器(保留正在运行的 harness)')
     }
-    await status.stopAll()
     app.exit(0)
   })
 

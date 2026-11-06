@@ -68,22 +68,55 @@ async function version() {
   return r.ok ? r.stdout.trim() : null
 }
 
+// 把子进程输出落盘而不是走管道:管理器退出时管道会断, dsh 写 stdout 就会 EPIPE 崩掉
+// (这就是「关掉管理器 dsh 也跟着退」的根因)。改成文件 + detached + unref 后 dsh 可独立存活。
+const tailers = new Map()
+function tailFile(file, onLine, key, startAt = 0) {
+  let offset = startAt
+  let partial = ''
+  const timer = setInterval(() => {
+    let fd
+    try {
+      const st = fs.statSync(file)
+      if (st.size <= offset) return
+      fd = fs.openSync(file, 'r')
+      const len = st.size - offset
+      const buf = Buffer.alloc(len)
+      fs.readSync(fd, buf, 0, len, offset)
+      offset = st.size
+      const lines = (partial + buf.toString('utf8')).split(/\r?\n/)
+      partial = lines.pop() || ''
+      for (const l of lines) if (l.trim()) onLine(l)
+    } catch { /* 文件还没建好/已删,忽略 */ }
+    finally { if (fd !== undefined) { try { fs.closeSync(fd) } catch { /* ignore */ } } }
+  }, 400)
+  if (key) tailers.set(key, timer)
+  return () => { clearInterval(timer); if (key) tailers.delete(key) }
+}
+
 // 启动 profile:dsh --profile <name> [--patch <file>...] [args...]
 function spawnProfile(name, { patches = [], args = [], onLine, extraEnv } = {}) {
   const argv = ['--profile', name]
   for (const p of patches || []) argv.push('--patch', p)
   argv.push(...(args || []))
   const runner = nodeForDsh()
+  const logFile = path.join(profileDir(name), '.manager-run.log')
+  let outFd = null
+  try { outFd = fs.openSync(logFile, 'a') } catch { /* 退回到 ignore */ }
+  let startAt = 0
+  try { startAt = fs.statSync(logFile).size } catch { startAt = 0 }
   const child = spawn(runner.exe, [dshBin(), ...argv], {
     cwd: profileDir(name),
     env: { ...envFor(extraEnv), ...runner.env },
     windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    // detached + 文件输出:管理器退出后 dsh 仍可独立运行
+    detached: true,
+    stdio: outFd !== null ? ['ignore', outFd, outFd] : ['ignore', 'ignore', 'ignore'],
   })
-  if (onLine) {
-    child.stdout.on('data', (d) => onLine(String(d)))
-    child.stderr.on('data', (d) => onLine(String(d)))
-  }
+  if (outFd !== null) { try { fs.closeSync(outFd) } catch { /* 子进程已持有句柄 */ } }
+  child.unref()
+  child.__logFile = logFile
+  if (onLine) child.__stopTail = tailFile(logFile, onLine, name, startAt)
   return child
 }
 
