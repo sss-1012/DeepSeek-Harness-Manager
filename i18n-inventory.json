@@ -1,86 +1,32 @@
 {
   "stats": {
     "files": {
-      "renderer/app.js": 317,
+      "renderer/app.js": 195,
       "renderer/index.html": 73,
-      "main.js": 95,
-      "src/compat.js": 40,
-      "src/diagnose.js": 35,
-      "src/status.js": 10,
-      "src/update.js": 83,
+      "main.js": 40,
+      "src/compat.js": 16,
+      "src/diagnose.js": 23,
+      "src/status.js": 4,
+      "src/update.js": 43,
       "src/tray.js": 9,
-      "src/env.js": 50,
-      "src/security.js": 20,
+      "src/env.js": 32,
+      "src/security.js": 14,
       "src/store.js": 1,
-      "src/balance.js": 7,
+      "src/balance.js": 3,
       "src/desktop.js": 0,
       "src/dsh.js": 1,
-      "src/profiles.js": 3,
+      "src/profiles.js": 2,
       "src/overrides.js": 1,
-      "src/selfupdate.js": 8,
-      "src/plugins/index.js": 4
+      "src/selfupdate.js": 2,
+      "src/plugins/index.js": 0
     },
-    "unique": 647
+    "unique": 376
   },
   "items": [
-    {
-      "line": 62,
-      "kind": "template",
-      "text": "子进程退出: type={p0} reason={p1} exitCode={p2}{p3}",
-      "placeholders": 4,
-      "simple": false,
-      "file": "main.js",
-      "occurrences": 1
-    },
     {
       "line": 64,
       "kind": "literal",
       "text": "GPU 进程异常退出 → 若界面空白,可从托盘菜单选「以软件渲染重启」",
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 91,
-      "kind": "template",
-      "text": "窗口尺寸/位置异常({p0}x{p1} @ {p2},{p3}),已重置为 {p4}x{p5} 并居中",
-      "placeholders": 6,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 98,
-      "kind": "template",
-      "text": "窗口已显示 ({p0}x{p1})",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 100,
-      "kind": "template",
-      "text": "显示窗口失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 114,
-      "kind": "template",
-      "text": "窗口已重置为 {p0}x{p1} 并居中",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 115,
-      "kind": "template",
-      "text": "重置窗口失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
       "file": "main.js",
       "occurrences": 1
     },
@@ -106,15 +52,6 @@
       "occurrences": 1
     },
     {
-      "line": 199,
-      "kind": "template",
-      "text": "界面自检({p0}):ready={p1} 侧栏={p2} 卡片={p3} body={p4} 颜色数={p5}{p6}",
-      "placeholders": 7,
-      "simple": false,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
       "line": 201,
       "kind": "literal",
       "text": "页面内容为空",
@@ -129,33 +66,6 @@
       "occurrences": 1
     },
     {
-      "line": 209,
-      "kind": "template",
-      "text": "界面异常({p0}):第 1 次恢复 —— 强制重绘 + 重新加载页面",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 215,
-      "kind": "template",
-      "text": "界面异常({p0}):第 2 次恢复 —— 重建窗口",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 219,
-      "kind": "template",
-      "text": "界面异常({p0}):多次恢复无效 —— 改为软件渲染重启管理器(判断为 GPU 合成问题)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
       "line": 236,
       "kind": "literal",
       "text": "加载后",
@@ -166,15 +76,6 @@
       "line": 237,
       "kind": "literal",
       "text": "延迟复检",
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 268,
-      "kind": "template",
-      "text": "渲染进程退出({p0}),正在重新加载界面",
-      "placeholders": 1,
-      "simple": true,
       "file": "main.js",
       "occurrences": 1
     },
@@ -196,24 +97,6 @@
       "line": 276,
       "kind": "literal",
       "text": "界面页面已加载,开始自检",
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 279,
-      "kind": "template",
-      "text": "界面页面加载失败({p0} {p1}): {p2}",
-      "placeholders": 3,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 280,
-      "kind": "template",
-      "text": "preload 执行出错: {p0} - {p1}",
-      "placeholders": 2,
-      "simple": true,
       "file": "main.js",
       "occurrences": 1
     },
@@ -246,162 +129,9 @@
       "occurrences": 1
     },
     {
-      "line": 328,
-      "kind": "template",
-      "text": "✘ 失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 2
-    },
-    {
-      "line": 331,
-      "kind": "template",
-      "text": "{p0}失败: {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 356,
-      "kind": "template",
-      "text": "退出前状态检测失败:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
       "line": 377,
       "kind": "literal",
       "text": "(拿不到 profile 列表)",
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 378,
-      "kind": "template",
-      "text": "退出前检测:{p0}{p1}",
-      "placeholders": 2,
-      "simple": false,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 416,
-      "kind": "template",
-      "text": "「{p0}」已在运行",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 421,
-      "kind": "template",
-      "text": "profile「{p0}」启动失败(退出码 {p1},存活 {p2}s): {p3}",
-      "placeholders": 4,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 441,
-      "kind": "template",
-      "text": "创建 profile: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 452,
-      "kind": "template",
-      "text": "删除 profile: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 465,
-      "kind": "template",
-      "text": "插件启停被拒绝({p0} / {p1}):{p2}",
-      "placeholders": 3,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 468,
-      "kind": "template",
-      "text": "插件 {p0}: {p1} / {p2}",
-      "placeholders": 3,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 476,
-      "kind": "template",
-      "text": "卸载插件: {p0} / {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 503,
-      "kind": "template",
-      "text": "更新插件: {p0} / {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 515,
-      "kind": "template",
-      "text": "权限收紧 {p0}: {p1}{p2}",
-      "placeholders": 3,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 524,
-      "kind": "template",
-      "text": "诊断完成: {p0} 错误, {p1} 警告",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 566,
-      "kind": "template",
-      "text": "管理器更新检查:当前 {p0},最新 {p1}{p2}",
-      "placeholders": 3,
-      "simple": false,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 573,
-      "kind": "template",
-      "text": "该版本没有{p0}资产",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 575,
-      "kind": "template",
-      "text": "下载中 {p0} / {p1} MB",
-      "placeholders": 2,
-      "simple": true,
       "file": "main.js",
       "occurrences": 1
     },
@@ -413,24 +143,6 @@
       "occurrences": 1
     },
     {
-      "line": 582,
-      "kind": "template",
-      "text": "下载管理器更新包失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 583,
-      "kind": "template",
-      "text": "✘ 下载失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
       "line": 590,
       "kind": "literal",
       "text": "安装程序已启动,管理器即将退出",
@@ -438,72 +150,9 @@
       "occurrences": 1
     },
     {
-      "line": 607,
-      "kind": "template",
-      "text": "插件兼容性检查:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 612,
-      "kind": "template",
-      "text": "[兼容性] {p0} / {p1}: {p2} - {p3}",
-      "placeholders": 4,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 625,
-      "kind": "template",
-      "text": "[compat] {p0}: 跳过({p1})",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 638,
-      "kind": "template",
-      "text": "回滚到备份: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 640,
-      "kind": "template",
-      "text": "[回滚] {p0} {p1}{p2}",
-      "placeholders": 3,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 2
-    },
-    {
-      "line": 651,
-      "kind": "template",
-      "text": "立即清理备份:{p0}",
-      "placeholders": 1,
-      "simple": false,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
       "line": 660,
       "kind": "literal",
       "text": "未找到官方桌面端可执行文件",
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 661,
-      "kind": "template",
-      "text": "打开官方桌面端: {p0}",
-      "placeholders": 1,
-      "simple": true,
       "file": "main.js",
       "occurrences": 1
     },
@@ -585,123 +234,6 @@
       "occurrences": 1
     },
     {
-      "line": 759,
-      "kind": "template",
-      "text": "{p0} v{p1} 启动, DSH_HOME={p2}",
-      "placeholders": 3,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 771,
-      "kind": "template",
-      "text": "install.json 写入失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 782,
-      "kind": "template",
-      "text": "✔ 检测到明文存储的 {p0},已自动迁移为系统加密",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 783,
-      "kind": "template",
-      "text": "明文 {p0} 迁移失败: {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 787,
-      "kind": "template",
-      "text": "密钥迁移检查失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 806,
-      "kind": "template",
-      "text": "截图完成: {p0}.png",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 807,
-      "kind": "template",
-      "text": "截图 {p0} 失败: {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 817,
-      "kind": "template",
-      "text": "托盘启动 web 失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 841,
-      "kind": "template",
-      "text": "启动自动清理备份:删除 {p0} 个(保留最近 {p1} 天)",
-      "placeholders": 2,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 843,
-      "kind": "template",
-      "text": "自动清理备份失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 848,
-      "kind": "template",
-      "text": "启动预检发现插件解析问题:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 851,
-      "kind": "template",
-      "text": "启动预检通过:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 853,
-      "kind": "template",
-      "text": "启动预检失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
       "line": 883,
       "kind": "literal",
       "text": "退出管理器(没有运行中的 harness)",
@@ -712,15 +244,6 @@
       "line": 892,
       "kind": "literal",
       "text": "退出管理器",
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
-      "line": 893,
-      "kind": "template",
-      "text": "仍有 {p0} 个 harness 在运行({p1})",
-      "placeholders": 2,
-      "simple": true,
       "file": "main.js",
       "occurrences": 1
     },
@@ -753,15 +276,6 @@
       "occurrences": 1
     },
     {
-      "line": 904,
-      "kind": "template",
-      "text": "停止 harness 失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "main.js",
-      "occurrences": 1
-    },
-    {
       "line": 906,
       "kind": "literal",
       "text": "退出管理器(保留正在运行的 harness)",
@@ -769,461 +283,189 @@
       "occurrences": 1
     },
     {
-      "line": 81,
-      "kind": "template",
-      "text": "插件解析预检有问题:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 82,
-      "kind": "template",
-      "text": "[启动预检] {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 89,
-      "kind": "template",
-      "text": "[renderer] 未处理的 Promise 拒绝: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 100,
-      "kind": "template",
-      "text": "「{p0}」启动失败(退出码 {p1})\\n{p2}",
-      "placeholders": 3,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 115,
-      "kind": "template",
-      "text": "[启动] 首屏已渲染 {p0}ms(卡片先出,数据后台补)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 118,
-      "kind": "template",
-      "text": "[启动] 全部数据就绪 {p0}ms",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 134,
-      "kind": "template",
-      "text": "[管理器更新] 发现新版本 v{p0}(当前 v{p1}),可在左侧「更新管理器」里安装",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 135,
-      "kind": "template",
-      "text": "管理器有新版本 v{p0},可在左侧「更新管理器」里升级",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 172,
-      "kind": "template",
-      "text": "启动: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 201,
-      "kind": "template",
-      "text": "当前版本 <b>v{p0}</b>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 213,
-      "kind": "template",
-      "text": "当前版本 <b>v{p0}</b> · <span style=\"color:var(--yellow)\">检查失败:{p1}</span>",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 219,
-      "kind": "template",
-      "text": "当前 <b>v{p0}</b> → 最新 <b style=\"color:var(--green)\">v{p1}</b>",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 220,
-      "kind": "template",
-      "text": "下载并安装 v{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 223,
-      "kind": "template",
-      "text": "当前 <b>v{p0}</b> · 已是最新版本",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 224,
+      "line": 225,
       "kind": "literal",
       "text": "下载并安装",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 236,
-      "kind": "template",
-      "text": "检查失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 237,
-      "kind": "template",
-      "text": "发现管理器新版本 v{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 237,
+      "line": 238,
       "kind": "literal",
       "text": "管理器已是最新版本",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 254,
+      "line": 255,
       "kind": "literal",
       "text": "正在下载…",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 257,
-      "kind": "template",
-      "text": "下载失败:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 257,
-      "kind": "template",
-      "text": "下载失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 259,
-      "kind": "template",
-      "text": "已下载 v{p0}({p1} MB)",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 260,
+      "line": 261,
       "kind": "literal",
       "text": "下载完成",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 260,
-      "kind": "template",
-      "text": "已下载 <b>v{p0}</b> {p1}。<br><br>",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 262,
+      "line": 263,
       "kind": "literal",
       "text": "便携版不会自动覆盖当前安装,会在下载目录里打开。",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 263,
+      "line": 264,
       "kind": "literal",
       "text": "点击「立即安装」后管理器会退出,并运行安装程序完成替换(默认不停止 harness)。",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 264,
+      "line": 265,
       "kind": "literal",
       "text": "打开文件",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 264,
+      "line": 265,
       "kind": "literal",
       "text": "立即安装",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 264,
+      "line": 265,
       "kind": "literal",
       "text": "稍后",
       "file": "renderer/app.js",
       "occurrences": 4
     },
     {
-      "line": 269,
-      "kind": "template",
-      "text": "启动安装程序失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 2
-    },
-    {
-      "line": 270,
+      "line": 271,
       "kind": "literal",
       "text": "安装程序已启动,管理器即将退出…",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 465,
+      "line": 466,
       "kind": "literal",
       "text": "已请求取消…",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 465,
+      "line": 466,
       "kind": "literal",
       "text": "没有可取消的任务",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 483,
+      "line": 484,
       "kind": "literal",
       "text": "强制重装 dsh CLI",
       "file": "renderer/app.js",
       "occurrences": 3
     },
     {
-      "line": 484,
+      "line": 485,
       "kind": "literal",
       "text": "将执行 <code>npm install -g @deepseek-ai/dsh@latest --force</code>。<br>",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 485,
+      "line": 486,
       "kind": "literal",
       "text": "适用于:npm 更新被 EBUSY 打断、安装树处于半更新状态、或插件兼容性检查报「全局 dsh 安装不完整」。<br>",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 486,
+      "line": 487,
       "kind": "literal",
       "text": "预检会先确认没有 dsh 进程在占用文件。",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 487,
+      "line": 488,
       "kind": "literal",
       "text": "开始重装",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 487,
+      "line": 488,
       "kind": "literal",
       "text": "取消",
       "file": "renderer/app.js",
       "occurrences": 26
     },
     {
-      "line": 491,
-      "kind": "template",
-      "text": "重装完成,当前版本 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 3
-    },
-    {
-      "line": 491,
-      "kind": "template",
-      "text": "重装失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 3
-    },
-    {
-      "line": 503,
-      "kind": "template",
-      "text": "\n    <div class=\"card\">\n      <div class=\"card-head\">\n        <h4>🪟 官方桌面端</h4>\n        <span class=\"pill\">{p0}</span>\n      </div>\n      <div class=\"kv\">\n        <span class=\"k\">状态</span><span class=\"v\"><span class=\"status-dot {p1}\"></span> {p2}</span>\n        <span class=\"k\">安装位置</span><span class=\"v\" style=\"word-break:break-all\">{p3}</span>\n        <span class=\"k\">自带运行时</span><span class=\"v\">{p4}{p5}</span>\n        <span class=\"k\">desktop profile</span><span class=\"v\">{p6}</span>\n      </div>\n      <button class=\"btn sm\" data-act=\"open-desktop\">打开官方桌面端</button>\n      <div class=\"muted\" style=\"font-size:11px;margin-top:6px\">\n        分工:官方桌面端自带 dsh/Node/pnpm 运行时并独占 <code>profiles/desktop</code>;管理器负责 CLI / dsh web 侧的\n        多 profile、插件、诊断、更新与回滚,不会去启动或修改 desktop profile。\n      </div>\n    </div>",
-      "placeholders": 7,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 527,
-      "kind": "template",
-      "text": "<div class=\"card\"><div class=\"card-head\"><h4>⚠ 概览渲染失败</h4></div><div class=\"muted\" style=\"font-size:12px\">{p0}</div><div class=\"row\" style=\"margin-top:8px;flex-wrap:wrap;gap:6px\"><button class=\"btn sm\" id=\"btn-render-retry\">重试</button><button class=\"btn sm ghost\" id=\"btn-render-reset\">重置窗口尺寸</button><button class=\"btn sm ghost\" id=\"btn-render-reload\">重载界面</button><button class=\"btn sm ghost\" id=\"btn-render-software\">以软件渲染重启</button></div><div class=\"muted\" style=\"font-size:11px;margin-top:6px\">若窗口整体空白(连侧边栏也没有),多半是显卡合成问题 —— 直接点「以软件渲染重启」。</div></div>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 532,
+      "line": 533,
       "kind": "literal",
       "text": "以软件渲染重启",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 532,
+      "line": 533,
       "kind": "literal",
       "text": "将关闭硬件加速(GPU)并重启管理器。<br>正在运行的 harness 与 3080 上的会话不受影响。",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 533,
+      "line": 534,
       "kind": "literal",
       "text": "重启",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 546,
-      "kind": "template",
-      "text": "读取 profile「{p0}」信息失败:{p1}",
-      "placeholders": 2,
-      "simple": true,
+      "line": 585,
+      "kind": "literal",
+      "text": "\\n      <div class=\"card-head\"><h4>🖥 DSH 环境</h4></div>\\n      <div id=\"env-rows\"></div>\\n      <div id=\"env-actions\"></div>\\n    ",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 550,
-      "kind": "template",
-      "text": "profile「{p0}」信息不可用(可能已被删除,或主进程暂时不可用)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 557,
-      "kind": "template",
-      "text": "\n      <div class=\"card-head\">\n        <h4>🐳 Harness</h4>\n        <span class=\"pill\" style=\"border-color:rgba(217,119,6,.5);color:#b45309\">官方桌面端独占</span>\n      </div>\n      <div class=\"kv\">\n        <span class=\"k\">启动项</span><span class=\"v\">{p0} <span class=\"tag\">{p1}</span></span>\n        <span class=\"k\">状态</span><span class=\"v\"><span class=\"status-dot {p2}\"></span> {p3}</span>\n        <span class=\"k\">bundles</span><span class=\"v\">{p4} 个</span>\n      </div>\n      <div class=\"muted\" style=\"font-size:12px\">{p5}</div>\n      <div class=\"muted\" style=\"font-size:11px;margin-top:6px\">要在官方桌面端里使用 DSH,请从上面的「官方桌面端」卡片打开它;管理器不会启动/停止/改插件。</div>\n    ",
-      "placeholders": 6,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 569,
-      "kind": "template",
-      "text": "\n      <div class=\"card-head\">\n        <h4>🐳 Harness</h4>\n        <button class=\"btn sm ghost\" data-act=\"config\">⚙ 配置启动项</button>\n      </div>\n      <div class=\"kv\">\n        <span class=\"k\">启动项</span><span class=\"v\">{p0} <span class=\"tag\">{p1}</span></span>\n        <span class=\"k\">状态</span><span class=\"v\"><span class=\"status-dot {p2}\"></span> {p3}</span>\n        <span class=\"k\">PID</span><span class=\"v\">{p4}</span>\n        <span class=\"k\">端口</span><span class=\"v\">{p5}</span>\n        <span class=\"k\">bundles</span><span class=\"v\">{p6} 个</span>\n      </div>\n      {p7}\n      {p8}\n    ",
-      "placeholders": 9,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 584,
-      "kind": "template",
-      "text": "\n      <div class=\"card-head\"><h4>🖥 DSH 环境</h4></div>\n      <div id=\"env-rows\"></div>\n      <div id=\"env-actions\"></div>\n    ",
-      "placeholders": 0,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 600,
+      "line": 597,
       "kind": "literal",
       "text": "已打开官方桌面端",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 600,
-      "kind": "template",
-      "text": "打开失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 605,
+      "line": 602,
       "kind": "literal",
       "text": "启动 web profile",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 605,
+      "line": 602,
       "kind": "literal",
       "text": "将启动 dsh web 服务(http://127.0.0.1:3080)。<br>⚠ 注意:web profile 就是当前浏览器正在使用的 DSH GUI 服务。",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 606,
+      "line": 603,
       "kind": "literal",
       "text": "启动",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 610,
+      "line": 607,
       "kind": "literal",
       "text": "正在启动…",
       "file": "renderer/app.js",
@@ -1231,191 +473,111 @@
     },
     {
       "line": 612,
-      "kind": "template",
-      "text": "启动失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 613,
-      "kind": "template",
-      "text": "已启动 (PID {p0}){p1}",
-      "placeholders": 2,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 615,
       "kind": "literal",
       "text": "停止 harness",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 616,
+      "line": 613,
       "kind": "literal",
       "text": "停止 web 会关闭当前浏览器正在使用的 DSH GUI 服务(3080 端口)。确定停止?",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 617,
-      "kind": "template",
-      "text": "确定停止 profile「{p0}」?",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 618,
+      "line": 615,
       "kind": "literal",
       "text": "停止",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 622,
+      "line": 619,
       "kind": "literal",
       "text": "已停止",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 622,
-      "kind": "template",
-      "text": "停止失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 635,
-      "kind": "template",
+      "line": 632,
+      "kind": "literal",
       "text": "<div class=\"env-row\"><span class=\"k\">环境检测</span><span class=\"v muted\">检测中…</span><span class=\"acts\"></span></div>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 638,
-      "kind": "template",
-      "text": "<div class=\"env-row\"><span class=\"k\">环境检测</span><span class=\"v\" style=\"color:var(--red)\">检测失败:{p0}</span><span class=\"acts\"></span></div>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 648,
+      "line": 645,
       "kind": "literal",
       "text": "(随 Node.js 安装)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 648,
+      "line": 645,
       "kind": "literal",
       "text": "(需先安装 Node.js)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 656,
+      "line": 653,
       "kind": "literal",
       "text": "一键安装",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 657,
+      "line": 654,
       "kind": "literal",
       "text": "更新",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 658,
+      "line": 655,
       "kind": "literal",
       "text": "卸载",
       "file": "renderer/app.js",
       "occurrences": 5
     },
     {
-      "line": 660,
-      "kind": "template",
+      "line": 657,
+      "kind": "literal",
       "text": "已安装",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 669,
-      "kind": "template",
+      "line": 666,
+      "kind": "literal",
       "text": "<button class=\"btn\" data-env=\"checkupdate\">检查更新</button>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 670,
-      "kind": "template",
+      "line": 667,
+      "kind": "literal",
       "text": "<span class=\"muted\">环境未就绪,请先安装缺失项</span>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 679,
-      "kind": "template",
-      "text": "发现新版本 {p0},可到下方更新面板升级",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 679,
+      "line": 676,
       "kind": "literal",
       "text": "已是最新版本",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 684,
+      "line": 681,
       "kind": "literal",
       "text": "卸载确认",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 684,
-      "kind": "template",
-      "text": "将卸载 <b>{p0}</b>。{p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
       "line": 688,
-      "kind": "template",
-      "text": "正在卸载 {p0}…",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 691,
       "kind": "literal",
       "text": "已卸载",
       "file": "renderer/app.js",
@@ -1423,38 +585,20 @@
     },
     {
       "line": 691,
-      "kind": "template",
-      "text": "卸载失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 3
-    },
-    {
-      "line": 694,
-      "kind": "template",
-      "text": "正在安装 {p0}…",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 694,
       "kind": "literal",
       "text": "正在更新 dsh…",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 700,
+      "line": 697,
       "kind": "literal",
       "text": "已取消",
       "file": "renderer/app.js",
       "occurrences": 6
     },
     {
-      "line": 701,
+      "line": 698,
       "kind": "literal",
       "text": "完成",
       "file": "renderer/app.js",
@@ -1462,1382 +606,748 @@
     },
     {
       "line": 701,
-      "kind": "template",
-      "text": "失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 704,
       "kind": "literal",
       "text": "网络连接失败",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 704,
+      "line": 701,
       "kind": "literal",
       "text": "连接 npm 官方源失败或超时。<br>可以改用国内镜像(npmmirror)重试。",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 705,
+      "line": 702,
       "kind": "literal",
       "text": "改用镜像重试",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 710,
-      "kind": "template",
-      "text": "{p0}(镜像)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 715,
+      "line": 712,
       "kind": "literal",
       "text": "完成(已使用镜像)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 715,
-      "kind": "template",
-      "text": "仍然失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 2
-    },
-    {
-      "line": 730,
+      "line": 727,
       "kind": "literal",
       "text": "配置启动项",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 730,
-      "kind": "template",
-      "text": "\n    <div class=\"row\"><span style=\"width:92px\">启动 profile</span>\n      <select id=\"cfg-profile\" style=\"flex:1\">\n        {p0}\n      </select>\n    </div>\n    <div class=\"row\"><span style=\"width:92px\">启动参数</span><input type=\"text\" id=\"cfg-args\" value=\"{p1}\" placeholder=\"命令行型 profile 需要,如 --probe\"></div>\n    <div class=\"row\"><span style=\"width:92px\">检测端口</span><input type=\"text\" id=\"cfg-port\" value=\"{p2}\" placeholder=\"web 默认 3080;自定义服务填端口\"></div>\n    <div class=\"muted\">默认 web 启动。保存后概览页 Harness 卡片即管理该 profile。</div>\n  ",
-      "placeholders": 3,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 739,
+      "line": 736,
       "kind": "literal",
       "text": "保存",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 748,
-      "kind": "template",
-      "text": "已切换启动项: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 805,
+      "line": 802,
       "kind": "literal",
       "text": "准备开始…",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 818,
+      "line": 815,
       "kind": "literal",
       "text": "正常",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 819,
+      "line": 816,
       "kind": "literal",
       "text": "仅存在于 profile 内(dsh 0.2.x 可直接解析,无需处理)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 820,
+      "line": 817,
       "kind": "literal",
       "text": "全局联接已断链,需重建",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 821,
+      "line": 818,
       "kind": "literal",
       "text": "上游已移除该 bundle,需从 profile 删除",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 822,
+      "line": 819,
       "kind": "literal",
       "text": "找不到包,需先安装该插件",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 823,
+      "line": 820,
       "kind": "literal",
       "text": "可解析但加载失败",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 824,
+      "line": 821,
       "kind": "literal",
       "text": "全局 dsh 安装不完整(需重装 CLI)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 825,
+      "line": 822,
       "kind": "literal",
       "text": "未知",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 842,
-      "kind": "template",
-      "text": "✘ 全局 dsh:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 855,
-      "kind": "template",
-      "text": "<div class=\"warn-box\">检查失败:{p0}</div>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 868,
-      "kind": "template",
-      "text": "✓ 全部通过{p0}{p1}",
-      "placeholders": 2,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 869,
-      "kind": "template",
-      "text": "✘ 发现 {p0} 个会导致启动失败的问题{p1}",
-      "placeholders": 2,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 891,
-      "kind": "template",
-      "text": "<div class=\"compat-item error\"><span class=\"ci-icon\">✘</span><div class=\"ci-main\"><div class=\"ci-name\">全局 dsh</div><div class=\"ci-detail\">{p0}</div></div></div>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 893,
-      "kind": "template",
-      "text": "\n      <div class=\"compat-summary\">\n        <span class=\"muted\">{p0}</span>\n        <button class=\"btn sm ghost\" id=\"compat-copy\">复制结果</button>\n        {p1}\n        <button class=\"btn sm ghost\" id=\"compat-deep\" {p2}>{p3}</button>\n        {p4}\n        <button class=\"btn sm ghost\" id=\"compat-toggle-info\" hidden></button>\n      </div>\n      <div id=\"compat-body\">{p5}</div>",
-      "placeholders": 6,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 906,
-      "kind": "template",
-      "text": "插件兼容性检查 · {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 907,
+      "line": 904,
       "kind": "literal",
       "text": "结果已复制到剪贴板",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 908,
+      "line": 905,
       "kind": "literal",
       "text": "检查结果",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 908,
+      "line": 905,
       "kind": "literal",
       "text": "关闭",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 916,
+      "line": 913,
       "kind": "literal",
       "text": "将执行 <code>npm install -g @deepseek-ai/dsh@latest</code> 修复安装树。<br>运行中的 harness 会阻塞 npm(EBUSY),需先停。",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 917,
+      "line": 914,
       "kind": "literal",
       "text": "重装",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 929,
-      "kind": "template",
+      "line": 926,
+      "kind": "literal",
       "text": "插件解析检查通过 ✓",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 945,
+      "line": 942,
       "kind": "literal",
       "text": "一键修复",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 946,
-      "kind": "template",
+      "line": 943,
+      "kind": "literal",
       "text": "<div>以下 bundle 已随 dsh 更新被上游移除,将从 profile 的 <code>dsh.profile.bundles</code> 删除(会先备份 <code>package.json</code>):</div>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 948,
-      "kind": "template",
+      "line": 945,
+      "kind": "literal",
       "text": "<div class=\"muted\">其余断链联接会自动重建;仅存在于 profile 内的健康插件不会被改动。</div>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 949,
+      "line": 946,
       "kind": "literal",
       "text": "修复",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 957,
-      "kind": "template",
-      "text": "{p0}: 跳过({p1})",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 965,
-      "kind": "template",
-      "text": "修复后仍有 {p0} 项未通过",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 966,
+      "line": 963,
       "kind": "literal",
       "text": "仍有未通过项",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 966,
+      "line": 963,
       "kind": "literal",
       "text": "知道了",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 968,
-      "kind": "template",
-      "text": "修复完成并复验通过({p0} 项)✓",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 980,
+      "line": 977,
       "kind": "literal",
       "text": "检查中…",
       "file": "renderer/app.js",
       "occurrences": 4
     },
     {
-      "line": 986,
+      "line": 983,
       "kind": "literal",
       "text": "检查更新",
       "file": "renderer/app.js",
       "occurrences": 3
     },
     {
-      "line": 991,
-      "kind": "template",
-      "text": "发现新版本 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 2
-    },
-    {
-      "line": 1002,
-      "kind": "template",
-      "text": "⚠ 检查失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1003,
-      "kind": "template",
-      "text": "当前 <b>{p0}</b> → 最新 <b>{p1}</b>",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1005,
-      "kind": "template",
-      "text": "检查更新失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1007,
-      "kind": "template",
-      "text": "已是最新版本{p0}",
-      "placeholders": 1,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1016,
+      "line": 1013,
       "kind": "literal",
       "text": "最新版(latest)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1046,
+      "line": 1043,
       "kind": "literal",
       "text": "正在获取版本列表…",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1052,
-      "kind": "template",
-      "text": "最新版 latest{p0}",
-      "placeholders": 1,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 2
-    },
-    {
-      "line": 1054,
-      "kind": "template",
-      "text": "<span style=\"color:var(--yellow)\">版本列表获取失败:{p0}</span>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 2
-    },
-    {
-      "line": 1062,
+      "line": 1059,
       "kind": "literal",
       "text": "当前",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1067,
-      "kind": "template",
-      "text": "共 {p0} 个版本{p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1075,
+      "line": 1072,
       "kind": "literal",
       "text": "未知时间",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1086,
+      "line": 1083,
       "kind": "literal",
       "text": "关闭(不自动删除)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1086,
-      "kind": "template",
-      "text": "超过 {p0} 天自动删除(保留最新 1 份)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1090,
-      "kind": "template",
+      "line": 1087,
+      "kind": "literal",
       "text": "<div class=\"empty-state\">暂无备份<br><span style=\"font-size:11.5px\">每次更新/回滚前会自动创建一份</span></div>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1094,
-      "kind": "template",
-      "text": "\n    <div class=\"compat-summary\">\n      <span class=\"muted\">共 <b>{p0}</b> 份,占用 <b>{p1}</b> MB</span>\n      <span class=\"pill\" title=\"在设置里修改\">自动清理:{p2}</span>\n      <button class=\"btn sm ghost\" id=\"btn-prune-backups\" {p3}>立即清理</button>\n      <button class=\"btn sm ghost danger-ghost\" id=\"btn-clear-backups\">清空全部</button>\n    </div>\n    {p4}",
-      "placeholders": 5,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1107,
+      "line": 1104,
       "kind": "literal",
       "text": "自动清理当前为关闭,未删除任何备份",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1107,
-      "kind": "template",
-      "text": "已清理 {p0} 份旧备份",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1107,
+      "line": 1104,
       "kind": "literal",
       "text": "没有超过保留期的备份",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1112,
+      "line": 1109,
       "kind": "literal",
       "text": "清空全部备份",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1112,
-      "kind": "template",
-      "text": "将永久删除 <b>{p0}</b> 份回滚备份(共 {p1} MB),<br>删除后<b>无法再回滚到旧版本</b>。确定吗?",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1113,
+      "line": 1110,
       "kind": "literal",
       "text": "全部删除",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1117,
-      "kind": "template",
-      "text": "已删除 {p0} 份备份",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1123,
+      "line": 1120,
       "kind": "literal",
       "text": "删除备份",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1123,
-      "kind": "template",
-      "text": "将删除备份 <b>{p0}</b>。<br>删除后无法再用它回滚。",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1124,
+      "line": 1121,
       "kind": "literal",
       "text": "删除",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1128,
+      "line": 1125,
       "kind": "literal",
       "text": "已删除该备份",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1128,
-      "kind": "template",
-      "text": "删除失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1134,
+      "line": 1131,
       "kind": "literal",
       "text": "回滚确认",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1134,
-      "kind": "template",
-      "text": "将全局重装 dsh 到备份 <b>{p0}</b> 记录的版本,并恢复各 profile 配置。<br>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1135,
-      "kind": "template",
+      "line": 1132,
+      "kind": "literal",
       "text": "回滚同样会被运行中的 dsh 进程阻塞(npm EBUSY),因此会先做进程预检;官方桌面端独占的 profile 永远不会被写入。",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1136,
+      "line": 1133,
       "kind": "literal",
       "text": "预检并回滚",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1141,
+      "line": 1138,
       "kind": "literal",
       "text": "检测到 dsh 正在运行",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 1142,
-      "kind": "template",
-      "text": "以下进程会阻塞回滚(EBUSY):<pre class=\"update-log\">{p0}</pre>是否先停止管理器托管的 profile 再回滚?",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1143,
+      "line": 1140,
       "kind": "literal",
       "text": "停止并回滚",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1151,
+      "line": 1148,
       "kind": "literal",
       "text": "回滚结果",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1153,
-      "kind": "template",
-      "text": "回滚完成,当前版本 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1153,
-      "kind": "template",
-      "text": "回滚失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1168,
-      "kind": "template",
-      "text": "更新会替换全局 dsh 的安装文件,以下进程占用了这些文件,会让 <b>npm 以 EBUSY 失败</b>:<pre class=\"update-log\">{p0}</pre>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1169,
-      "kind": "template",
+      "line": 1166,
+      "kind": "literal",
       "text": "点「全部停止并继续」会先停止<b>管理器托管的 profile</b>;<b>官方桌面端与外部 CLI 进程需要你手动关闭</b>(管理器不强杀)。<br>更新前会自动备份当前版本与各 profile 配置,失败可回滚。",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1170,
+      "line": 1167,
       "kind": "literal",
       "text": "全部停止并继续",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1174,
+      "line": 1171,
       "kind": "literal",
       "text": "更新 dsh",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 1175,
-      "kind": "template",
-      "text": "将全局更新 <b>@deepseek-ai/dsh</b> 到最新版。<br>预检:{p0}<br>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1176,
-      "kind": "template",
+      "line": 1173,
+      "kind": "literal",
       "text": "更新前会自动备份当前版本与各 profile 配置,失败可回滚。",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1177,
+      "line": 1174,
       "kind": "literal",
       "text": "开始更新",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1184,
-      "kind": "template",
-      "text": "正在更新到 {p0}…",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 2
-    },
-    {
-      "line": 1184,
+      "line": 1181,
       "kind": "literal",
       "text": "正在更新到最新版…",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1188,
+      "line": 1185,
       "kind": "literal",
       "text": "已阻止更新:还有 dsh 进程在运行",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1192,
-      "kind": "template",
-      "text": "✔ 更新完成:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1192,
-      "kind": "template",
-      "text": "✘ 更新失败{p0}:{p1}",
-      "placeholders": 2,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1197,
-      "kind": "template",
-      "text": "更新完成: v{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 2
-    },
-    {
-      "line": 1197,
+      "line": 1194,
       "kind": "literal",
       "text": "更新失败",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1203,
+      "line": 1200,
       "kind": "literal",
       "text": "该版本装不上",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1204,
-      "kind": "template",
-      "text": "{p0}<br><br>可改选一个已知可用的版本重试(已自动列出 npm 上的版本)。",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1205,
-      "kind": "template",
+      "line": 1202,
+      "kind": "literal",
       "text": "<div class=\"row\" style=\"margin-top:10px\"><span class=\"muted\">目标版本:</span>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1207,
+      "line": 1204,
       "kind": "literal",
       "text": "用该版本重试",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1224,
+      "line": 1221,
       "kind": "literal",
       "text": "建议强制重装 dsh CLI",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1225,
-      "kind": "template",
-      "text": "{p0}<br>强制重装会用 <code>npm install -g @deepseek-ai/dsh@latest --force</code> 覆盖安装树。",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1226,
+      "line": 1223,
       "kind": "literal",
       "text": "强制重装",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1235,
+      "line": 1232,
       "kind": "literal",
       "text": "更新后自检发现问题",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1236,
-      "kind": "template",
-      "text": "新版 dsh 下以下插件无法解析,启动 harness 会失败:<pre class=\"update-log\">{p0}</pre>是否立即一键修复?",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1283,
+      "line": 1280,
       "kind": "literal",
       "text": "该 profile 由官方桌面端独占,不能安装插件",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1285,
-      "kind": "template",
-      "text": "已安装 {p0}{p1} — 重启该 profile 后,DSH 界面里出现删除入口",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1287,
+      "line": 1284,
       "kind": "literal",
       "text": "未安装",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1296,
+      "line": 1293,
       "kind": "literal",
       "text": "安装删除会话插件",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 1297,
-      "kind": "template",
-      "text": "将向 profile「{p0}」安装 <code>{p1}</code>。<br>",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1298,
-      "kind": "template",
+      "line": 1295,
+      "kind": "literal",
       "text": "安装后需要<b>重启该 profile</b> 才会在 DSH 界面出现入口。<br>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1299,
-      "kind": "template",
+      "line": 1296,
+      "kind": "literal",
       "text": "<span class=\"muted\">这是社区插件(独立开源项目),删除链路包含会话日志、投影缓存与工作区记账。</span>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1300,
+      "line": 1297,
       "kind": "literal",
       "text": "安装",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1302,
+      "line": 1299,
       "kind": "literal",
       "text": "正在安装…",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1304,
-      "kind": "template",
-      "text": "安装失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 2
-    },
-    {
-      "line": 1305,
+      "line": 1302,
       "kind": "literal",
       "text": "安装完成,重启该 profile 后生效",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1312,
+      "line": 1309,
       "kind": "literal",
       "text": "卸载删除会话插件",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1312,
-      "kind": "template",
-      "text": "将从 profile「{p0}」移除 {p1},DSH 界面里的删除入口随之消失。",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1317,
+      "line": 1314,
       "kind": "literal",
       "text": "已卸载(重启该 profile 后生效)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1336,
+      "line": 1333,
       "kind": "literal",
       "text": "<div class=\"muted\">没有可用的 profile</div>",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1361,
-      "kind": "template",
-      "text": "共 {p0} 个{p1}",
-      "placeholders": 2,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1367,
-      "kind": "template",
-      "text": "<a class=\"plugin-link\" href=\"#\" data-openurl=\"{p0}\" title=\"点击打开 GitHub 页面\"><b>{p1}</b> / {p2}</a>",
-      "placeholders": 3,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1369,
-      "kind": "template",
-      "text": "\n    <tr>\n      <td style=\"max-width:360px\">\n        {p0}{p1}{p2}\n        {p3}\n      </td>\n      <td><span class=\"pill\">{p4}</span></td>\n      <td>\n        {p5}\n      </td>\n      <td style=\"white-space:nowrap\">\n        {p6}\n        <button class=\"btn sm ghost\" data-detail=\"{p7}\">详情</button>\n        {p8}\n      </td>\n    </tr>",
-      "placeholders": 9,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1387,
-      "kind": "template",
-      "text": "<div class=\"warn-box\">🔒 「{p0}」由官方 DeepSeek Harness 桌面端独占(官方文档:CLI 不得启动或修改它)。本页对它只做只读展示 —— 不启停插件、不卸载、不更新,也不会对它执行兼容性修复。</div>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1390,
-      "kind": "template",
-      "text": "<table><thead><tr><th>插件</th><th>版本</th><th>启用</th><th>操作</th></tr></thead><tbody>{p0}</tbody></table>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1401,
+      "line": 1398,
       "kind": "literal",
       "text": "已保存(重启 profile 后生效)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1401,
+      "line": 1398,
       "kind": "literal",
       "text": "已生效",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1406,
-      "kind": "template",
-      "text": "正在更新 {p0} …",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1408,
+      "line": 1405,
       "kind": "literal",
       "text": "更新完成",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1408,
-      "kind": "template",
-      "text": "更新失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1422,
+      "line": 1419,
       "kind": "literal",
       "text": "插件详情",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 1422,
-      "kind": "template",
-      "text": "<b>{p0}</b><br>将用浏览器打开: {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 2
-    },
-    {
-      "line": 1423,
+      "line": 1420,
       "kind": "literal",
       "text": "打开",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 1427,
+      "line": 1424,
       "kind": "literal",
       "text": "未找到该插件的 GitHub/npm 详情页(本地或私有包)",
       "file": "renderer/app.js",
       "occurrences": 2
     },
     {
-      "line": 1433,
+      "line": 1430,
       "kind": "literal",
       "text": "卸载插件",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1433,
-      "kind": "template",
-      "text": "将彻底移除 <b>{p0}</b> 及其依赖(不可撤销,重新启用需重新安装)。确定?",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1466,
+      "line": 1463,
       "kind": "literal",
       "text": "<div class=\"muted\">搜索中…</div>",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1472,
-      "kind": "template",
+      "line": 1469,
+      "kind": "literal",
       "text": "<div class=\"row\" style=\"margin-top:6px\"><button class=\"btn sm\" id=\"btn-gh-insecure\">开启「跳过证书校验」并重试</button><span class=\"muted\">适用于代理/证书拦截网络</span></div>",
-      "placeholders": 0,
-      "simple": true,
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1475,
+      "line": 1472,
       "kind": "literal",
       "text": "已开启 GitHub 跳过证书校验,重新搜索…",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1492,
+      "line": 1489,
       "kind": "literal",
       "text": "<div class=\"muted\">没有结果,换个关键词试试</div>",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1497,
-      "kind": "template",
-      "text": "\n    <div class=\"result-item\">\n      <div style=\"flex:1\">\n        <div><span class=\"r-name\">{p0}</span><span class=\"src-tag src-{p1}\">{p2}</span> <span class=\"pill\">v{p3}</span></div>\n        <div class=\"r-desc\">{p4}</div>\n        <div class=\"r-meta\">{p5}</div>\n      </div>\n      <div style=\"display:flex;gap:6px;align-self:center\">\n        <button class=\"btn sm ghost\" data-sdetail=\"{p6}\" data-spec=\"{p7}\">详情</button>\n        <button class=\"btn sm primary\" data-install='{p8}'>安装</button>\n      </div>\n    </div>",
-      "placeholders": 9,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1533,
+      "line": 1530,
       "kind": "literal",
       "text": "请先选择目标 profile",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1537,
-      "kind": "template",
-      "text": "<div class=\"dep-list\">检测到插件依赖,将一并安装:<ul>{p0}</ul></div>",
-      "placeholders": 1,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1538,
+      "line": 1535,
       "kind": "literal",
       "text": "<div class=\"muted\">未检测到插件类依赖</div>",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1539,
+      "line": 1536,
       "kind": "literal",
       "text": "确认安装",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1539,
-      "kind": "template",
-      "text": "将安装 <b>{p0}</b>({p1}) 到 profile <b>{p2}</b><br>{p3}",
-      "placeholders": 4,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1540,
+      "line": 1537,
       "kind": "literal",
       "text": "安装(含依赖)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1540,
+      "line": 1537,
       "kind": "literal",
       "text": "仅安装本体",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1545,
+      "line": 1542,
       "kind": "literal",
       "text": "安装完成",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1546,
-      "kind": "template",
-      "text": "<div class=\"panel\"><h3>安装输出</h3><pre class=\"log-out\">{p0}</pre></div>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1556,
+      "line": 1553,
       "kind": "literal",
       "text": "收紧密钥文件权限",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1557,
+      "line": 1554,
       "kind": "literal",
       "text": "将对以下文件断开权限继承,并只允许 <b>当前用户 / SYSTEM / Administrators</b> 访问:<br>· DSH 凭据文件 <span class=\"muted\">~/.dsh/.credentials.yaml</span><br>· 管理器配置 <span class=\"muted\">~/.dsh-manager/config.json</span><br><br>继续?",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1558,
+      "line": 1555,
       "kind": "literal",
       "text": "收紧权限",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1562,
-      "kind": "template",
-      "text": "权限处理完成:\\n{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1567,
+      "line": 1564,
       "kind": "literal",
       "text": "<div class=\"muted\">诊断中…</div>",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1575,
-      "kind": "template",
-      "text": "报告已生成: {p0} <button class=\"btn sm\" data-open-report>打开</button>",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1585,
-      "kind": "template",
-      "text": "保存失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1586,
+      "line": 1583,
       "kind": "literal",
       "text": "Key 已加密保存",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1586,
+      "line": 1583,
       "kind": "literal",
       "text": "已清除",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1589,
+      "line": 1586,
       "kind": "literal",
       "text": "已清除 Key",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1592,
+      "line": 1589,
       "kind": "literal",
       "text": "已从 DSH 凭据导入",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1600,
+      "line": 1597,
       "kind": "literal",
       "text": "<div class=\"muted\">查询中…</div>",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1605,
-      "kind": "template",
-      "text": "\n    <div>总余额 <span class=\"big\">{p0} {p1}</span></div>\n    <div class=\"infos\">{p2}</div>\n    <div class=\"muted\" style=\"margin-top:6px\">更新于 {p3}</div>",
-      "placeholders": 4,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1622,
+      "line": 1619,
       "kind": "literal",
       "text": "设置",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1622,
-      "kind": "template",
-      "text": "\n    <h4>外观</h4>\n    <div class=\"row\">\n      <span style=\"width:120px\">主题</span>\n      <div class=\"seg\" id=\"set-theme-seg\">\n        <button data-theme-val=\"system\" class=\"{p0}\">跟随系统</button>\n        <button data-theme-val=\"light\" class=\"{p1}\">浅色</button>\n        <button data-theme-val=\"dark\" class=\"{p2}\">深色</button>\n      </div>\n    </div>\n    <div class=\"muted\">切换到「跟随系统」后,Windows 切换深浅色时界面会自动跟随。</div>\n\n    <div class=\"row\">\n      <span style=\"width:120px\">界面语言</span>\n      <select id=\"set-language\" style=\"flex:1;max-width:220px\">\n        {p3}\n      </select>\n    </div>\n    <div class=\"muted\">语言立即生效(会重新加载界面)。</div>\n\n    <h4>通用</h4>\n    <label class=\"chk\" style=\"margin:6px 0\"><input type=\"checkbox\" id=\"set-tray\" {p4}> 关闭窗口时最小化到托盘</label>\n    <label class=\"chk\" style=\"margin:6px 0\"><input type=\"checkbox\" id=\"set-stop-on-exit\" {p5}> 退出管理器时停止 harness</label>\n    <div class=\"muted\">默认<b>不停止</b>:管理器只是控制台,关掉它不应打断正在使用的 DSH 会话(如 3080 上的 GUI)。</div>\n    <div class=\"row\"><span style=\"width:120px\">状态轮询(ms)</span><input type=\"text\" id=\"set-poll\" value=\"{p6}\" style=\"max-width:120px\"></div>\n\n    <h4>回滚备份</h4>\n    <div class=\"row\">\n      <span style=\"width:120px\">自动清理</span>\n      <select id=\"set-backup-retention\" style=\"flex:1\">\n        {p7}\n      </select>\n    </div>\n    <div class=\"muted\">按保留期删除更老的备份;无论怎么选,<b>永远保留最新 1 份</b>,不会把自己删空。启动时与修改设置后自动执行。</div>\n\n    <h4>npm 下载源</h4>\n    <div class=\"row\">\n      <span style=\"width:120px\">安装/更新 dsh</span>\n      <select id=\"set-npm-registry\" style=\"flex:1\">\n        {p8}\n      </select>\n    </div>\n    <div class=\"muted\">国内网络直连官方源可能长时间无响应(看起来像「没反应」)。安装/更新/强制重装都会按这里的选择加 <code>--registry</code>。</div>\n\n    <h4>插件安装位置</h4>\n    <div class=\"row\"><span style=\"width:120px\">默认安装 profile</span>\n      <select id=\"set-install-profile\" style=\"flex:1\">\n        {p9}\n      </select>\n    </div>\n    <div class=\"muted\">搜索安装时自动选中的目标 profile。</div>\n\n    <h4>API Key</h4>\n    <div class=\"row\"><span style=\"width:120px\">DeepSeek API Key</span><input type=\"password\" id=\"set-apikey\" placeholder=\"{p10}\" style=\"flex:1\"></div>\n    <div class=\"muted\">使用 Windows 系统凭据加密存储,仅本机可解密;留空表示不修改。</div>\n\n    <h4>GitHub</h4>\n    <label class=\"chk\" style=\"margin:6px 0\"><input type=\"checkbox\" id=\"set-gh-insecure\" {p11}> GitHub 请求跳过证书校验(代理/证书拦截网络)</label>\n    <div class=\"row\"><span style=\"width:120px\">GitHub Token</span><input type=\"password\" id=\"set-token\" value=\"{p12}\" placeholder=\"可选,提升搜索限额\" style=\"flex:1\"></div>\n\n    <h4>窗口与显示</h4>\n    <div class=\"row\">\n      <button class=\"btn sm\" id=\"set-reset-window\">重置窗口尺寸</button>\n      <button class=\"btn sm ghost\" id=\"set-reload-ui\">重载界面</button>\n      <button class=\"btn sm ghost\" id=\"set-software-restart\">以软件渲染重启</button>\n    </div>\n    <div class=\"muted\" style=\"font-size:11px;margin-top:4px\">\n      窗口在托盘隐藏很久后显示空白、或内容显示不全时用。当前渲染模式:<b id=\"set-render-mode\">读取中…</b>\n    </div>\n    <label class=\"chk\" style=\"margin:6px 0\"><input type=\"checkbox\" id=\"set-software-rendering\" {p13}> 关闭硬件加速(软件渲染;显卡合成异常导致界面空白时勾选,下次启动生效)</label>\n    <h4>数据目录</h4>\n    <div class=\"muted\">管理器数据: {p14}<br>DSH_HOME: {p15}</div>\n  ",
-      "placeholders": 16,
-      "simple": false,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1700,
+      "line": 1697,
       "kind": "literal",
       "text": "窗口尺寸已重置",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1702,
+      "line": 1699,
       "kind": "literal",
       "text": "界面已重新加载",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1705,
+      "line": 1702,
       "kind": "literal",
       "text": "将关闭硬件加速并重启管理器(运行中的 harness 不受影响)。",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1723,
-      "kind": "template",
-      "text": "软件渲染({p0})",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1723,
+      "line": 1720,
       "kind": "literal",
       "text": "默认(硬件加速)",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1751,
-      "kind": "template",
-      "text": "API Key 保存失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1758,
+      "line": 1755,
       "kind": "literal",
       "text": "设置已保存",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1763,
-      "kind": "template",
-      "text": "保存设置失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "renderer/app.js",
-      "occurrences": 1
-    },
-    {
-      "line": 1773,
+      "line": 1770,
       "kind": "literal",
       "text": "展开",
       "file": "renderer/app.js",
       "occurrences": 1
     },
     {
-      "line": 1773,
+      "line": 1770,
       "kind": "literal",
       "text": "收起",
       "file": "renderer/app.js",
@@ -3264,1259 +1774,602 @@
       "occurrences": 1
     },
     {
-      "line": 13,
+      "line": 14,
       "kind": "literal",
       "text": "未配置 DeepSeek API Key(请到设置中配置)",
       "file": "src/balance.js",
       "occurrences": 1
     },
     {
-      "line": 21,
-      "kind": "template",
-      "text": "请求失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/balance.js",
-      "occurrences": 1
-    },
-    {
-      "line": 29,
-      "kind": "template",
-      "text": "余额接口返回 HTTP {p0}{p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/balance.js",
-      "occurrences": 1
-    },
-    {
-      "line": 32,
+      "line": 33,
       "kind": "literal",
       "text": "响应解析失败",
       "file": "src/balance.js",
       "occurrences": 1
     },
     {
-      "line": 50,
-      "kind": "template",
-      "text": "未找到 DSH 凭据文件: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/balance.js",
-      "occurrences": 1
-    },
-    {
-      "line": 58,
+      "line": 59,
       "kind": "literal",
       "text": "DSH 凭据中未找到 API Key 字段",
       "file": "src/balance.js",
       "occurrences": 1
     },
     {
-      "line": 62,
-      "kind": "template",
-      "text": "读取失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/balance.js",
-      "occurrences": 1
-    },
-    {
-      "line": 105,
+      "line": 106,
       "kind": "literal",
       "text": "未找到 loader,跳过加载探测",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 128,
+      "line": 129,
       "kind": "literal",
       "text": "未找到 dsh 的 cordis-plugin-loader(全局 dsh 安装可能损坏)",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 134,
-      "kind": "template",
-      "text": "loader 无法加载: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 148,
-      "kind": "template",
-      "text": "可解析但加载失败:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 152,
+      "line": 153,
       "kind": "literal",
       "text": "从 loader 可解析",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 160,
-      "kind": "template",
-      "text": "全局 node_modules 里的联接已断链{p0}",
-      "placeholders": 1,
-      "simple": false,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 172,
-      "kind": "template",
-      "text": "只在 {p0}存在,需在全局 node_modules 建联接",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 174,
-      "kind": "template",
-      "text": ";可用的包体在 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 181,
-      "kind": "template",
-      "text": "全局 node_modules 里有同名目录但缺少 package.json:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 182,
+      "line": 183,
       "kind": "literal",
       "text": "profile 与全局目录都找不到这个包,需要先安装该插件",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 198,
-      "kind": "template",
-      "text": "官方 dsh {p0} 已不再提供这个 bundle(上游移除或并入其它包),registry 上也没有该版本的发布;应当从 profile 的 dsh.profile.bundles 里删掉这一条,而不是安装它",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 201,
-      "kind": "template",
-      "text": "registry 上有 {p0}@{p1},但本地安装树里没有:全局 dsh 安装不完整,建议重装 CLI",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 203,
+      "line": 204,
       "kind": "literal",
       "text": "(未能联网核对 registry;确认「上游已移除」请在有网环境下重试)",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 214,
+      "line": 215,
       "kind": "literal",
       "text": "官方桌面端独占,跳过检查",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 250,
+      "line": 251,
       "kind": "literal",
       "text": "未找到全局 @deepseek-ai/dsh 安装目录",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 251,
+      "line": 252,
       "kind": "literal",
       "text": "缺少 cordis-plugin-loader(loader)",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 254,
-      "kind": "template",
-      "text": "dsh CLI 版本未能读取{p0}",
-      "placeholders": 1,
-      "simple": false,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 264,
+      "line": 265,
       "kind": "literal",
       "text": "安装树内文件时间差异常(上次更新可能被中途打断,建议重装 dsh CLI)",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 281,
+      "line": 282,
       "kind": "literal",
       "text": "未找到全局 node_modules",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 285,
+      "line": 286,
       "kind": "literal",
       "text": "无需修复",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 290,
+      "line": 291,
       "kind": "literal",
       "text": "仅在 profile 内,dsh 0.2.x 可直接解析,无需修复",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 296,
-      "kind": "template",
-      "text": "[兼容性] {p0}: {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 3
-    },
-    {
-      "line": 306,
+      "line": 307,
       "kind": "literal",
       "text": "没有可用的联接目标",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 320,
-      "kind": "template",
-      "text": "[兼容性] {p0}: 建联接失败 {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 330,
-      "kind": "template",
-      "text": "[兼容性] {p0}: 已建联接 → 复验 {p1}",
-      "placeholders": 2,
-      "simple": false,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 370,
-      "kind": "template",
-      "text": "读不到 package.json: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 375,
-      "kind": "template",
-      "text": "备份失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 395,
-      "kind": "template",
-      "text": "改写失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 399,
-      "kind": "template",
-      "text": "写入失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 406,
+      "line": 407,
       "kind": "literal",
       "text": "已从 dsh.profile.bundles 删除,重启该 profile 后生效",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 406,
+      "line": 407,
       "kind": "literal",
       "text": "仍留在 bundles 里",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 407,
-      "kind": "template",
-      "text": "[兼容性] {p0}: {p1}(备份 {p2})",
-      "placeholders": 3,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 429,
-      "kind": "template",
-      "text": "{p0} 个 profile 有问题",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 429,
+      "line": 430,
       "kind": "literal",
       "text": "所有 profile 插件解析正常",
       "file": "src/compat.js",
       "occurrences": 1
     },
     {
-      "line": 431,
-      "kind": "template",
-      "text": "{p0} 个插件仅存在于 profile 内(dsh 0.2.x 可直接解析,无需处理)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 432,
-      "kind": "template",
-      "text": "跳过 {p0} 个(官方桌面端独占)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 433,
-      "kind": "template",
-      "text": "全局 dsh 安装异常:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 434,
-      "kind": "template",
-      "text": "提示:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/compat.js",
-      "occurrences": 1
-    },
-    {
-      "line": 25,
-      "kind": "template",
-      "text": "{p0} 版本",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 27,
-      "kind": "template",
-      "text": "{p0} 可用性",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 27,
-      "kind": "template",
-      "text": "未找到 {p0}(不影响核心功能)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 32,
+      "line": 33,
       "kind": "literal",
       "text": "dsh 版本",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 33,
+      "line": 34,
       "kind": "literal",
       "text": "dsh 安装",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 33,
+      "line": 34,
       "kind": "literal",
       "text": "dsh CLI 不可用",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 37,
+      "line": 38,
       "kind": "literal",
       "text": "dsh 全局安装",
       "file": "src/diagnose.js",
       "occurrences": 2
     },
     {
-      "line": 44,
+      "line": 45,
       "kind": "literal",
       "text": "未检测到任何 profile($DSH_HOME/profiles 为空)",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 66,
-      "kind": "template",
-      "text": "{p0} 个 bundle{p1}",
-      "placeholders": 2,
-      "simple": false,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 68,
-      "kind": "template",
-      "text": "禁用条目检查: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 68,
-      "kind": "template",
-      "text": "以下禁用 id 不在 bundles 中: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 77,
-      "kind": "template",
-      "text": ";其中 {p0} 是上游已移除的 bundle,一键修复会从 bundles 删掉它",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 79,
-      "kind": "template",
-      "text": "插件解析: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 80,
-      "kind": "template",
-      "text": "以下插件在当前 dsh 版本下无法解析,启动会失败: {p0}(可在更新面板点「插件兼容性检查」一键修复){p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 90,
+      "line": 91,
       "kind": "literal",
       "text": "端口 3080",
       "file": "src/diagnose.js",
       "occurrences": 3
     },
     {
-      "line": 90,
-      "kind": "template",
-      "text": "web 服务运行中 (PID {p0})",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 92,
+      "line": 93,
       "kind": "literal",
       "text": "web 服务未在运行(端口空闲)",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 95,
+      "line": 96,
       "kind": "literal",
       "text": "无法检查端口",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 101,
+      "line": 102,
       "kind": "literal",
       "text": "已配置(余额功能可用)",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 102,
+      "line": 103,
       "kind": "literal",
       "text": "已加密存储(需在管理器应用内运行才能解密验证)",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 103,
+      "line": 104,
       "kind": "literal",
       "text": "⚠ 以明文存储(建议在余额页重新保存以迁移为加密存储)",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 104,
+      "line": 105,
       "kind": "literal",
       "text": "未配置(余额功能不可用,可在设置中配置)",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 106,
+      "line": 107,
       "kind": "literal",
       "text": "密钥存储加密",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 107,
+      "line": 108,
       "kind": "literal",
       "text": "系统凭据加密(safeStorage/DPAPI)",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 107,
+      "line": 108,
       "kind": "literal",
       "text": "⚠ 明文降级存储(仅测试模式),存在泄露风险",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 107,
+      "line": 108,
       "kind": "literal",
       "text": "未保存密钥",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 113,
+      "line": 114,
       "kind": "literal",
       "text": "密钥安全审计",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 113,
-      "kind": "template",
-      "text": "审计失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 124,
+      "line": 125,
       "kind": "literal",
       "text": "# DeepSeek Harness 诊断报告",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 125,
-      "kind": "template",
-      "text": "生成时间: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/diagnose.js",
-      "occurrences": 1
-    },
-    {
-      "line": 127,
+      "line": 128,
       "kind": "literal",
       "text": "## 检查结果",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 132,
+      "line": 133,
       "kind": "literal",
       "text": "报告由 deepseek-harness-manager 诊断中心生成",
       "file": "src/diagnose.js",
       "occurrences": 1
     },
     {
-      "line": 33,
+      "line": 34,
       "kind": "literal",
       "text": "未找到 dsh CLI:请确认已全局安装 @deepseek-ai/dsh",
       "file": "src/dsh.js",
       "occurrences": 1
     },
     {
-      "line": 48,
+      "line": 49,
       "kind": "literal",
       "text": "查询 npm 最新版本 …",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 50,
-      "kind": "template",
-      "text": "获取 npm 版本失败(HTTP {p0})",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 55,
+      "line": 56,
       "kind": "literal",
       "text": "未找到 Node.js 安装目录",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 56,
-      "kind": "template",
-      "text": "下载 npm@{p0} …",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 58,
-      "kind": "template",
-      "text": "下载失败(HTTP {p0})",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 2
-    },
-    {
-      "line": 64,
+      "line": 65,
       "kind": "literal",
       "text": "解压到 Node 目录 …",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 66,
-      "kind": "template",
-      "text": "解压失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 79,
-      "kind": "template",
-      "text": "✔ npm {p0} 安装完成",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 79,
+      "line": 80,
       "kind": "literal",
       "text": "✘ npm 安装后校验失败",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 80,
+      "line": 81,
       "kind": "literal",
       "text": "npm 安装后校验失败",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 110,
-      "kind": "template",
-      "text": "(镜像 {p0})",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 122,
+      "line": 123,
       "kind": "literal",
       "text": "正在安装 @deepseek-ai/dsh",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 123,
+      "line": 124,
       "kind": "literal",
       "text": "已取消安装",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 124,
+      "line": 125,
       "kind": "literal",
       "text": "✔ dsh 安装完成",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 124,
-      "kind": "template",
-      "text": "✘ 安装失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 2
-    },
-    {
-      "line": 125,
+      "line": 126,
       "kind": "literal",
       "text": "未知错误",
       "file": "src/env.js",
       "occurrences": 6
     },
     {
-      "line": 130,
+      "line": 131,
       "kind": "literal",
       "text": "正在更新 @deepseek-ai/dsh",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 131,
+      "line": 132,
       "kind": "literal",
       "text": "已取消更新",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 133,
-      "kind": "template",
-      "text": "✔ dsh 更新完成,当前版本: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 133,
-      "kind": "template",
-      "text": "✘ 更新失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 139,
+      "line": 140,
       "kind": "literal",
       "text": "正在卸载 @deepseek-ai/dsh …",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 143,
+      "line": 144,
       "kind": "literal",
       "text": "已取消卸载",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 144,
+      "line": 145,
       "kind": "literal",
       "text": "✔ dsh 已卸载",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 144,
-      "kind": "template",
-      "text": "✘ 卸载失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 3
-    },
-    {
-      "line": 149,
+      "line": 150,
       "kind": "literal",
       "text": "正在卸载 pnpm ...",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 151,
+      "line": 152,
       "kind": "literal",
       "text": "✔ pnpm 已卸载",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 165,
+      "line": 166,
       "kind": "literal",
       "text": "正在查找 Node.js 卸载程序 …",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 168,
+      "line": 169,
       "kind": "literal",
       "text": "未找到 Node.js 卸载信息(可能非 MSI 安装)",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 172,
-      "kind": "template",
-      "text": "执行卸载 {p0} (请在 UAC 弹窗中允许)…",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 175,
+      "line": 176,
       "kind": "literal",
       "text": "✔ Node.js 已卸载",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 178,
+      "line": 179,
       "kind": "literal",
       "text": "未找到标准 MSI 卸载命令,跳过",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 179,
+      "line": 180,
       "kind": "literal",
       "text": "未找到标准 MSI 卸载命令",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 192,
+      "line": 193,
       "kind": "literal",
       "text": "查询最新 Node LTS 版本 ...",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 194,
-      "kind": "template",
-      "text": "获取 Node 版本列表失败(HTTP {p0})",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 197,
+      "line": 198,
       "kind": "literal",
       "text": "未找到可用版本",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 201,
-      "kind": "template",
-      "text": "下载 {p0} ...",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 207,
-      "kind": "template",
-      "text": "已下载 {p0} MB,开始安装(请在 UAC 弹窗中允许)…",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/env.js",
-      "occurrences": 1
-    },
-    {
-      "line": 211,
+      "line": 212,
       "kind": "literal",
       "text": "✔ Node 安装完成,重启管理器后生效",
       "file": "src/env.js",
       "occurrences": 1
     },
     {
-      "line": 9,
+      "line": 10,
       "kind": "literal",
       "text": "# managed by deepseek-harness-manager — 启停状态,启动时经 --patch 注入。请勿手改。\\n",
       "file": "src/overrides.js",
       "occurrences": 1
     },
     {
-      "line": 117,
-      "kind": "template",
-      "text": "{p0} 失败:{p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/plugins/index.js",
-      "occurrences": 1
-    },
-    {
-      "line": 124,
-      "kind": "template",
-      "text": "安装 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/plugins/index.js",
-      "occurrences": 1
-    },
-    {
-      "line": 126,
-      "kind": "template",
-      "text": "依赖 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/plugins/index.js",
-      "occurrences": 1
-    },
-    {
-      "line": 126,
-      "kind": "template",
-      "text": "依赖 {p0} 安装失败(已跳过): {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/plugins/index.js",
-      "occurrences": 1
-    },
-    {
-      "line": 11,
+      "line": 12,
       "kind": "literal",
       "text": "该 profile 由官方 DeepSeek Harness 桌面端独占(官方文档明确 CLI 不得启动或修改),管理器只做只读展示。",
       "file": "src/profiles.js",
       "occurrences": 1
     },
     {
-      "line": 64,
+      "line": 65,
       "kind": "literal",
       "text": "profile 名称只能包含字母、数字、_ - .",
       "file": "src/profiles.js",
       "occurrences": 1
     },
     {
-      "line": 66,
-      "kind": "template",
-      "text": "profile「{p0}」已存在",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/profiles.js",
-      "occurrences": 1
-    },
-    {
-      "line": 19,
+      "line": 20,
       "kind": "literal",
       "text": "DSH 凭据文件",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 20,
+      "line": 21,
       "kind": "literal",
       "text": "管理器配置",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 44,
+      "line": 45,
       "kind": "literal",
       "text": "DSH 凭据文件内容",
       "file": "src/security.js",
       "occurrences": 2
     },
     {
-      "line": 47,
-      "kind": "template",
-      "text": "{p0} 以明文存放 {p1} 个密钥(DSH 自身存储机制,非管理器写入)。建议收紧文件权限,或改用环境变量注入",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/security.js",
-      "occurrences": 1
-    },
-    {
-      "line": 48,
+      "line": 49,
       "kind": "literal",
       "text": "未发现明文密钥",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 51,
-      "kind": "template",
-      "text": "未使用({p0} 不存在)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/security.js",
-      "occurrences": 1
-    },
-    {
-      "line": 61,
+      "line": 62,
       "kind": "literal",
       "text": "管理器密钥存储",
       "file": "src/security.js",
       "occurrences": 2
     },
     {
-      "line": 63,
+      "line": 64,
       "kind": "literal",
       "text": "系统加密(Windows DPAPI,仅本机本账户可解密)",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 64,
+      "line": 65,
       "kind": "literal",
       "text": "未保存密钥(余额功能需先配置)",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 65,
+      "line": 66,
       "kind": "literal",
       "text": "⚠ 明文 base64 存储,存在泄露风险。请在余额页重新保存密钥以自动迁移为加密存储",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 66,
+      "line": 67,
       "kind": "literal",
       "text": "未知存储形态",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 69,
-      "kind": "template",
-      "text": "配置读取失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/security.js",
-      "occurrences": 1
-    },
-    {
-      "line": 77,
-      "kind": "template",
-      "text": "{p0}权限",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/security.js",
-      "occurrences": 2
-    },
-    {
-      "line": 77,
+      "line": 78,
       "kind": "literal",
       "text": "icacls 检查失败",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 87,
+      "line": 88,
       "kind": "literal",
       "text": "对普通用户/Everyone 可读,建议点「收紧密钥文件权限」修复",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 88,
-      "kind": "template",
-      "text": "仅当前用户 / SYSTEM / Administrators 可读{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/security.js",
-      "occurrences": 1
-    },
-    {
-      "line": 102,
+      "line": 103,
       "kind": "literal",
       "text": "文件不存在",
       "file": "src/security.js",
       "occurrences": 1
     },
     {
-      "line": 65,
-      "kind": "template",
-      "text": "GitHub 返回 HTTP {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/selfupdate.js",
-      "occurrences": 1
-    },
-    {
-      "line": 83,
-      "kind": "template",
-      "text": "检查管理器更新失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/selfupdate.js",
-      "occurrences": 1
-    },
-    {
-      "line": 102,
+      "line": 103,
       "kind": "literal",
       "text": "重定向次数过多",
       "file": "src/selfupdate.js",
       "occurrences": 1
     },
     {
-      "line": 126,
-      "kind": "template",
-      "text": "下载不完整({p0}/{p1} 字节)",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/selfupdate.js",
-      "occurrences": 1
-    },
-    {
-      "line": 130,
-      "kind": "template",
-      "text": "已下载管理器更新包: {p0}({p1} MB)",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/selfupdate.js",
-      "occurrences": 1
-    },
-    {
-      "line": 137,
+      "line": 138,
       "kind": "literal",
       "text": "安装包不存在",
       "file": "src/selfupdate.js",
       "occurrences": 1
     },
     {
-      "line": 144,
-      "kind": "template",
-      "text": "已启动安装程序: {p0} {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/selfupdate.js",
-      "occurrences": 1
-    },
-    {
-      "line": 35,
+      "line": 36,
       "kind": "literal",
       "text": "端口已被占用(可能有另一个 harness 实例在运行)。请先停止它,或在「配置启动项」里换一个检测端口。",
       "file": "src/status.js",
       "occurrences": 1
     },
     {
-      "line": 41,
-      "kind": "template",
-      "text": "插件加载失败,无法解析:{p0}\\n常见原因:dsh 版本更新后插件解析位置发生变化。可在更新面板点「插件兼容性修复」一键创建链接。(项目 {p1} 个插件)",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/status.js",
-      "occurrences": 1
-    },
-    {
-      "line": 43,
+      "line": 44,
       "kind": "literal",
       "text": "插件树加载失败,详见下方日志",
       "file": "src/status.js",
       "occurrences": 1
     },
     {
-      "line": 45,
+      "line": 46,
       "kind": "literal",
       "text": "启动后立即退出,无额外输出",
       "file": "src/status.js",
       "occurrences": 1
     },
     {
-      "line": 66,
-      "kind": "template",
-      "text": "profile「{p0}」已在运行",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/status.js",
-      "occurrences": 1
-    },
-    {
-      "line": 97,
-      "kind": "template",
-      "text": "进程退出 (code={p0}{p1}, 存活 {p2}s)",
-      "placeholders": 3,
-      "simple": false,
-      "file": "src/status.js",
-      "occurrences": 1
-    },
-    {
-      "line": 128,
-      "kind": "template",
-      "text": "[{p0}] ✔ 服务就绪 http://127.0.0.1:{p1} (耗时 {p2}ms)",
-      "placeholders": 3,
-      "simple": true,
-      "file": "src/status.js",
-      "occurrences": 1
-    },
-    {
-      "line": 150,
-      "kind": "template",
-      "text": "拒绝操作外部 profile「{p0}」:{p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/status.js",
-      "occurrences": 1
-    },
-    {
-      "line": 163,
-      "kind": "template",
-      "text": "未找到「{p0}」的运行进程",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/status.js",
-      "occurrences": 1
-    },
-    {
-      "line": 167,
+      "line": 168,
       "kind": "literal",
       "text": "进程停止失败(可能无权限)",
       "file": "src/status.js",
       "occurrences": 1
     },
     {
-      "line": 77,
+      "line": 78,
       "kind": "literal",
       "text": "系统加密不可用(safeStorage),已拒绝明文保存密钥",
       "file": "src/store.js",
@@ -4565,564 +2418,240 @@
       "occurrences": 1
     },
     {
-      "line": 75,
+      "line": 76,
       "kind": "literal",
       "text": "registry 返回的版本列表为空",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 85,
+      "line": 86,
       "kind": "literal",
       "text": "npm view 失败",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 90,
+      "line": 91,
       "kind": "literal",
       "text": "npm view 没有返回可用版本",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 121,
-      "kind": "template",
-      "text": "{p0} 个由管理器启动的 profile:{p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 122,
-      "kind": "template",
-      "text": "{p0} 个 dsh CLI 进程",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 123,
+      "line": 124,
       "kind": "literal",
       "text": "官方 DeepSeek Harness 桌面端正在运行",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 124,
+      "line": 125,
       "kind": "literal",
       "text": "无法确认是否有 dsh 进程在运行(权限不足)",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 135,
+      "line": 136,
       "kind": "literal",
       "text": "文件被占用:更新前必须停掉所有 harness 进程(包括官方桌面端)。停止后重试即可。",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 142,
+      "line": 143,
       "kind": "literal",
       "text": "上次更新残留了半清理的目录,全局 dsh 可能处于半更新状态,建议直接「强制重装 dsh CLI」。",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 147,
+      "line": 148,
       "kind": "literal",
       "text": "权限不足:请关闭占用进程,或以管理员身份重试。",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 154,
+      "line": 155,
       "kind": "literal",
       "text": "npm 上找不到这个版本(常因上游最新版的依赖未发布/未同步,或镜像尚未同步)。可在「目标版本」里选一个已知可用的版本重试;若正在用镜像,也可切回官方源。",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 162,
+      "line": 163,
       "kind": "literal",
       "text": "连接 npm 源失败/超时:可在「设置 → npm 下载源」改用国内镜像(npmRegistry=npmmirror)后重试。",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 192,
-      "kind": "template",
-      "text": "已创建备份 {p0}(版本 {p1}、{p2} 个 profile)",
-      "placeholders": 3,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 202,
-      "kind": "template",
-      "text": "⚠ 全局 dsh 安装完整性异常:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 203,
+      "line": 204,
       "kind": "literal",
       "text": "💡 建议点「强制重装 dsh CLI」把安装树恢复完整",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 209,
-      "kind": "template",
-      "text": "⚠ 自检发现插件无法解析:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 210,
+      "line": 211,
       "kind": "literal",
       "text": "💡 点「插件兼容性修复」可一键建联接并复验(否则启动 harness 会失败)",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 213,
-      "kind": "template",
-      "text": "✔ 更新后自检通过:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 216,
-      "kind": "template",
-      "text": "⚠ 更新后自检未完成: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 228,
-      "kind": "template",
-      "text": "更新被阻止:检测到 {p0}。请先停止它们(点「全部停止并继续」),否则 npm 替换文件会失败(EBUSY)。",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 234,
-      "kind": "template",
-      "text": "正在停止 {p0} 个管理器托管的 profile …",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 237,
-      "kind": "template",
-      "text": "已停止 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 238,
-      "kind": "template",
-      "text": "停止 profile 失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 241,
-      "kind": "template",
-      "text": "仍然有 dsh 进程在运行:{p0}。官方桌面端与外部 CLI 进程请手动关闭后再更新。",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 245,
+      "line": 246,
       "kind": "literal",
       "text": "✔ 已确认没有 dsh 进程在占用文件",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 247,
+      "line": 248,
       "kind": "literal",
       "text": "✔ 预检通过:没有 dsh 进程占用文件",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 250,
-      "kind": "template",
-      "text": "开始更新 @deepseek-ai/dsh(当前 {p0})…",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 255,
-      "kind": "template",
-      "text": "✔ 已备份当前版本({p0})与各 profile 配置",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 257,
-      "kind": "template",
-      "text": "⚠ 备份失败(继续更新): {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 261,
-      "kind": "template",
-      "text": "正在全局安装 {p0}(输出实时显示如下)…",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 264,
-      "kind": "template",
-      "text": "使用 npm 镜像:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 2
-    },
-    {
-      "line": 272,
+      "line": 273,
       "kind": "literal",
       "text": "⏹ 已取消更新",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 277,
-      "kind": "template",
-      "text": "更新失败({p0}):{p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 278,
-      "kind": "template",
-      "text": "✘ 更新失败[{p0}]: {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 283,
+      "line": 284,
       "kind": "literal",
       "text": "正在校验版本 …",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 286,
-      "kind": "template",
-      "text": "⚠ 安装命令已结束但版本仍是 {p0}(全局安装可能不完整)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 287,
+      "line": 288,
       "kind": "literal",
       "text": "💡 建议点「强制重装 dsh CLI」",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 288,
+      "line": 289,
       "kind": "literal",
       "text": "npm 报成功但版本未变化,安装树可能不完整",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 290,
-      "kind": "template",
-      "text": "✔ 更新完成:{p0} → {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 301,
-      "kind": "template",
-      "text": "重装被阻止:{p0}。请先停止它们。",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 305,
+      "line": 306,
       "kind": "literal",
       "text": "正在强制重装 @deepseek-ai/dsh@latest(忽略缓存与锁)…",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 316,
+      "line": 317,
       "kind": "literal",
       "text": "⏹ 已取消重装",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 321,
-      "kind": "template",
-      "text": "重装失败({p0}):{p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 322,
-      "kind": "template",
-      "text": "✘ 重装失败[{p0}]{p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 326,
-      "kind": "template",
-      "text": "✔ 重装完成,当前版本 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 389,
+      "line": 390,
       "kind": "literal",
       "text": "非法的备份 id",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 391,
+      "line": 392,
       "kind": "literal",
       "text": "非法的备份路径",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 392,
+      "line": 393,
       "kind": "literal",
       "text": "该备份不存在",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 395,
-      "kind": "template",
-      "text": "已删除备份 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 398,
-      "kind": "template",
-      "text": "删除备份 {p0} 失败: {p1}",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 408,
+      "line": 409,
       "kind": "literal",
       "text": "只有一个备份,保留",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 421,
-      "kind": "template",
-      "text": "自动清理备份:删除 {p0} 个(超过 {p1} 天),释放约 {p2} MB;保留最新 {p3}",
-      "placeholders": 4,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 431,
-      "kind": "template",
-      "text": "已清空全部备份({p0} 个)",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 442,
+      "line": 443,
       "kind": "literal",
       "text": "未找到该备份",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 444,
+      "line": 445,
       "kind": "literal",
       "text": "备份中缺少版本号,无法回滚",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 448,
-      "kind": "template",
-      "text": "回滚被阻止:{p0}。请先停止它们,否则安装旧版同样会 EBUSY。",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 458,
-      "kind": "template",
-      "text": "仍有进程在跑:{p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 2
-    },
-    {
-      "line": 461,
+      "line": 462,
       "kind": "literal",
       "text": "已停止管理器托管的 profile",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 466,
+      "line": 467,
       "kind": "literal",
       "text": "没有 dsh 进程占用文件",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 472,
-      "kind": "template",
-      "text": "安装旧版 {p0}",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 2
-    },
-    {
-      "line": 473,
+      "line": 474,
       "kind": "literal",
       "text": "建议",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 476,
+      "line": 477,
       "kind": "literal",
       "text": "npm 安装完成",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 487,
-      "kind": "template",
-      "text": "[回滚] 跳过官方桌面端 profile「{p0}」",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 493,
+      "line": 494,
       "kind": "literal",
       "text": "还原 profile 配置",
       "file": "src/update.js",
       "occurrences": 2
     },
     {
-      "line": 493,
-      "kind": "template",
-      "text": "{p0} 个 profile",
-      "placeholders": 1,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 510,
+      "line": 511,
       "kind": "literal",
       "text": "修复并复验插件解析",
       "file": "src/update.js",
       "occurrences": 2
     },
     {
-      "line": 510,
+      "line": 511,
       "kind": "literal",
       "text": "全部通过",
       "file": "src/update.js",
       "occurrences": 1
     },
     {
-      "line": 512,
+      "line": 513,
       "kind": "literal",
       "text": "确认版本",
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 512,
-      "kind": "template",
-      "text": "当前 {p0}(目标 {p1})",
-      "placeholders": 2,
-      "simple": true,
-      "file": "src/update.js",
-      "occurrences": 1
-    },
-    {
-      "line": 515,
-      "kind": "template",
-      "text": "profile 配置恢复失败: {p0}",
-      "placeholders": 1,
-      "simple": true,
       "file": "src/update.js",
       "occurrences": 1
     }

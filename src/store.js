@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('./i18n')
 // 配置存储:~/.dsh-manager/config.json,API Key 用 Electron safeStorage(Windows DPAPI)加密
 const fs = require('node:fs')
 const { configPath, ensureManagerDirs } = require('./paths')
@@ -74,7 +75,7 @@ function encryptSecret(plain) {
   if (process.env.DSH_MANAGER_ALLOW_PLAIN === '1') {
     return 'plain:' + Buffer.from(plain, 'utf8').toString('base64')
   }
-  throw new Error('系统加密不可用(safeStorage),已拒绝明文保存密钥')
+  throw new Error(t("系统加密不可用(safeStorage),已拒绝明文保存密钥"))
 }
 function decryptSecret(stored) {
   if (!stored) return null

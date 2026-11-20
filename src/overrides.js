@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('./i18n')
 // 管理器自有的启停状态补丁(不修改 profile 原文件):
 // ~/.dsh-manager/plugins/<profile>/overrides/state.yml
 // 启动 profile 时通过 --patch 注入;npm update 覆盖配置不影响本状态。
@@ -6,7 +7,7 @@ const fs = require('node:fs')
 const yaml = require('js-yaml')
 const { overridesDir, statePatchPath } = require('./paths')
 
-const HEADER = '# managed by deepseek-harness-manager — 启停状态,启动时经 --patch 注入。请勿手改。\n'
+const HEADER = t("# managed by deepseek-harness-manager — 启停状态,启动时经 --patch 注入。请勿手改。\\n")
 
 function ensureOverrides(profile) {
   fs.mkdirSync(overridesDir(profile), { recursive: true })

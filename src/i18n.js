@@ -11,8 +11,8 @@
  * 中文用 `{0}`、`{1}` 占位;英文可在句子里调整占位顺序。
  */
 
-const MESSAGES = {
-  en: {
+// 手写词条:质量优先、优先于机翻。key = 中文原文。
+const MANUAL_EN = {
     // ---- 窗口 / 导航 ----
     'DeepSeek Harness 管理器': 'DeepSeek Harness Manager',
     '🐳 DSH 管理器': '🐳 DSH Manager',
@@ -172,8 +172,13 @@ const MESSAGES = {
     '软件渲染(命令行参数)': 'software rendering (command line)',
     '软件渲染(设置)': 'software rendering (setting)',
     '默认(硬件加速)': 'default (hardware acceleration)',
-  },
 }
+
+// 机翻词条(scripts/i18n-translate.js 生成,见 src/i18n-en.json);手写优先。
+let GENERATED = {}
+try { GENERATED = require('./i18n-en.json') } catch { GENERATED = {} }
+
+const MESSAGES = { en: Object.assign({}, GENERATED, MANUAL_EN) }
 
 function normalize(s) {
   return String(s == null ? '' : s).replace(/\s+/g, ' ').trim()

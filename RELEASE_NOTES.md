@@ -1,3 +1,9 @@
+### v0.4.6 更新(英文界面,可在设置里切换)
+- 🌐 **界面语言**:设置 → 界面语言(跟随系统 / 中文 / English)。默认跟随系统,非中文系统回落英文;切换后立即重载生效
+- 🈯 **中文是源语言**:中文模式下译文表完全不参与,界面与 0.4.5 逐字一致(不会因为翻译改动中文)
+- 🔤 覆盖界面、托盘、托盘 tooltip、对话框、兼容性/诊断结论;缺词自动回落中文,不会白屏
+- 🛠 新增 i18n 工具链:scripts/i18n-extract.js + scripts/i18n-translate.js + `npm run i18n:check`(覆盖率,--strict 发布卡口)
+
 ## DeepSeek Harness Manager
 
 由 GitHub Actions 自动构建发布的 Windows 桌面版。

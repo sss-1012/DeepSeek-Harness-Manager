@@ -1,3 +1,4 @@
+const { t } = require('./i18n')
 ﻿'use strict'
 // 环境检测与一键安装(node / npm / dsh),面向新手使用
 const fs = require('node:fs')
@@ -45,25 +46,25 @@ function invalidateEnvCache() { checkCache = null }
 // 单独安装 npm(当 Node 存在但未捆绑 npm 时):从 registry 下载 tarball 解压到 Node 目录并生成 shim
 async function installNpm(onLog) {
   try {
-    onLog?.('查询 npm 最新版本 …')
+    onLog?.(t("查询 npm 最新版本 …"))
     const res = await fetch('https://registry.npmjs.org/npm/latest', { signal: AbortSignal.timeout(30000) })
-    if (!res.ok) throw new Error(`获取 npm 版本失败(HTTP ${res.status})`)
+    if (!res.ok) throw new Error(`${t("获取")} npm ${t("版本失败")}(HTTP ${res.status})`)
     const meta = await res.json()
     const ver = meta.version
     const tgzUrl = `https://registry.npmjs.org/npm/-/npm-${ver}.tgz`
     const nodeDir = path.dirname(resolveNodeExe())
-    if (!nodeDir) throw new Error('未找到 Node.js 安装目录')
-    onLog?.(`下载 npm@${ver} …`)
+    if (!nodeDir) throw new Error(t("未找到 Node.js 安装目录"))
+    onLog?.(`${t("下载")} npm@${ver} …`)
     const dl = await fetch(tgzUrl, { signal: AbortSignal.timeout(600000) })
-    if (!dl.ok) throw new Error(`下载失败(HTTP ${dl.status})`)
+    if (!dl.ok) throw new Error(`${t("下载失败")}(HTTP ${dl.status})`)
     const buf = Buffer.from(await dl.arrayBuffer())
     const tmpDir = path.join(os.tmpdir(), `dshm-npm-${Date.now()}`)
     const tgz = path.join(tmpDir, 'npm.tgz')
     fs.mkdirSync(tmpDir, { recursive: true })
     fs.writeFileSync(tgz, buf)
-    onLog?.('解压到 Node 目录 …')
+    onLog?.(t("解压到 Node 目录 …"))
     const tar = await execTool('tar', ['-xzf', tgz, '-C', tmpDir], { timeout: 120000 })
-    if (!tar.ok) throw new Error(`解压失败: ${tar.stderr || tar.error}`)
+    if (!tar.ok) throw new Error(`${t("解压失败")}: ${tar.stderr || tar.error}`)
     const dest = path.join(nodeDir, 'node_modules', 'npm')
     const src = path.join(tmpDir, 'package')
     if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true })
@@ -76,8 +77,8 @@ async function installNpm(onLog) {
     }
     try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch { /* ignore */ }
     const v = execToolSync('npm', ['--version'])
-    onLog?.(v.ok ? `✔ npm ${v.stdout.trim()} 安装完成` : '✘ npm 安装后校验失败')
-    return { ok: v.ok, version: v.ok ? v.stdout.trim() : null, error: v.ok ? null : 'npm 安装后校验失败' }
+    onLog?.(v.ok ? `✔ npm ${v.stdout.trim()} ${t("安装完成")}` : t("✘ npm 安装后校验失败"))
+    return { ok: v.ok, version: v.ok ? v.stdout.trim() : null, error: v.ok ? null : t("npm 安装后校验失败") }
   } catch (e) {
     onLog?.(`✘ ${e.message}`)
     return { ok: false, error: e.message }
@@ -107,7 +108,7 @@ function registryArgs(registry) {
 async function runDshInstall({ onLog, registry, onChild, force = false, timeout = 1200000, label }) {
   const args = ['install', '-g', '@deepseek-ai/dsh@latest', ...registryArgs(registry)]
   if (force) args.push('--force')
-  const where = registry ? `(镜像 ${NPM_REGISTRY[registry] || registry})` : ''
+  const where = registry ? `(${t("镜像")} ${NPM_REGISTRY[registry] || registry})` : ''
   onLog?.(`${label}${where}…`)
   return execToolStream('npm', args, {
     timeout,
@@ -119,37 +120,37 @@ async function runDshInstall({ onLog, registry, onChild, force = false, timeout 
 
 async function installDsh(opts = {}) {
   const o = typeof opts === 'function' ? { onLog: opts } : opts   // 兼容旧签名 installDsh(onLog)
-  const r = await runDshInstall({ ...o, label: '正在安装 @deepseek-ai/dsh' })
-  if (r.cancelled) { o.onLog?.('已取消安装'); return { ok: false, cancelled: true, error: '已取消' } }
-  o.onLog?.(r.ok ? '✔ dsh 安装完成' : `✘ 安装失败: ${(r.stderr || r.error || '').slice(0, 400)}`)
-  return { ok: r.ok, error: r.ok ? null : (r.stderr || r.error || '未知错误') }
+  const r = await runDshInstall({ ...o, label: t("正在安装 @deepseek-ai/dsh") })
+  if (r.cancelled) { o.onLog?.(t("已取消安装")); return { ok: false, cancelled: true, error: t("已取消") } }
+  o.onLog?.(r.ok ? t("✔ dsh 安装完成") : `✘ ${t("安装失败")}: ${(r.stderr || r.error || '').slice(0, 400)}`)
+  return { ok: r.ok, error: r.ok ? null : (r.stderr || r.error || t("未知错误")) }
 }
 
 async function updateDsh(opts = {}) {
   const o = typeof opts === 'function' ? { onLog: opts } : opts
-  const r = await runDshInstall({ ...o, label: '正在更新 @deepseek-ai/dsh' })
-  if (r.cancelled) { o.onLog?.('已取消更新'); return { ok: false, cancelled: true, error: '已取消' } }
+  const r = await runDshInstall({ ...o, label: t("正在更新 @deepseek-ai/dsh") })
+  if (r.cancelled) { o.onLog?.(t("已取消更新")); return { ok: false, cancelled: true, error: t("已取消") } }
   const v = await version()
-  o.onLog?.(r.ok ? `✔ dsh 更新完成,当前版本: ${v}` : `✘ 更新失败: ${(r.stderr || r.error || '').slice(0, 400)}`)
-  return { ok: r.ok, version: v, error: r.ok ? null : (r.stderr || r.error || '未知错误') }
+  o.onLog?.(r.ok ? `✔ dsh ${t("更新完成")},${t("当前版本")}: ${v}` : `✘ ${t("更新失败")}: ${(r.stderr || r.error || '').slice(0, 400)}`)
+  return { ok: r.ok, version: v, error: r.ok ? null : (r.stderr || r.error || t("未知错误")) }
 }
 
 async function uninstallDsh(opts = {}) {
   const o = typeof opts === 'function' ? { onLog: opts } : opts
-  o.onLog?.('正在卸载 @deepseek-ai/dsh …')
+  o.onLog?.(t("正在卸载 @deepseek-ai/dsh …"))
   const r = await execToolStream('npm', ['uninstall', '-g', '@deepseek-ai/dsh'], {
     timeout: 600000, heartbeatMs: 5000, onChild: o.onChild, onLine: (l, meta) => o.onLog?.(l, meta),
   })
-  if (r.cancelled) { o.onLog?.('已取消卸载'); return { ok: false, cancelled: true, error: '已取消' } }
-  o.onLog?.(r.ok ? '✔ dsh 已卸载' : `✘ 卸载失败: ${(r.stderr || r.error || '').slice(0, 300)}`)
-  return { ok: r.ok, error: r.ok ? null : (r.stderr || r.error || '未知错误') }
+  if (r.cancelled) { o.onLog?.(t("已取消卸载")); return { ok: false, cancelled: true, error: t("已取消") } }
+  o.onLog?.(r.ok ? t("✔ dsh 已卸载") : `✘ ${t("卸载失败")}: ${(r.stderr || r.error || '').slice(0, 300)}`)
+  return { ok: r.ok, error: r.ok ? null : (r.stderr || r.error || t("未知错误")) }
 }
 
 async function uninstallPnpm(onLog) {
-  onLog?.('正在卸载 pnpm ...')
+  onLog?.(t("正在卸载 pnpm ..."))
   const r = await execTool('npm', ['uninstall', '-g', 'pnpm'], { timeout: 300000 })
-  onLog?.(r.ok ? '✔ pnpm 已卸载' : `✘ 卸载失败: ${(r.stderr || r.error || '').slice(0, 300)}`)
-  return { ok: r.ok, error: r.ok ? null : (r.stderr || r.error || '未知错误') }
+  onLog?.(r.ok ? t("✔ pnpm 已卸载") : `✘ ${t("卸载失败")}: ${(r.stderr || r.error || '').slice(0, 300)}`)
+  return { ok: r.ok, error: r.ok ? null : (r.stderr || r.error || t("未知错误")) }
 }
 
 // 通过注册表找到 Node.js 的 MSI 卸载命令并静默执行(会弹 UAC)
@@ -162,21 +163,21 @@ async function uninstallNode(onLog) {
   const tmp = path.join(os.tmpdir(), `dshm-uninstall-node-${Date.now()}.ps1`)
   try {
     fs.writeFileSync(tmp, ps1, 'utf8')
-    onLog?.('正在查找 Node.js 卸载程序 …')
+    onLog?.(t("正在查找 Node.js 卸载程序 …"))
     const r = await execTool('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tmp], { timeout: 60000 })
     const str = (r.stdout || '').trim()
-    if (!str || str === '__NOT_FOUND__') return { ok: false, error: '未找到 Node.js 卸载信息(可能非 MSI 安装)' }
+    if (!str || str === '__NOT_FOUND__') return { ok: false, error: t("未找到 Node.js 卸载信息(可能非 MSI 安装)") }
     // 卸载串可能为 MsiExec.exe /I{GUID}(修复入口),统一提取 GUID 后用 /x 卸载
     const m = str.match(/({[0-9A-Fa-f-]{36}})/i)
     if (m) {
-      onLog?.(`执行卸载 ${m[1]} (请在 UAC 弹窗中允许)…`)
+      onLog?.(`${t("执行卸载")} ${m[1]} (${t("请在")} UAC ${t("弹窗中允许")})…`)
       const r2 = await execTool('msiexec', ['/x', m[1], '/qn', '/norestart'], { timeout: 600000 })
       const ok = r2.ok || r2.code === 3010
-      onLog?.(ok ? '✔ Node.js 已卸载' : `✘ 卸载失败: ${(r2.stderr || r2.error || '').slice(0, 300)}`)
-      return { ok, error: ok ? null : (r2.stderr || r2.error || '未知错误') }
+      onLog?.(ok ? t("✔ Node.js 已卸载") : `✘ ${t("卸载失败")}: ${(r2.stderr || r2.error || '').slice(0, 300)}`)
+      return { ok, error: ok ? null : (r2.stderr || r2.error || t("未知错误")) }
     }
-    onLog?.('未找到标准 MSI 卸载命令,跳过')
-    return { ok: false, error: '未找到标准 MSI 卸载命令' }
+    onLog?.(t("未找到标准 MSI 卸载命令,跳过"))
+    return { ok: false, error: t("未找到标准 MSI 卸载命令") }
   } catch (e) {
     onLog?.(`✘ ${e.message}`)
     return { ok: false, error: e.message }
@@ -189,27 +190,27 @@ async function uninstallNode(onLog) {
 async function installNode(onLog) {
   const MIRROR = 'https://npmmirror.com/mirrors/node'
   try {
-    onLog?.('查询最新 Node LTS 版本 ...')
+    onLog?.(t("查询最新 Node LTS 版本 ..."))
     const res = await fetch(`${MIRROR}/index.json`, { signal: AbortSignal.timeout(30000) })
-    if (!res.ok) throw new Error(`获取 Node 版本列表失败(HTTP ${res.status})`)
+    if (!res.ok) throw new Error(`${t("获取")} Node ${t("版本列表失败")}(HTTP ${res.status})`)
     const list = await res.json()
     const latest = list.find((v) => v.lts) || list[0]
-    if (!latest) throw new Error('未找到可用版本')
+    if (!latest) throw new Error(t("未找到可用版本"))
     const ver = latest.version
     const file = `node-${ver}-x64.msi`
     const url = `${MIRROR}/${ver}/${file}`
-    onLog?.(`下载 ${url} ...`)
+    onLog?.(`${t("下载")} ${url} ...`)
     const dl = await fetch(url, { signal: AbortSignal.timeout(600000) })
-    if (!dl.ok) throw new Error(`下载失败(HTTP ${dl.status})`)
+    if (!dl.ok) throw new Error(`${t("下载失败")}(HTTP ${dl.status})`)
     const buf = Buffer.from(await dl.arrayBuffer())
     const msi = path.join(os.tmpdir(), file)
     fs.writeFileSync(msi, buf)
-    onLog?.(`已下载 ${(buf.length / 1024 / 1024).toFixed(1)} MB,开始安装(请在 UAC 弹窗中允许)…`)
+    onLog?.(`${t("已下载")} ${(buf.length / 1024 / 1024).toFixed(1)} MB,${t("开始安装")}(${t("请在")} UAC ${t("弹窗中允许")})…`)
     const r = await execTool('msiexec', ['/i', msi, '/qn', '/norestart'], { timeout: 600000 })
     try { fs.rmSync(msi, { force: true }) } catch { /* ignore */ }
     const ok = r.ok || r.code === 3010
-    onLog?.(ok ? '✔ Node 安装完成,重启管理器后生效' : `✘ 安装失败: ${(r.stderr || r.error || '').slice(0, 400)}`)
-    return { ok, error: ok ? null : (r.stderr || r.error || '未知错误') }
+    onLog?.(ok ? t("✔ Node 安装完成,重启管理器后生效") : `✘ ${t("安装失败")}: ${(r.stderr || r.error || '').slice(0, 400)}`)
+    return { ok, error: ok ? null : (r.stderr || r.error || t("未知错误")) }
   } catch (e) {
     onLog?.(`✘ ${e.message}`)
     return { ok: false, error: e.message }

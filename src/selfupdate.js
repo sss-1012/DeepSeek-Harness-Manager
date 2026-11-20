@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('./i18n')
 // 管理器自更新:检查 GitHub Releases → 下载安装包 → 退出并静默安装
 // 只处理「管理器自身」,不碰 dsh / profile / harness 进程
 const fs = require('node:fs')
@@ -62,7 +63,7 @@ async function checkLatest() {
     if (res.statusCode === 404) return { current, latest: null, hasUpdate: false, error: null, empty: true }
     if (res.statusCode !== 200) {
       res.resume()
-      return { current, latest: null, hasUpdate: false, error: `GitHub 返回 HTTP ${res.statusCode}` }
+      return { current, latest: null, hasUpdate: false, error: `GitHub ${t("返回")} HTTP ${res.statusCode}` }
     }
     let body = ''
     for await (const chunk of res) body += chunk
@@ -80,7 +81,7 @@ async function checkLatest() {
       error: null,
     }
   } catch (e) {
-    log.logWarn(`检查管理器更新失败: ${e.message}`)
+    log.logWarn(`${t("检查管理器更新失败")}: ${e.message}`)
     return { current, latest: null, hasUpdate: false, error: e.message }
   }
 }
@@ -99,7 +100,7 @@ async function download(asset, { onProgress, onChild } = {}) {
   const tmp = `${dest}.part`
 
   const follow = (url, hop = 0) => new Promise((resolve, reject) => {
-    if (hop > 6) return reject(new Error('重定向次数过多'))
+    if (hop > 6) return reject(new Error(t("重定向次数过多")))
     request(url).then((res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume()
@@ -123,28 +124,28 @@ async function download(asset, { onProgress, onChild } = {}) {
   const r = await follow(asset.url)
   if (r.total && r.received !== r.total) {
     fs.rmSync(r.tmp, { force: true })
-    throw new Error(`下载不完整(${r.received}/${r.total} 字节)`)
+    throw new Error(`${t("下载不完整")}(${r.received}/${r.total} ${t("字节")})`)
   }
   fs.rmSync(dest, { force: true })
   fs.renameSync(r.tmp, dest)
-  log.logInfo(`已下载管理器更新包: ${dest}(${(r.received / 1048576).toFixed(1)} MB)`)
+  log.logInfo(`${t("已下载管理器更新包")}: ${dest}(${(r.received / 1048576).toFixed(1)} MB)`)
   onProgress?.(100, r.received, r.total)
   return { path: dest, size: r.received }
 }
 
 // 启动安装包并退出管理器。setup 用 NSIS 静默参数 /S;portable 直接运行(替换当前文件由用户决定)
 function launchInstaller(filePath, { silent = true } = {}) {
-  if (!fs.existsSync(filePath)) return { ok: false, error: '安装包不存在' }
+  if (!fs.existsSync(filePath)) return { ok: false, error: t("安装包不存在") }
   const isPortable = /portable\.exe$/i.test(filePath)
   const args = isPortable ? [] : (silent ? ['/S'] : [])
   try {
     // detached + unref:管理器退出后安装程序继续运行
     const child = spawn(filePath, args, { detached: true, stdio: 'ignore', windowsHide: false })
     child.unref()
-    log.logInfo(`已启动安装程序: ${filePath} ${args.join(' ')}`)
+    log.logInfo(`${t("已启动安装程序")}: ${filePath} ${args.join(' ')}`)
     return { ok: true, portable: isPortable }
   } catch (e) {
-    log.logWarn(`启动安装程序失败: ${e.message}`)
+    log.logWarn(`${t("启动安装程序失败")}: ${e.message}`)
     return { ok: false, error: e.message }
   }
 }

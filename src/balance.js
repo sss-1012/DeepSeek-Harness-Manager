@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('./i18n')
 // 余额查询(Phase 2):官方接口 + 管理器内加密保存的 API Key
 const fs = require('node:fs')
 const path = require('node:path')
@@ -10,7 +11,7 @@ const BALANCE_URL = 'https://api.deepseek.com/user/balance'
 
 async function getBalance() {
   const key = getApiKey()
-  if (!key) return { ok: false, error: '未配置 DeepSeek API Key(请到设置中配置)' }
+  if (!key) return { ok: false, error: t("未配置 DeepSeek API Key(请到设置中配置)") }
   let res
   try {
     res = await fetch(BALANCE_URL, {
@@ -18,7 +19,7 @@ async function getBalance() {
       signal: AbortSignal.timeout(20000),
     })
   } catch (e) {
-    return { ok: false, error: `请求失败: ${e.message}` }
+    return { ok: false, error: `${t("请求失败")}: ${e.message}` }
   }
   if (!res.ok) {
     let detail = ''
@@ -26,10 +27,10 @@ async function getBalance() {
       const j = await res.json()
       detail = j?.error?.message || JSON.stringify(j).slice(0, 200)
     } catch { /* ignore */ }
-    return { ok: false, error: `余额接口返回 HTTP ${res.status}${detail ? ' — ' + detail : ''}` }
+    return { ok: false, error: `${t("余额接口返回")} HTTP ${res.status}${detail ? ' — ' + detail : ''}` }
   }
   let data
-  try { data = await res.json() } catch (e) { return { ok: false, error: '响应解析失败' } }
+  try { data = await res.json() } catch (e) { return { ok: false, error: t("响应解析失败") } }
   return { ok: true, data }
 }
 
@@ -47,7 +48,7 @@ function summarize(data) {
 
 function importFromDshCredentials() {
   const f = path.join(dshHome, '.credentials.yaml')
-  if (!fs.existsSync(f)) return { ok: false, error: `未找到 DSH 凭据文件: ${f}` }
+  if (!fs.existsSync(f)) return { ok: false, error: `${t("未找到")} DSH ${t("凭据文件")}: ${f}` }
   try {
     const j = yaml.load(fs.readFileSync(f, 'utf8')) || {}
     let key = j.DEEPSEEK_API_KEY || j.deepseek_api_key
@@ -55,11 +56,11 @@ function importFromDshCredentials() {
       const found = Object.values(j).find((v) => typeof v === 'string' && /^sk-[A-Za-z0-9_-]{8,}$/.test(v))
       if (found) key = found
     }
-    if (!key) return { ok: false, error: 'DSH 凭据中未找到 API Key 字段' }
+    if (!key) return { ok: false, error: t("DSH 凭据中未找到 API Key 字段") }
     const r = setApiKey(String(key).trim())
     return r.ok ? { ok: true } : r
   } catch (e) {
-    return { ok: false, error: `读取失败: ${e.message}` }
+    return { ok: false, error: `${t("读取失败")}: ${e.message}` }
   }
 }
 

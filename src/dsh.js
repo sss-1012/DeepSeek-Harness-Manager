@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('./i18n')
 // dsh CLI 封装:定位全局 dsh bin、执行命令、spawn profile 进程
 const fs = require('node:fs')
 const path = require('node:path')
@@ -30,7 +31,7 @@ function dshBin() {
     const c = path.join(r.stdout.trim(), 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
     if (fs.existsSync(c)) { binCache = c; return c }
   }
-  throw new Error('未找到 dsh CLI:请确认已全局安装 @deepseek-ai/dsh')
+  throw new Error(t("未找到 dsh CLI:请确认已全局安装 @deepseek-ai/dsh"))
 }
 
 function envFor(extra) {

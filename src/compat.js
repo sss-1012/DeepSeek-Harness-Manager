@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('./i18n')
 // 插件解析兼容性(重做版)
 //
 // 背景:dsh 从「全局 loader 位置」解析 profile 的 bundle 插件。全局 dsh 被 npm 更新(或更新失败留下
@@ -102,7 +103,7 @@ function globalEntryState(name) {
 // 真加载探测:独立 node 子进程 import 入口(cwd 取 loader 所在目录,与 loader 的解析链一致)
 function probeImport(spec, { timeoutMs = 20000 } = {}) {
   const base = loaderBase()
-  if (!base || !fs.existsSync(base)) return Promise.resolve({ ok: false, error: '未找到 loader,跳过加载探测' })
+  if (!base || !fs.existsSync(base)) return Promise.resolve({ ok: false, error: t("未找到 loader,跳过加载探测") })
   const { realNodeExe } = require('./tool')
   const exe = realNodeExe() || process.execPath
   const code = `import(${JSON.stringify(spec)}).then(() => process.exit(0), (e) => { console.error(String((e && (e.stack || e.message)) || e)); process.exit(3) })`
@@ -125,13 +126,13 @@ async function checkBundle(profile, name, { deep = true, info = null, registryPr
 
   if (!base || !fs.existsSync(base)) {
     item.state = 'loader-missing'
-    item.detail = '未找到 dsh 的 cordis-plugin-loader(全局 dsh 安装可能损坏)'
+    item.detail = t("未找到 dsh 的 cordis-plugin-loader(全局 dsh 安装可能损坏)")
     return item
   }
   let req = null
   try { req = createRequire(base) } catch (e) {
     item.state = 'loader-missing'
-    item.detail = `loader 无法加载: ${e.message}`
+    item.detail = `loader ${t("无法加载")}: ${e.message}`
     return item
   }
 
@@ -145,11 +146,11 @@ async function checkBundle(profile, name, { deep = true, info = null, registryPr
       if (!probe.ok) {
         item.state = 'load-failed'
         item.loadError = probe.error
-        item.detail = `可解析但加载失败:${probe.error}`
+        item.detail = `${t("可解析但加载失败")}:${probe.error}`
         return item
       }
     }
-    item.detail = '从 loader 可解析'
+    item.detail = t("从 loader 可解析")
     return item
   }
 
@@ -157,7 +158,7 @@ async function checkBundle(profile, name, { deep = true, info = null, registryPr
   if (g.state === 'link-dangling') {
     item.state = 'link-dangling'
     item.linkTarget = g.target || null
-    item.detail = `全局 node_modules 里的联接已断链${g.target ? `(目标不存在:${g.target})` : ''}`
+    item.detail = `${t("全局")} node_modules ${t("里的联接已断链")}${g.target ? `(目标不存在:${g.target})` : ''}`
   }
   const candidates = [
     path.join(prof.dir, 'node_modules', name),
@@ -169,17 +170,17 @@ async function checkBundle(profile, name, { deep = true, info = null, registryPr
     item.target = src
     if (item.state === 'unknown') {
       item.state = 'profile-only'
-      item.detail = `只在 ${path.relative(prof.dir, src).startsWith('..') ? 'profiles 共享目录' : 'profile 内'}存在,需在全局 node_modules 建联接`
+      item.detail = `${t("只在")} ${path.relative(prof.dir, src).startsWith('..') ? 'profiles 共享目录' : 'profile 内'}${t("存在")},${t("需在全局")} node_modules ${t("建联接")}`
     } else {
-      item.detail += `;可用的包体在 ${src}`
+      item.detail += `;${t("可用的包体在")} ${src}`
     }
     return item
   }
   if (item.state === 'unknown') {
     item.state = 'missing'
     item.detail = g.state === 'dir-invalid'
-      ? `全局 node_modules 里有同名目录但缺少 package.json:${g.path}`
-      : 'profile 与全局目录都找不到这个包,需要先安装该插件'
+      ? `${t("全局")} node_modules ${t("里有同名目录但缺少")} package.json:${g.path}`
+      : t("profile 与全局目录都找不到这个包,需要先安装该插件")
     item.target = g.path || null
   }
 
@@ -195,12 +196,12 @@ async function checkBundle(profile, name, { deep = true, info = null, registryPr
     if (verdict === 'no') {
       item.state = 'retired-bundle'
       item.repair = 'remove-bundle'
-      item.detail = `官方 dsh ${version || '(当前版本)'} 已不再提供这个 bundle(上游移除或并入其它包),registry 上也没有该版本的发布;应当从 profile 的 dsh.profile.bundles 里删掉这一条,而不是安装它`
+      item.detail = `${t("官方")} dsh ${version || '(当前版本)'} ${t("已不再提供这个")} bundle(${t("上游移除或并入其它包")}),registry ${t("上也没有该版本的发布")};${t("应当从")} profile ${t("的")} dsh.profile.bundles ${t("里删掉这一条")},${t("而不是安装它")}`
     } else if (verdict === 'yes') {
       item.repair = 'reinstall-dsh'
-      item.detail = `registry 上有 ${name}@${version},但本地安装树里没有:全局 dsh 安装不完整,建议重装 CLI`
+      item.detail = `registry ${t("上有")} ${name}@${version},${t("但本地安装树里没有")}:${t("全局")} dsh ${t("安装不完整")},${t("建议重装")} CLI`
     } else {
-      item.detail += '(未能联网核对 registry;确认「上游已移除」请在有网环境下重试)'
+      item.detail += t("(未能联网核对 registry;确认「上游已移除」请在有网环境下重试)")
     }
   }
   return item
@@ -211,7 +212,7 @@ async function checkBundles(profile, { deep = true, registryProbe = null } = {})
   if (info.external) {
     return {
       profile, ok: true, skipped: true, external: true, reason: info.externalReason,
-      items: [], bad: [], detail: '官方桌面端独占,跳过检查',
+      items: [], bad: [], detail: t("官方桌面端独占,跳过检查"),
     }
   }
   const items = []
@@ -247,11 +248,11 @@ async function checkGlobalDsh() {
     const { version: v } = require('./dsh')
     version = await v()
   } catch (e) { cliError = e.message }
-  if (!pkg || !fs.existsSync(path.join(pkg, 'package.json'))) problems.push('未找到全局 @deepseek-ai/dsh 安装目录')
-  if (!base || !fs.existsSync(base)) problems.push('缺少 cordis-plugin-loader(loader)')
+  if (!pkg || !fs.existsSync(path.join(pkg, 'package.json'))) problems.push(t("未找到全局 @deepseek-ai/dsh 安装目录"))
+  if (!base || !fs.existsSync(base)) problems.push(t("缺少 cordis-plugin-loader(loader)"))
   // 版本读不出来可能是“真损坏”,也可能只是子进程被拦/临时忙碌 —— 只在安装目录也缺失时才当错误
   if (!version) {
-    const line = `dsh CLI 版本未能读取${cliError ? `:${cliError}` : ''}`
+    const line = `dsh CLI ${t("版本未能读取")}${cliError ? `:${cliError}` : ''}`
     if (problems.length) problems.push(line); else warnings.push(line)
   }
   // bin.js 与 loader 同处一个安装树:用它们的 mtime 粗判"更新是否被中途打断"
@@ -261,7 +262,7 @@ async function checkGlobalDsh() {
     const loaderM = fs.statSync(base).mtimeMs
     partial = Math.abs(binM - loaderM) > 24 * 60 * 60 * 1000
   } catch { /* ignore */ }
-  if (partial) problems.push('安装树内文件时间差异常(上次更新可能被中途打断,建议重装 dsh CLI)')
+  if (partial) problems.push(t("安装树内文件时间差异常(上次更新可能被中途打断,建议重装 dsh CLI)"))
   return {
     ok: problems.length === 0,
     version,
@@ -278,33 +279,33 @@ async function fixBundles(profile, { deep = true, onLog, registryProbe = null } 
   const info = profileInfo(profile)
   if (info.external) return { profile, ok: true, skipped: true, results: [], reason: info.externalReason }
   const globalNM = globalNodeModules()
-  if (!globalNM) return { profile, ok: false, results: [{ pkg: '*', status: 'failed', error: '未找到全局 node_modules' }] }
+  if (!globalNM) return { profile, ok: false, results: [{ pkg: '*', status: 'failed', error: t("未找到全局 node_modules") }] }
   const results = []
   for (const b of info.bundles || []) {
     const before = await checkBundle(profile, b, { deep: false, info, registryProbe })
-    if (before.state === 'ok') { results.push({ pkg: b, status: 'ok', detail: '无需修复' }); continue }
+    if (before.state === 'ok') { results.push({ pkg: b, status: 'ok', detail: t("无需修复") }); continue }
     // 仅 profile 内:检查结果本身就说「无需处理」,这里必须真的不动它 ——
     // 旧版会为这 11 个健康插件往全局 node_modules 里建联接,而全局 dsh 一更新这些联接就断,
     // 等于亲手制造下一轮故障。
     if (before.state === 'profile-only') {
-      results.push({ pkg: b, status: 'skipped-optional', detail: '仅在 profile 内,dsh 0.2.x 可直接解析,无需修复' })
+      results.push({ pkg: b, status: 'skipped-optional', detail: t("仅在 profile 内,dsh 0.2.x 可直接解析,无需修复") })
       continue
     }
     // 上游已撤销的官方 bundle:建联接没有意义,删除条目由 removeRetiredBundles 做
     if (before.state === 'retired-bundle') {
       results.push({ pkg: b, status: 'retired', detail: before.detail })
-      onLog?.(`[兼容性] ${b}: ${before.detail}`)
+      onLog?.(`[${t("兼容性")}] ${b}: ${before.detail}`)
       continue
     }
     if (before.state === 'missing') {
       results.push({ pkg: b, status: 'missing', detail: before.detail })
-      onLog?.(`[兼容性] ${b}: ${before.detail}`)
+      onLog?.(`[${t("兼容性")}] ${b}: ${before.detail}`)
       continue
     }
     if (before.state === 'loader-missing' || !before.target) {
       // 全局 dsh 安装本身不完整:插件级修复无意义(需要重装 CLI)
-      results.push({ pkg: b, status: before.state === 'loader-missing' ? 'loader-missing' : 'failed', detail: before.detail, error: before.target ? undefined : '没有可用的联接目标' })
-      onLog?.(`[兼容性] ${b}: ${before.detail}`)
+      results.push({ pkg: b, status: before.state === 'loader-missing' ? 'loader-missing' : 'failed', detail: before.detail, error: before.target ? undefined : t("没有可用的联接目标") })
+      onLog?.(`[${t("兼容性")}] ${b}: ${before.detail}`)
       continue
     }
     const linkPath = path.join(globalNM, b)
@@ -317,7 +318,7 @@ async function fixBundles(profile, { deep = true, onLog, registryProbe = null } 
       fs.symlinkSync(before.target, linkPath, 'junction')
     } catch (e) {
       results.push({ pkg: b, status: 'failed', error: e.message, target: before.target })
-      onLog?.(`[兼容性] ${b}: 建联接失败 ${e.message}`)
+      onLog?.(`[${t("兼容性")}] ${b}: ${t("建联接失败")} ${e.message}`)
       continue
     }
     // 立即复验(旧版修完不复验,所以"点了没反应"也没人知道)
@@ -327,7 +328,7 @@ async function fixBundles(profile, { deep = true, onLog, registryProbe = null } 
       pkg: b, status, target: before.target,
       verify: after.state, detail: after.detail, loadError: after.loadError || null,
     })
-    onLog?.(`[兼容性] ${b}: 已建联接 → 复验 ${after.state === 'ok' ? '通过' : `仍未通过(${after.state}:${after.detail})`}`)
+    onLog?.(`[${t("兼容性")}] ${b}: ${t("已建联接")} → ${t("复验")} ${after.state === 'ok' ? '通过' : `仍未通过(${after.state}:${after.detail})`}`)
   }
   const ok = results.every((r) => r.status === 'ok' || r.status === 'linked' || r.status === 'skipped-optional')
   return { profile, ok, results }
@@ -367,12 +368,12 @@ async function removeRetiredBundles(profile, { onLog, registryProbe = null } = {
   const pkgPath = path.join(info.dir, 'package.json')
   let text
   try { text = fs.readFileSync(pkgPath, 'utf8') } catch (e) {
-    return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `读不到 package.json: ${e.message}` })), removed: [] }
+    return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `${t("读不到")} package.json: ${e.message}` })), removed: [] }
   }
   const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
   const backupPath = `${pkgPath}.bak-${stamp}-retired`
   try { fs.copyFileSync(pkgPath, backupPath) } catch (e) {
-    return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `备份失败: ${e.message}` })), removed: [] }
+    return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `${t("备份失败")}: ${e.message}` })), removed: [] }
   }
 
   let next = text
@@ -392,19 +393,19 @@ async function removeRetiredBundles(profile, { onLog, registryProbe = null } = {
       next = JSON.stringify(j, null, 2) + '\n'
       parsed = JSON.parse(next)
     } catch (e) {
-      return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `改写失败: ${e.message}` })), removed: [], backup: backupPath }
+      return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `${t("改写失败")}: ${e.message}` })), removed: [], backup: backupPath }
     }
   }
   try { fs.writeFileSync(pkgPath, next) } catch (e) {
-    return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `写入失败: ${e.message}` })), removed: [], backup: backupPath }
+    return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `${t("写入失败")}: ${e.message}` })), removed: [], backup: backupPath }
   }
 
   // 复验:条目真的不在了才算成功
   const after = profileInfo(profile)
   for (const b of retired) {
     const gone = !(after.bundles || []).includes(b)
-    results.push({ pkg: b, status: gone ? 'removed' : 'remove-failed', detail: gone ? '已从 dsh.profile.bundles 删除,重启该 profile 后生效' : '仍留在 bundles 里', backup: backupPath })
-    onLog?.(`[兼容性] ${b}: ${gone ? '已从 profile 删除' : '删除后仍在 bundles 里'}(备份 ${backupPath})`)
+    results.push({ pkg: b, status: gone ? 'removed' : 'remove-failed', detail: gone ? t("已从 dsh.profile.bundles 删除,重启该 profile 后生效") : t("仍留在 bundles 里"), backup: backupPath })
+    onLog?.(`[${t("兼容性")}] ${b}: ${gone ? '已从 profile 删除' : '删除后仍在 bundles 里'}(${t("备份")} ${backupPath})`)
   }
   return { profile, ok: results.every((r) => r.status === 'removed'), results, removed: results.filter((r) => r.status === 'removed').map((r) => r.pkg), backup: backupPath }
 }
@@ -426,12 +427,12 @@ function summarizeCheck(all) {
   const failed = all.profiles.filter((p) => !p.ok && !p.skipped)
   const skipped = all.profiles.filter((p) => p.skipped)
   const parts = []
-  parts.push(failed.length ? `${failed.length} 个 profile 有问题` : '所有 profile 插件解析正常')
+  parts.push(failed.length ? `${failed.length} ${t("个")} profile ${t("有问题")}` : t("所有 profile 插件解析正常"))
   const infoCount = all.profiles.reduce((n, p) => n + ((p.infoItems || []).length), 0)
-  if (infoCount) parts.push(`${infoCount} 个插件仅存在于 profile 内(dsh 0.2.x 可直接解析,无需处理)`)
-  if (skipped.length) parts.push(`跳过 ${skipped.length} 个(官方桌面端独占)`)
-  if (!all.global.ok) parts.push(`全局 dsh 安装异常:${all.global.problems.join(';')}`)
-  else if ((all.global.warnings || []).length) parts.push(`提示:${all.global.warnings.join(';')}`)
+  if (infoCount) parts.push(`${infoCount} ${t("个插件仅存在于")} profile ${t("内")}(dsh 0.2.x ${t("可直接解析")},${t("无需处理")})`)
+  if (skipped.length) parts.push(`${t("跳过")} ${skipped.length} ${t("个")}(${t("官方桌面端独占")})`)
+  if (!all.global.ok) parts.push(`${t("全局")} dsh ${t("安装异常")}:${all.global.problems.join(';')}`)
+  else if ((all.global.warnings || []).length) parts.push(`${t("提示")}:${all.global.warnings.join(';')}`)
   return parts.join(';')
 }
 

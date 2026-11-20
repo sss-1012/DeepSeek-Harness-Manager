@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('./i18n')
 // 密钥存储安全审计与加固
 // - audit():检查明文密钥、文件权限是否过宽
 // - hardenFilePerms():断开继承并把权限收紧为 当前用户 / SYSTEM / Administrators
@@ -16,8 +17,8 @@ function credentialsFile() {
 
 function listSecretFiles() {
   return [
-    { key: 'dsh-credentials', label: 'DSH 凭据文件', file: credentialsFile() },
-    { key: 'manager-config', label: '管理器配置', file: configPath },
+    { key: 'dsh-credentials', label: t("DSH 凭据文件"), file: credentialsFile() },
+    { key: 'manager-config', label: t("管理器配置"), file: configPath },
   ]
 }
 
@@ -41,14 +42,14 @@ function audit() {
     } catch { /* ignore */ }
     results.push({
       id: 'cred-plaintext',
-      label: 'DSH 凭据文件内容',
+      label: t("DSH 凭据文件内容"),
       status: count ? 'warn' : 'ok',
       detail: count
-        ? `${path.basename(cred)} 以明文存放 ${count} 个密钥(DSH 自身存储机制,非管理器写入)。建议收紧文件权限,或改用环境变量注入`
-        : '未发现明文密钥',
+        ? `${path.basename(cred)} ${t("以明文存放")} ${count} ${t("个密钥")}(DSH ${t("自身存储机制")},${t("非管理器写入")})${t("。建议收紧文件权限")},${t("或改用环境变量注入")}`
+        : t("未发现明文密钥"),
     })
   } else {
-    results.push({ id: 'cred-plaintext', label: 'DSH 凭据文件内容', status: 'ok', detail: `未使用(${cred} 不存在)` })
+    results.push({ id: 'cred-plaintext', label: t("DSH 凭据文件内容"), status: 'ok', detail: `${t("未使用")}(${cred} ${t("不存在")})` })
   }
 
   // 2) 管理器配置:存储形态
@@ -58,15 +59,15 @@ function audit() {
     const mode = v == null ? 'none' : v.startsWith('enc:') ? 'secure' : v.startsWith('plain:') ? 'plain' : 'unknown'
     results.push({
       id: 'manager-key-mode',
-      label: '管理器密钥存储',
+      label: t("管理器密钥存储"),
       status: mode === 'secure' ? 'ok' : mode === 'none' ? 'ok' : 'warn',
-      detail: mode === 'secure' ? '系统加密(Windows DPAPI,仅本机本账户可解密)'
-        : mode === 'none' ? '未保存密钥(余额功能需先配置)'
-          : mode === 'plain' ? '⚠ 明文 base64 存储,存在泄露风险。请在余额页重新保存密钥以自动迁移为加密存储'
-            : '未知存储形态',
+      detail: mode === 'secure' ? t("系统加密(Windows DPAPI,仅本机本账户可解密)")
+        : mode === 'none' ? t("未保存密钥(余额功能需先配置)")
+          : mode === 'plain' ? t("⚠ 明文 base64 存储,存在泄露风险。请在余额页重新保存密钥以自动迁移为加密存储")
+            : t("未知存储形态"),
     })
   } catch (e) {
-    results.push({ id: 'manager-key-mode', label: '管理器密钥存储', status: 'warn', detail: `配置读取失败: ${e.message}` })
+    results.push({ id: 'manager-key-mode', label: t("管理器密钥存储"), status: 'warn', detail: `${t("配置读取失败")}: ${e.message}` })
   }
 
   // 3) 文件权限是否过宽(普通用户可读)
@@ -74,18 +75,18 @@ function audit() {
     if (!fs.existsSync(s.file)) continue
     const acl = readAcl(s.file)
     if (acl == null) {
-      results.push({ id: `perms-${s.key}`, label: `${s.label}权限`, status: 'warn', detail: 'icacls 检查失败' })
+      results.push({ id: `perms-${s.key}`, label: `${s.label}${t("权限")}`, status: 'warn', detail: t("icacls 检查失败") })
       continue
     }
     const broad = BROAD_SID_RE.test(acl)
     const inherited = /\(I\)/.test(acl)
     results.push({
       id: `perms-${s.key}`,
-      label: `${s.label}权限`,
+      label: `${s.label}${t("权限")}`,
       status: broad ? 'warn' : 'ok',
       detail: broad
-        ? '对普通用户/Everyone 可读,建议点「收紧密钥文件权限」修复'
-        : `仅当前用户 / SYSTEM / Administrators 可读${inherited ? '(仍为继承权限,建议锁定)' : '(已锁定,不随父目录变化)'}`,
+        ? t("对普通用户/Everyone 可读,建议点「收紧密钥文件权限」修复")
+        : `${t("仅当前用户")} / SYSTEM / Administrators ${t("可读")}${inherited ? '(仍为继承权限,建议锁定)' : '(已锁定,不随父目录变化)'}`,
     })
   }
 
@@ -99,7 +100,7 @@ function hardenFilePerms() {
     : process.env.USERNAME
   const out = []
   for (const s of listSecretFiles()) {
-    if (!fs.existsSync(s.file)) { out.push({ file: s.file, status: 'skip', reason: '文件不存在' }); continue }
+    if (!fs.existsSync(s.file)) { out.push({ file: s.file, status: 'skip', reason: t("文件不存在") }); continue }
     try {
       execFileSync('icacls', [s.file, '/inheritance:r'], { encoding: 'utf8', windowsHide: true, timeout: 15000 })
       execFileSync('icacls', [s.file, '/grant:r', `${user}:(F)`, 'NT AUTHORITY\\SYSTEM:(F)', 'BUILTIN\\Administrators:(F)'], {

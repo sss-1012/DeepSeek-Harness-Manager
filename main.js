@@ -59,9 +59,9 @@ if (SOFTWARE_RENDERING) {
 // GPU/工具进程崩溃是“窗口空白”的常见原因,必须留下证据(以前不记)
 app.on('child-process-gone', (_e, details) => {
   const d = details || {}
-  log.logWarn(`子进程退出: type=${d.type} reason=${d.reason} exitCode=${d.exitCode}${d.serviceName ? ` service=${d.serviceName}` : ''}`)
+  log.logWarn(`${t("子进程退出")}: type=${d.type} reason=${d.reason} exitCode=${d.exitCode}${d.serviceName ? ` service=${d.serviceName}` : ''}`)
   if (d.type === 'GPU' && d.reason && d.reason !== 'clean-exit') {
-    log.logWarn('GPU 进程异常退出 → 若界面空白,可从托盘菜单选「以软件渲染重启」')
+    log.logWarn(t("GPU 进程异常退出 → 若界面空白,可从托盘菜单选「以软件渲染重启」"))
   }
 })
 
@@ -88,16 +88,16 @@ function showWindow() {
     if (mainWindow.isMinimized()) mainWindow.restore()
     const b = mainWindow.getBounds()
     if (!boundsAreSane(b)) {
-      log.logWarn(`窗口尺寸/位置异常(${b.width}x${b.height} @ ${b.x},${b.y}),已重置为 ${DEFAULT_BOUNDS.width}x${DEFAULT_BOUNDS.height} 并居中`)
+      log.logWarn(`${t("窗口尺寸")}/${t("位置异常")}(${b.width}x${b.height} @ ${b.x},${b.y}),${t("已重置为")} ${DEFAULT_BOUNDS.width}x${DEFAULT_BOUNDS.height} ${t("并居中")}`)
       mainWindow.setBounds(DEFAULT_BOUNDS)
       mainWindow.center()
     }
     mainWindow.show()
     mainWindow.focus()
     repaintWindow()
-    log.logInfo(`窗口已显示 (${mainWindow.getBounds().width}x${mainWindow.getBounds().height})`)
+    log.logInfo(`${t("窗口已显示")} (${mainWindow.getBounds().width}x${mainWindow.getBounds().height})`)
     scheduleUiChecks()   // 显示后自检:隐藏久了容易出“窗口在但画面没出来”
-  } catch (e) { log.logWarn(`显示窗口失败: ${e.message}`) }
+  } catch (e) { log.logWarn(`${t("显示窗口失败")}: ${e.message}`) }
 }
 
 // 重置窗口:用户从托盘菜单显式触发,用于自助恢复「内容不见了」的窗口
@@ -111,14 +111,14 @@ function resetWindow() {
     mainWindow.show()
     mainWindow.focus()
     repaintWindow()
-    log.logInfo(`窗口已重置为 ${DEFAULT_BOUNDS.width}x${DEFAULT_BOUNDS.height} 并居中`)
-  } catch (e) { log.logWarn(`重置窗口失败: ${e.message}`) }
+    log.logInfo(`${t("窗口已重置为")} ${DEFAULT_BOUNDS.width}x${DEFAULT_BOUNDS.height} ${t("并居中")}`)
+  } catch (e) { log.logWarn(`${t("重置窗口失败")}: ${e.message}`) }
 }
 
 // 手动重载界面(托盘菜单 / 设置里的按钮):不重启进程的最轻恢复手段
 function reloadUi() {
   if (!mainWindow || mainWindow.isDestroyed()) return
-  log.logInfo('手动重载界面')
+  log.logInfo(t("手动重载界面"))
   repaintWindow()
   try { mainWindow.webContents.reload() } catch { /* ignore */ }
   uiRecoveryAttempts = 0
@@ -127,9 +127,9 @@ function reloadUi() {
 // 以软件渲染重启:GPU 合成挂了时,这是最可靠的恢复手段(不关 harness)
 function restartWithSoftwareRendering() {
   if (SOFTWARE_RENDERING) {
-    log.logInfo('当前已是软件渲染,直接重启管理器')
+    log.logInfo(t("当前已是软件渲染,直接重启管理器"))
   } else {
-    log.logWarn('切换到软件渲染(关闭硬件加速)并重启管理器')
+    log.logWarn(t("切换到软件渲染(关闭硬件加速)并重启管理器"))
     try { store.setSettings({ softwareRendering: true }) } catch { /* ignore */ }
   }
   setTimeout(() => { try { app.relaunch(); app.exit(0) } catch { /* ignore */ } }, 300)
@@ -196,9 +196,9 @@ async function checkUi(where) {
   const noCards = !dom.error && (dom.cards || 0) === 0
   const blankPaint = h.colorCount !== null && h.colorCount <= 2
   const healthy = !dom.error && !domEmpty && !blankPaint && (dom.nav || 0) > 0
-  log.logInfo(`界面自检(${where}):ready=${dom.ready} 侧栏=${dom.nav} 卡片=${dom.cards} body=${dom.bodyLen} 颜色数=${h.colorCount}${dom.error ? ` 错误=${dom.error}` : ''}`)
+  log.logInfo(`${t("界面自检")}(${where}):ready=${dom.ready} ${t("侧栏")}=${dom.nav} ${t("卡片")}=${dom.cards} body=${dom.bodyLen} ${t("颜色数")}=${h.colorCount}${dom.error ? ` 错误=${dom.error}` : ''}`)
   if (healthy) { uiRecoveryAttempts = 0; return }
-  recoverUi(domEmpty || noCards ? '页面内容为空' : '窗口只有背景色(合成失败)')
+  recoverUi(domEmpty || noCards ? t("页面内容为空") : t("窗口只有背景色(合成失败)"))
 }
 
 // 恢复阶梯:重画 → 重载页面 → 重建窗口 → 软件渲染重启
@@ -206,17 +206,17 @@ function recoverUi(reason) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   uiRecoveryAttempts++
   if (uiRecoveryAttempts === 1) {
-    log.logWarn(`界面异常(${reason}):第 1 次恢复 —— 强制重绘 + 重新加载页面`)
+    log.logWarn(`${t("界面异常")}(${reason}):${t("第")} 1 ${t("次恢复")} —— ${t("强制重绘")} + ${t("重新加载页面")}`)
     repaintWindow()
     try { mainWindow.webContents.reload() } catch { /* ignore */ }
     return
   }
   if (uiRecoveryAttempts === 2) {
-    log.logWarn(`界面异常(${reason}):第 2 次恢复 —— 重建窗口`)
+    log.logWarn(`${t("界面异常")}(${reason}):${t("第")} 2 ${t("次恢复")} —— ${t("重建窗口")}`)
     recreateWindow()
     return
   }
-  log.logWarn(`界面异常(${reason}):多次恢复无效 —— 改为软件渲染重启管理器(判断为 GPU 合成问题)`)
+  log.logWarn(`${t("界面异常")}(${reason}):${t("多次恢复无效")} —— ${t("改为软件渲染重启管理器")}(${t("判断为")} GPU ${t("合成问题")})`)
   try { store.setSettings({ softwareRendering: true }) } catch { /* ignore */ }
   setTimeout(() => { try { app.relaunch(); app.exit(0) } catch { /* ignore */ } }, 500)
 }
@@ -233,8 +233,8 @@ function recreateWindow() {
 
 function scheduleUiChecks() {
   if (uiCheckTimer) clearTimeout(uiCheckTimer)
-  setTimeout(() => checkUi('加载后'), 2000)
-  uiCheckTimer = setTimeout(() => checkUi('延迟复检'), 9000)
+  setTimeout(() => checkUi(t("加载后")), 2000)
+  uiCheckTimer = setTimeout(() => checkUi(t("延迟复检")), 9000)
 }
 
 function createWindow() {
@@ -244,7 +244,7 @@ function createWindow() {
     height: 880,
     minWidth: 1024,
     minHeight: 640,
-    title: 'DeepSeek Harness 管理器',
+    title: t("DeepSeek Harness 管理器"),
     icon: winIcon.isEmpty() ? path.join(__dirname, 'assets', 'icon.png') : winIcon,
     backgroundColor: '#f3f5f9',
     webPreferences: {
@@ -265,19 +265,19 @@ function createWindow() {
   })
   // 渲染进程崩溃/无响应时自愈:否则窗口会永远停在一片空白(看起来就是「卡片全没了」)
   mainWindow.webContents.on('render-process-gone', (_e, details) => {
-    log.logWarn(`渲染进程退出(${details && details.reason}),正在重新加载界面`)
+    log.logWarn(`${t("渲染进程退出")}(${details && details.reason}),${t("正在重新加载界面")}`)
     try { mainWindow.webContents.reload() } catch { /* ignore */ }
     setTimeout(() => scheduleUiChecks(), 1500)
   })
-  mainWindow.webContents.on('unresponsive', () => log.logWarn('界面无响应(仍在等待渲染进程)'))
-  mainWindow.webContents.on('responsive', () => log.logInfo('界面已恢复响应'))
+  mainWindow.webContents.on('unresponsive', () => log.logWarn(t("界面无响应(仍在等待渲染进程)")))
+  mainWindow.webContents.on('responsive', () => log.logInfo(t("界面已恢复响应")))
   // 诊断:页面到底加载成了没有(以前这些事件不记日志,出现“空白窗口”时无从判断)
   mainWindow.webContents.on('did-finish-load', () => {
-    log.logInfo('界面页面已加载,开始自检')
+    log.logInfo(t("界面页面已加载,开始自检"))
     scheduleUiChecks()
   })
-  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => log.logWarn(`界面页面加载失败(${code} ${desc}): ${url}`))
-  mainWindow.webContents.on('preload-error', (_e, file, err) => log.logWarn(`preload 执行出错: ${file} - ${err && err.message}`))
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, url) => log.logWarn(`${t("界面页面加载失败")}(${code} ${desc}): ${url}`))
+  mainWindow.webContents.on('preload-error', (_e, file, err) => log.logWarn(`preload ${t("执行出错")}: ${file} - ${err && err.message}`))
   mainWindow.webContents.on('console-message', (...args) => {
     try {
       const details = args[1]
@@ -289,7 +289,7 @@ function createWindow() {
     if (!quitting && store.getSettings().closeToTray) {
       e.preventDefault()
       mainWindow.hide()
-      log.logInfo('窗口已最小化到托盘')
+      log.logInfo(t("窗口已最小化到托盘"))
     }
   })
   mainWindow.on('closed', () => { mainWindow = null })
@@ -307,7 +307,7 @@ function broadcast(channel, data) {
 let activeInstallChild = null
 function cancelActiveInstall() {
   const child = activeInstallChild
-  if (!child) return { ok: false, error: '当前没有正在执行的安装任务' }
+  if (!child) return { ok: false, error: t("当前没有正在执行的安装任务") }
   try { if (child.__cancel) child.__cancel(); else child.kill() } catch { /* ignore */ }
   return { ok: true }
 }
@@ -324,12 +324,12 @@ async function runEnvInstall(fn, label) {
   emit(`${label}…${registry ? `(镜像 ${env.NPM_REGISTRY[registry] || registry})` : ''}`)
   try {
     const r = await env[fn]({ onLog: emit, registry, onChild: (child) => { activeInstallChild = child } })
-    if (r && r.cancelled) { broadcast('update:progress', { phase: 'failed', percent: 100, line: '⏹ 已取消' }); return r }
-    broadcast('update:progress', { phase: r && r.ok ? 'done' : 'failed', percent: 100, line: r && r.ok ? '✔ 完成' : `✘ 失败: ${(r && r.error) || '未知错误'}` })
+    if (r && r.cancelled) { broadcast('update:progress', { phase: 'failed', percent: 100, line: t("⏹ 已取消") }); return r }
+    broadcast('update:progress', { phase: r && r.ok ? 'done' : 'failed', percent: 100, line: r && r.ok ? t("✔ 完成") : `✘ ${t("失败")}: ${(r && r.error) || '未知错误'}` })
     return r
   } catch (e) {
-    log.logWarn(`${label}失败: ${e.message}`)
-    broadcast('update:progress', { phase: 'failed', percent: 100, line: `✘ 失败: ${e.message}` })
+    log.logWarn(`${label}${t("失败")}: ${e.message}`)
+    broadcast('update:progress', { phase: 'failed', percent: 100, line: `✘ ${t("失败")}: ${e.message}` })
     return { ok: false, error: e.message }
   } finally {
     activeInstallChild = null
@@ -353,7 +353,7 @@ async function pollStatus() {
 async function runningForQuit() {
   let snap = []
   let snapError = null
-  try { snap = status.snapshot() } catch (e) { snapError = e; log.logWarn(`退出前状态检测失败:${e.message}`) }
+  try { snap = status.snapshot() } catch (e) { snapError = e; log.logWarn(`${t("退出前状态检测失败")}:${e.message}`) }
   const mine = snap.filter((s) => !s.external)
   const running = mine.filter((s) => s.running)
   const seen = new Set(running.map((s) => s.name))
@@ -374,8 +374,8 @@ async function runningForQuit() {
   }
   const detail = snap.length
     ? snap.map((s) => `${s.name}=${s.running ? '运行中' : '未运行'}${s.external ? '(外部托管)' : ''}`).join('; ')
-    : '(拿不到 profile 列表)'
-  log.logInfo(`退出前检测:${detail}${running.length ? ` → 需要询问 ${running.length} 个` : ' → 无需询问'}`)
+    : t("(拿不到 profile 列表)")
+  log.logInfo(`${t("退出前检测")}:${detail}${running.length ? ` → 需要询问 ${running.length} 个` : ' → 无需询问'}`)
   return running
 }
 
@@ -413,12 +413,12 @@ function registerIpc() {
   ipcMain.handle('profile:start', async (_e, name, opts = {}) => {
     const info = profiles.profileInfo(name)
     if (info.external) return { ok: false, error: info.externalReason, external: true }
-    if (await status.isRunning(name)) return { ok: false, error: `「${name}」已在运行` }
+    if (await status.isRunning(name)) return { ok: false, error: `「${name}${t("」已在运行")}` }
     return status.start(name, {
       args: opts.args || [],
       onLog: (line) => { log.logInfo(line); broadcast('log:line', line) },
       onEarlyExit: (info) => {
-        const msg = `profile「${name}」启动失败(退出码 ${info.code},存活 ${(info.aliveMs / 1000).toFixed(1)}s): ${info.summary}`
+        const msg = `profile「${name}${t("」启动失败")}(${t("退出码")} ${info.code},${t("存活")} ${(info.aliveMs / 1000).toFixed(1)}s): ${info.summary}`
         log.logWarn(msg)
         broadcast('profile:failed', {
           profile: name,
@@ -438,7 +438,7 @@ function registerIpc() {
   ipcMain.handle('profile:create', async (_e, name) => {
     try {
       const info = profiles.createProfile(name)
-      log.logInfo(`创建 profile: ${name}`)
+      log.logInfo(`${t("创建")} profile: ${name}`)
       await pollStatus()
       return { ok: true, info }
     } catch (e) { return { ok: false, error: e.message } }
@@ -449,7 +449,7 @@ function registerIpc() {
     if (info.external) return { ok: false, error: info.externalReason, external: true }
     try {
       profiles.removeProfile(name)
-      log.logInfo(`删除 profile: ${name}`)
+      log.logInfo(`${t("删除")} profile: ${name}`)
       await pollStatus()
       return { ok: true }
     } catch (e) { return { ok: false, error: e.message } }
@@ -462,10 +462,10 @@ function registerIpc() {
     try {
       overrides.setEnabled(profile, id, enabled)
     } catch (e) {
-      log.logWarn(`插件启停被拒绝(${profile} / ${id}):${e.message}`)
+      log.logWarn(`${t("插件启停被拒绝")}(${profile} / ${id}):${e.message}`)
       return { ok: false, error: e.message, external: Boolean(e.external) }
     }
-    log.logInfo(`插件 ${enabled ? '启用' : '禁用'}: ${profile} / ${id}`)
+    log.logInfo(`${t("插件")} ${enabled ? '启用' : '禁用'}: ${profile} / ${id}`)
     const running = await status.isRunning(profile)
     return { ok: true, disabledIds: overrides.disabledIds(profile), needRestart: running }
   })
@@ -473,7 +473,7 @@ function registerIpc() {
   ipcMain.handle('plugins:uninstall', async (_e, profile, pkg) => {
     const info = profiles.profileInfo(profile)
     if (info.external) return { ok: false, error: info.externalReason, external: true }
-    log.logInfo(`卸载插件: ${profile} / ${pkg}`)
+    log.logInfo(`${t("卸载插件")}: ${profile} / ${pkg}`)
     return plugins.uninstall(profile, pkg)
   })
 
@@ -500,7 +500,7 @@ function registerIpc() {
   ipcMain.handle('plugins:update', async (_e, profile, pkg) => {
     const info = profiles.profileInfo(profile)
     if (info.external) return { ok: false, error: info.externalReason, external: true }
-    log.logInfo(`更新插件: ${profile} / ${pkg}`)
+    log.logInfo(`${t("更新插件")}: ${profile} / ${pkg}`)
     return plugins.update(profile, pkg)
   })
 
@@ -512,7 +512,7 @@ function registerIpc() {
   ipcMain.handle('security:audit', () => security.audit())
   ipcMain.handle('security:harden', async () => {
     const r = security.hardenFilePerms()
-    for (const x of r) log.logInfo(`权限收紧 ${x.file}: ${x.status}${x.error ? ' - ' + x.error : ''}`)
+    for (const x of r) log.logInfo(`${t("权限收紧")} ${x.file}: ${x.status}${x.error ? ' - ' + x.error : ''}`)
     return { ok: r.every((x) => x.status === 'hardened' || x.status === 'skip'), results: r }
   })
 
@@ -521,7 +521,7 @@ function registerIpc() {
 
   ipcMain.handle('diagnose:run', async () => {
     const r = await diagnose.runDiagnostics()
-    log.logInfo(`诊断完成: ${r.checks.filter((c) => c.status === 'error').length} 错误, ${r.checks.filter((c) => c.status === 'warn').length} 警告`)
+    log.logInfo(`${t("诊断完成")}: ${r.checks.filter((c) => c.status === 'error').length} ${t("错误")}, ${r.checks.filter((c) => c.status === 'warn').length} ${t("警告")}`)
     return r
   })
 
@@ -563,31 +563,31 @@ function registerIpc() {
   // ---- 管理器自更新 ----
   ipcMain.handle('self:check', async () => {
     const r = await selfupdate.checkLatest()
-    log.logInfo(`管理器更新检查:当前 ${r.current},最新 ${r.latest || '未知'}${r.error ? `(${r.error})` : ''}`)
+    log.logInfo(`${t("管理器更新检查")}:${t("当前")} ${r.current},${t("最新")} ${r.latest || '未知'}${r.error ? `(${r.error})` : ''}`)
     return r
   })
   ipcMain.handle('self:download', async (_e, kind = 'setup') => {
     const info = await selfupdate.checkLatest()
     if (info.error) return { ok: false, error: info.error }
     const asset = selfupdate.pickAsset(info.assets, kind)
-    if (!asset) return { ok: false, error: `该版本没有${kind === 'portable' ? '便携版' : '安装版'}资产` }
+    if (!asset) return { ok: false, error: `${t("该版本没有")}${kind === 'portable' ? '便携版' : '安装版'}${t("资产")}` }
     const emit = (percent, received, total) => {
-      broadcast('self:progress', { phase: 'download', percent, received, total, line: `下载中 ${(received / 1048576).toFixed(1)} / ${(total / 1048576).toFixed(1)} MB` })
+      broadcast('self:progress', { phase: 'download', percent, received, total, line: `${t("下载中")} ${(received / 1048576).toFixed(1)} / ${(total / 1048576).toFixed(1)} MB` })
     }
     try {
       const r = await selfupdate.download(asset, { onProgress: emit })
-      broadcast('self:progress', { phase: 'downloaded', percent: 100, line: '✔ 下载完成,可立即安装' })
+      broadcast('self:progress', { phase: 'downloaded', percent: 100, line: t("✔ 下载完成,可立即安装") })
       return { ok: true, path: r.path, size: r.size, version: info.latest, kind }
     } catch (e) {
-      log.logWarn(`下载管理器更新包失败: ${e.message}`)
-      broadcast('self:progress', { phase: 'failed', percent: 100, line: `✘ 下载失败: ${e.message}` })
+      log.logWarn(`${t("下载管理器更新包失败")}: ${e.message}`)
+      broadcast('self:progress', { phase: 'failed', percent: 100, line: `✘ ${t("下载失败")}: ${e.message}` })
       return { ok: false, error: e.message }
     }
   })
   ipcMain.handle('self:install', (_e, filePath) => {
     const r = selfupdate.launchInstaller(filePath)
     if (r.ok) {
-      log.logInfo('安装程序已启动,管理器即将退出')
+      log.logInfo(t("安装程序已启动,管理器即将退出"))
       // 先让安装程序起来,再退出,避免安装时文件被占用
       setTimeout(() => { quitting = true; app.quit() }, 800)
     }
@@ -604,12 +604,12 @@ function registerIpc() {
     // quick = 只做解析层面的快速检查(不逐包真实加载),供启动时后台静默预检使用
     const deep = opts && opts.deep === false ? false : true
     const all = await compat.checkAll({ deep })
-    log.logInfo(`插件兼容性检查:${all.summary}`)
+    log.logInfo(`${t("插件兼容性检查")}:${all.summary}`)
     for (const p of all.profiles) {
       for (const it of p.items || []) {
         if (it.state === 'ok') continue
         // 仅 profile 内不算失败(dsh 0.2.x 可直接解析),只记 info,避免刷一堆吓人的 WARN
-        const line = `[兼容性] ${p.profile} / ${it.name}: ${it.state} - ${it.detail}`
+        const line = `[${t("兼容性")}] ${p.profile} / ${it.name}: ${it.state} - ${it.detail}`
         if (it.severity === 'info') log.logInfo(line); else log.logWarn(line)
       }
     }
@@ -622,7 +622,7 @@ function registerIpc() {
       // 一键修复 = 删除上游已撤销的条目 + 重建断链联接 + 复验(仅 profile 内的健康插件不再被动)
       const r = await compat.repair(name, { deep: true, onLog: (l) => log.logInfo(l) })
       const line = r.skipped
-        ? `[compat] ${name}: 跳过(${r.reason})`
+        ? `[compat] ${name}: ${t("跳过")}(${r.reason})`
         : `[compat] ${name}: ${(r.results || []).map((x) => `${x.pkg}=${x.status}${x.verify && x.verify !== 'ok' ? '(' + x.verify + ')' : ''}`).join(', ')}${(r.removed || []).length ? ` | 已删除:${r.removed.join(',')}` : ''}`
       log.logInfo(line)
       broadcast('log:line', line)
@@ -635,9 +635,9 @@ function registerIpc() {
   ipcMain.handle('update:backups', () => update.listBackups())
 
   ipcMain.handle('update:rollback', async (_e, id, opts = {}) => {
-    log.logInfo(`回滚到备份: ${id}`)
+    log.logInfo(`${t("回滚到备份")}: ${id}`)
     const r = await update.rollback(id, { stopManaged: Boolean(opts.stopManaged) })
-    for (const s of r.steps || []) log.logInfo(`[回滚] ${s.ok ? '✔' : '✘'} ${s.name}${s.detail ? ': ' + s.detail : ''}`)
+    for (const s of r.steps || []) log.logInfo(`[${t("回滚")}] ${s.ok ? '✔' : '✘'} ${s.name}${s.detail ? ': ' + s.detail : ''}`)
     return r
   })
 
@@ -648,7 +648,7 @@ function registerIpc() {
   ipcMain.handle('backup:prune', () => {
     const days = Number(store.getSettings().backupRetention) || 0
     const r = update.pruneBackups({ retentionDays: days })
-    log.logInfo(`立即清理备份:${r.skipped ? '保留策略为关闭,未删除' : `删除 ${(r.removed || []).length} 个`}`)
+    log.logInfo(`${t("立即清理备份")}:${r.skipped ? '保留策略为关闭,未删除' : `删除 ${(r.removed || []).length} 个`}`)
     return { ...r, retentionDays: days }
   })
 
@@ -657,8 +657,8 @@ function registerIpc() {
   ipcMain.handle('desktop:info', () => desktop.detectCached({ fresh: true }))
   ipcMain.handle('desktop:open', async () => {
     const info = desktop.detect()
-    if (!info.exe) return { ok: false, error: '未找到官方桌面端可执行文件' }
-    try { await shell.openPath(info.exe); log.logInfo(`打开官方桌面端: ${info.exe}`); return { ok: true, exe: info.exe } } catch (e) { return { ok: false, error: e.message } }
+    if (!info.exe) return { ok: false, error: t("未找到官方桌面端可执行文件") }
+    try { await shell.openPath(info.exe); log.logInfo(`${t("打开官方桌面端")}: ${info.exe}`); return { ok: true, exe: info.exe } } catch (e) { return { ok: false, error: e.message } }
   })
 
   // ---- 设置 ----
@@ -692,7 +692,7 @@ function registerIpc() {
   ipcMain.handle('balance:get', () => balance.getBalance())
   ipcMain.handle('balance:setKey', async (_e, key) => {
     const r = store.setApiKey(key ? String(key).trim() : null)
-    log.logInfo(key ? '已更新 API Key' : '已清除 API Key')
+    log.logInfo(key ? t("已更新 API Key") : t("已清除 API Key"))
     return r
   })
   ipcMain.handle('balance:hasKey', () => store.hasApiKey())
@@ -702,39 +702,39 @@ function registerIpc() {
   ipcMain.handle('env:check', () => env.check())
   // 一键安装 dsh:流式输出 + 进度面板(以前用不流式的 execTool,用户只看到「没反应」)
   ipcMain.handle('env:installDsh', async () => {
-    log.logInfo('一键安装 dsh')
-    return runEnvInstall('installDsh', '正在安装 dsh')
+    log.logInfo(t("一键安装 dsh"))
+    return runEnvInstall('installDsh', t("正在安装 dsh"))
   })
   ipcMain.handle('env:installNode', async () => {
-    log.logInfo('一键安装 Node.js')
+    log.logInfo(t("一键安装 Node.js"))
     return env.installNode((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
   })
   ipcMain.handle('env:installNpm', async () => {
-    log.logInfo('一键安装 npm')
+    log.logInfo(t("一键安装 npm"))
     const r = await env.installNpm((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
     env.invalidateEnvCache()
     return r
   })
   ipcMain.handle('env:updateDsh', async () => {
-    log.logInfo('更新 dsh')
-    const r = await runEnvInstall('updateDsh', '正在更新 dsh')
+    log.logInfo(t("更新 dsh"))
+    const r = await runEnvInstall('updateDsh', t("正在更新 dsh"))
     env.invalidateEnvCache(); update.invalidateUpdateCache()
     return r
   })
   ipcMain.handle('env:uninstallDsh', async () => {
-    log.logInfo('卸载 dsh')
-    const r = await runEnvInstall('uninstallDsh', '正在卸载 dsh')
+    log.logInfo(t("卸载 dsh"))
+    const r = await runEnvInstall('uninstallDsh', t("正在卸载 dsh"))
     env.invalidateEnvCache(); update.invalidateUpdateCache()
     return r
   })
   ipcMain.handle('env:uninstallPnpm', async () => {
-    log.logInfo('卸载 pnpm')
+    log.logInfo(t("卸载 pnpm"))
     const r = await env.uninstallPnpm((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
     env.invalidateEnvCache()
     return r
   })
   ipcMain.handle('env:uninstallNode', async () => {
-    log.logInfo('卸载 Node.js')
+    log.logInfo(t("卸载 Node.js"))
     const r = await env.uninstallNode((msg) => { log.logInfo(msg); broadcast('log:line', msg) })
     env.invalidateEnvCache()
     return r
@@ -756,7 +756,7 @@ app.whenReady().then(() => {
   paths.ensureManagerDirs()
   log.initLog()
   log.onLogLine((line) => broadcast('log:line', line))
-  log.logInfo(`${APP_NAME} v${APP_VERSION} 启动, DSH_HOME=${paths.dshHome}`)
+  log.logInfo(`${APP_NAME} v${APP_VERSION} ${t("启动")}, DSH_HOME=${paths.dshHome}`)
 
   // 自注册:写入 ~/.dsh-manager/install.json,让 DSH 插件(dsh-harness-manager)能找到管理器
   // 仅在打包后写入,避免开发态把 electron.exe 当成管理器程序
@@ -768,7 +768,7 @@ app.whenReady().then(() => {
         updatedAt: new Date().toISOString(),
       }, null, 2), 'utf8')
     }
-  } catch (e) { log.logWarn(`install.json 写入失败: ${e.message}`) }
+  } catch (e) { log.logWarn(`install.json ${t("写入失败")}: ${e.message}`) }
 
   // 安全加固:启动时若检测到明文存储的密钥/Token,自动迁移为系统加密
   try {
@@ -779,12 +779,12 @@ app.whenReady().then(() => {
         const plain = field === 'apiKeyEnc' ? store.getApiKey() : (() => { try { return Buffer.from(stored.slice(6), 'base64').toString('utf8') } catch { return null } })()
         if (plain) {
           const r = store.setApiKey ? (field === 'apiKeyEnc' ? store.setApiKey(plain) : (() => { store.setGithubToken(plain); return { ok: true } })()) : { ok: false }
-          if (r.ok) log.logInfo(`✔ 检测到明文存储的 ${label},已自动迁移为系统加密`)
-          else log.logWarn(`明文 ${label} 迁移失败: ${r.error}`)
+          if (r.ok) log.logInfo(`✔ ${t("检测到明文存储的")} ${label},${t("已自动迁移为系统加密")}`)
+          else log.logWarn(`${t("明文")} ${label} ${t("迁移失败")}: ${r.error}`)
         }
       }
     }
-  } catch (e) { log.logWarn(`密钥迁移检查失败: ${e.message}`) }
+  } catch (e) { log.logWarn(`${t("密钥迁移检查失败")}: ${e.message}`) }
 
   registerIpc()
   createWindow()
@@ -803,8 +803,8 @@ app.whenReady().then(() => {
           await new Promise((r) => setTimeout(r, 1600))
           const img = await mainWindow.webContents.capturePage()
           fs.writeFileSync(path.join(outDir, v + '.png'), img.toPNG())
-          log.logInfo(`截图完成: ${v}.png`)
-        } catch (e) { log.logWarn(`截图 ${v} 失败: ${e.message}`) }
+          log.logInfo(`${t("截图完成")}: ${v}.png`)
+        } catch (e) { log.logWarn(`${t("截图")} ${v} ${t("失败")}: ${e.message}`) }
       }
       app.exit(0)
     }, 100)
@@ -814,7 +814,7 @@ app.whenReady().then(() => {
   trayHandle = trayMod.createTray({
     onStart: async () => {
       const r = await status.start('web', { onLog: (l) => { log.logInfo(l); broadcast('log:line', l) } })
-      if (!r.ok) log.logWarn(`托盘启动 web 失败: ${r.error}`)
+      if (!r.ok) log.logWarn(`${t("托盘启动")} web ${t("失败")}: ${r.error}`)
     },
     onStop: async () => {
       const names = (await status.snapshot()).filter((s) => s.running).map((s) => s.name)
@@ -838,19 +838,19 @@ app.whenReady().then(() => {
       const days = Number(store.getSettings().backupRetention) || 0
       if (days > 0) {
         const r = update.pruneBackups({ retentionDays: days })
-        if ((r.removed || []).length) log.logInfo(`启动自动清理备份:删除 ${r.removed.length} 个(保留最近 ${days} 天)`)
+        if ((r.removed || []).length) log.logInfo(`${t("启动自动清理备份")}:${t("删除")} ${r.removed.length} ${t("个")}(${t("保留最近")} ${days} ${t("天")})`)
       }
-    } catch (e) { log.logWarn(`自动清理备份失败: ${e.message}`) }
+    } catch (e) { log.logWarn(`${t("自动清理备份失败")}: ${e.message}`) }
     try {
       const all = await compat.checkAll({ deep: false })   // 快速检查:只验证解析,不逐包真实加载
       const bad = all.profiles.filter((p) => !p.ok && !p.skipped)
       if (bad.length || !all.global.ok) {
-        log.logWarn(`启动预检发现插件解析问题:${all.summary}`)
+        log.logWarn(`${t("启动预检发现插件解析问题")}:${all.summary}`)
         broadcast('compat:issue', { summary: all.summary, bad: bad.map((p) => p.profile) })
       } else {
-        log.logInfo(`启动预检通过:${all.summary}`)
+        log.logInfo(`${t("启动预检通过")}:${all.summary}`)
       }
-    } catch (e) { log.logWarn(`启动预检失败: ${e.message}`) }
+    } catch (e) { log.logWarn(`${t("启动预检失败")}: ${e.message}`) }
   }, 4000)
 
   // 全局快捷键之外的手动恢复入口:渲染层也可调
@@ -880,7 +880,7 @@ app.whenReady().then(() => {
     const running = await runningForQuit()
     quitting = true
     if (!running.length) {
-      log.logInfo('退出管理器(没有运行中的 harness)')
+      log.logInfo(t("退出管理器(没有运行中的 harness)"))
       app.exit(0)
       return
     }
@@ -889,10 +889,10 @@ app.whenReady().then(() => {
     const names = running.map((s) => s.name).join('、')
     const choice = dialog.showMessageBoxSync(mainWindow, {
       type: 'question',
-      title: '退出管理器',
-      message: `仍有 ${running.length} 个 harness 在运行(${names})`,
-      detail: '是否同时关闭它们?\n\n· 只退出管理器:dsh 继续运行,正在使用的界面(如 3080)不受影响。\n· 退出并关闭 dsh:这些进程会被停止,相关会话断开。',
-      buttons: ['只退出管理器', '退出并关闭 dsh', '取消'],
+      title: t("退出管理器"),
+      message: `${t("仍有")} ${running.length} ${t("个")} harness ${t("在运行")}(${names})`,
+      detail: t("是否同时关闭它们?\\n\\n· 只退出管理器:dsh 继续运行,正在使用的界面(如 3080)不受影响。\\n· 退出并关闭 dsh:这些进程会被停止,相关会话断开。"),
+      buttons: [t("只退出管理器"), t("退出并关闭 dsh"), t("取消")],
       defaultId: 0,
       cancelId: 2,
       noLink: true,
@@ -900,10 +900,10 @@ app.whenReady().then(() => {
 
     if (choice === 2) { quitting = false; return }
     if (choice === 1) {
-      log.logInfo('退出管理器:同时停止 harness')
-      try { await status.stopAll() } catch (err) { log.logWarn(`停止 harness 失败: ${err.message}`) }
+      log.logInfo(t("退出管理器:同时停止 harness"))
+      try { await status.stopAll() } catch (err) { log.logWarn(`${t("停止")} harness ${t("失败")}: ${err.message}`) }
     } else {
-      log.logInfo('退出管理器(保留正在运行的 harness)')
+      log.logInfo(t("退出管理器(保留正在运行的 harness)"))
     }
     app.exit(0)
   })

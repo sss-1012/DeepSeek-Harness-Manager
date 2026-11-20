@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('./i18n')
 // 进程管理:profile 启停、PID 跟踪、端口检测、状态轮询、运行历史
 const net = require('node:net')
 const { spawnProfile, killPid, pidAlive, findPidByPort } = require('./dsh')
@@ -32,17 +33,17 @@ function effectivePort(profileName) {
 function summarizeBootFailure(lines) {
   const text = lines.join('\n')
   if (/EADDRINUSE|address already in use/i.test(text)) {
-    return '端口已被占用(可能有另一个 harness 实例在运行)。请先停止它,或在「配置启动项」里换一个检测端口。'
+    return t("端口已被占用(可能有另一个 harness 实例在运行)。请先停止它,或在「配置启动项」里换一个检测端口。")
   }
   const missing = [...text.matchAll(/Cannot find package '([^']+)'/g)].map((m) => m[1])
   const failedImports = [...text.matchAll(/failed to import loader entry [^(]*\(([^)]+)\)/g)].map((m) => m[1])
   const pkgs = [...new Set(missing.length ? missing : failedImports)]
   if (pkgs.length) {
-    return `插件加载失败,无法解析:${pkgs.join('、')}\n常见原因:dsh 版本更新后插件解析位置发生变化。可在更新面板点「插件兼容性修复」一键创建链接。(项目 ${pkgs.length} 个插件)`
+    return `${t("插件加载失败")},${t("无法解析")}:${pkgs.join('、')}\n${t("常见原因")}:dsh ${t("版本更新后插件解析位置发生变化。可在更新面板点「插件兼容性修复」一键创建链接。")}(${t("项目")} ${pkgs.length} ${t("个插件")})`
   }
-  if (/plugin tree failed to load/i.test(text)) return '插件树加载失败,详见下方日志'
+  if (/plugin tree failed to load/i.test(text)) return t("插件树加载失败,详见下方日志")
   const errLine = [...lines].reverse().find((l) => /Error:|error:|✘|failed to/i.test(l))
-  return errLine ? errLine.slice(0, 300) : (lines.slice(-2).join(' | ') || '启动后立即退出,无额外输出')
+  return errLine ? errLine.slice(0, 300) : (lines.slice(-2).join(' | ') || t("启动后立即退出,无额外输出"))
 }
 
 // 判定 profile 是否在运行:优先 PID,web 型叠加端口检测
@@ -63,7 +64,7 @@ async function isRunning(profileName) {
 async function start(profileName, { args, onLog, onEarlyExit } = {}) {
   const guard = externalGuard(profileName)
   if (guard) return guard
-  if (await isRunning(profileName)) return { ok: false, error: `profile「${profileName}」已在运行` }
+  if (await isRunning(profileName)) return { ok: false, error: `profile「${profileName}${t("」已在运行")}` }
   const patch = ensureOverrides(profileName)
   const setting = getProfileSetting(profileName)
   const appArgs = (args && args.length ? args : (setting.args ? setting.args.split(/\s+/).filter(Boolean) : []))
@@ -94,7 +95,7 @@ async function start(profileName, { args, onLog, onEarlyExit } = {}) {
     // 未就绪就退出,或"就绪"后很短时间(30s)内崩溃 → 都视为启动失败
     const crashedSoonAfterReady = wasReady && (Date.now() - wasReady) < 30000
     const earlyFailure = (!wasReady || crashedSoonAfterReady) && code !== 0
-    line(`进程退出 (code=${code}${signal ? `, signal=${signal}` : ''}, 存活 ${(aliveMs / 1000).toFixed(1)}s)`)
+    line(`${t("进程退出")} (code=${code}${signal ? `, signal=${signal}` : ''}, ${t("存活")} ${(aliveMs / 1000).toFixed(1)}s)`)
     record(profileName, {
       action: 'stop',
       exitCode: code,
@@ -125,7 +126,7 @@ async function start(profileName, { args, onLog, onEarlyExit } = {}) {
         if (!pidAlive(child.pid)) return
         entry.readyAt = Date.now()
         record(profileName, { action: 'start', pid: child.pid, port, plugins: profileInfo(profileName).bundles, durationMs: entry.readyAt - entry.startedAt, external: false })
-        onLog?.(`[${profileName}] ✔ 服务就绪 http://127.0.0.1:${port} (耗时 ${entry.readyAt - entry.startedAt}ms)`)
+        onLog?.(`[${profileName}] ✔ ${t("服务就绪")} http://127.0.0.1:${port} (${t("耗时")} ${entry.readyAt - entry.startedAt}ms)`)
         return
       }
       if (Date.now() < deadline) setTimeout(poll, 500)
@@ -147,7 +148,7 @@ async function start(profileName, { args, onLog, onEarlyExit } = {}) {
 function externalGuard(profileName) {
   const info = profileInfo(profileName)
   if (!info.external) return null
-  log.logWarn(`拒绝操作外部 profile「${profileName}」:${info.externalReason}`)
+  log.logWarn(`${t("拒绝操作外部")} profile「${profileName}」:${info.externalReason}`)
   return { ok: false, error: info.externalReason, external: true }
 }
 
@@ -160,11 +161,11 @@ async function stop(profileName, { force } = {}) {
     const port = effectivePort(profileName)
     if (port) pid = findPidByPort(port)
   }
-  if (!pid) return { ok: false, error: `未找到「${profileName}」的运行进程` }
+  if (!pid) return { ok: false, error: `${t("未找到「")}${profileName}${t("」的运行进程")}` }
   const killed = await killPid(pid, { gracefulMs: force ? 200 : 2500 })
   record(profileName, { action: 'stop-request', pid, force: Boolean(force), result: killed ? 'killed' : 'failed' })
   sessions.delete(profileName)
-  return { ok: killed, error: killed ? null : '进程停止失败(可能无权限)' }
+  return { ok: killed, error: killed ? null : t("进程停止失败(可能无权限)") }
 }
 
 // 停止所有由管理器管理的 profile(退出前)

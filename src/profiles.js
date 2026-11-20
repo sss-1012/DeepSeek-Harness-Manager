@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('./i18n')
 // profile 扫描与信息读取:~/.dsh/profiles/<name>/
 const fs = require('node:fs')
 const path = require('node:path')
@@ -8,7 +9,7 @@ const { isDesktopProfile } = require('./desktop')
 // 官方桌面端独占的 profile:管理器只允许查看,不启动/停止/改插件/修兼容性
 function externalReason(name) {
   if (!isDesktopProfile(name)) return null
-  return '该 profile 由官方 DeepSeek Harness 桌面端独占(官方文档明确 CLI 不得启动或修改),管理器只做只读展示。'
+  return t("该 profile 由官方 DeepSeek Harness 桌面端独占(官方文档明确 CLI 不得启动或修改),管理器只做只读展示。")
 }
 
 function isValidProfile(name) {
@@ -61,9 +62,9 @@ function readFileText(name, file) {
 }
 
 function createProfile(name) {
-  if (!/^[\w.-]+$/.test(name)) throw new Error('profile 名称只能包含字母、数字、_ - .')
+  if (!/^[\w.-]+$/.test(name)) throw new Error(t("profile 名称只能包含字母、数字、_ - ."))
   const dir = profileDir(name)
-  if (fs.existsSync(dir)) throw new Error(`profile「${name}」已存在`)
+  if (fs.existsSync(dir)) throw new Error(`profile「${name}${t("」已存在")}`)
   fs.mkdirSync(dir, { recursive: true })
   const pkg = {
     name: `dsh-profile-${name}`,

@@ -6,6 +6,7 @@
 (function () {
   var state = { lang: 'zh', dict: {} }
   var index = null
+  var RELOAD_MARK = 'dshm.i18nReloaded'
 
   function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim() }
 
@@ -65,8 +66,19 @@
       state.lang = (r && r.lang) || 'zh'
       state.dict = (r && r.dict) || {}
       index = null
-      if (state.lang === 'en') applyStatic(document)
-    }).catch(function () { /* 保持中文 */ })
+      if (state.lang === 'en') {
+        applyStatic(document)
+        // 静态文案能就地换,但卡片内容是 app.js 已按中文渲染好的 ——
+        // 英文模式下首次进入会重载一次页面,让所有内容从英文状态重新渲染。
+        try {
+          if (!sessionStorage.getItem(RELOAD_MARK)) {
+            sessionStorage.setItem(RELOAD_MARK, '1')
+            window.location.reload()
+            return
+          }
+        } catch (e) { /* 无 sessionStorage 时只换静态文案 */ }
+      }
+    }).catch(function () { /* 取不到语言就保持中文 */ })
   }
 
   window.t = t

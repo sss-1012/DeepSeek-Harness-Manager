@@ -1,3 +1,4 @@
+const { t } = require('./i18n')
 ﻿'use strict'
 // 更新模块:版本检测 / 更新前备份 / 全局更新 / 回滚
 //
@@ -72,7 +73,7 @@ async function listVersions({ registry = null } = {}) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const j = await res.json()
     const sorted = Object.keys(j.versions || {}).filter((v) => semver.valid(v)).sort((a, b) => semver.rcompare(a, b))
-    if (!sorted.length) throw new Error('registry 返回的版本列表为空')
+    if (!sorted.length) throw new Error(t("registry 返回的版本列表为空"))
     return { ok: true, versions: sorted.slice(0, 60), distTags: j['dist-tags'] || {}, registry: base, via: 'fetch' }
   } catch (e) {
     errors.push(`fetch: ${e.message}`)
@@ -82,12 +83,12 @@ async function listVersions({ registry = null } = {}) {
     const args = ['view', '@deepseek-ai/dsh', 'versions', '--json']
     if (base !== 'https://registry.npmjs.org') args.push(`--registry=${base}`)
     const r = await execTool('npm', args, { timeout: 45000 })
-    if (!r.ok) throw new Error((r.stderr || r.error || 'npm view 失败').slice(0, 200))
+    if (!r.ok) throw new Error((r.stderr || r.error || t("npm view 失败")).slice(0, 200))
     const text = String(r.stdout || '').trim()
     const parsed = JSON.parse(text)
     const all = Array.isArray(parsed) ? parsed : [parsed]
     const sorted = all.filter((v) => semver.valid(v)).sort((a, b) => semver.rcompare(a, b))
-    if (!sorted.length) throw new Error('npm view 没有返回可用版本')
+    if (!sorted.length) throw new Error(t("npm view 没有返回可用版本"))
     // 顺手拿 dist-tags(拿不到不影响列表)
     let distTags = {}
     try {
@@ -118,10 +119,10 @@ function runningWorkloads() {
     out.nodeCount = proc.nodeCount || 0
   } catch { out.unknown = true }
 
-  if (out.managed.length) out.detail.push(`${out.managed.length} 个由管理器启动的 profile:${out.managed.map((m) => m.name).join('、')}`)
-  if (out.cli.length) out.detail.push(`${out.cli.length} 个 dsh CLI 进程`)
-  if (out.desktop && out.desktop.running === true) out.detail.push('官方 DeepSeek Harness 桌面端正在运行')
-  if (out.unknown && !out.detail.length) out.detail.push('无法确认是否有 dsh 进程在运行(权限不足)')
+  if (out.managed.length) out.detail.push(`${out.managed.length} ${t("个由管理器启动的")} profile:${out.managed.map((m) => m.name).join('、')}`)
+  if (out.cli.length) out.detail.push(`${out.cli.length} ${t("个")} dsh CLI ${t("进程")}`)
+  if (out.desktop && out.desktop.running === true) out.detail.push(t("官方 DeepSeek Harness 桌面端正在运行"))
+  if (out.unknown && !out.detail.length) out.detail.push(t("无法确认是否有 dsh 进程在运行(权限不足)"))
   out.blocking = out.managed.length > 0 || out.cli.length > 0 || Boolean(out.desktop && out.desktop.running === true)
   return out
 }
@@ -132,26 +133,26 @@ function classifyNpmError(text) {
   if (/EBUSY|resource busy or locked/i.test(t)) {
     return {
       code: 'EBUSY',
-      hint: '文件被占用:更新前必须停掉所有 harness 进程(包括官方桌面端)。停止后重试即可。',
+      hint: t("文件被占用:更新前必须停掉所有 harness 进程(包括官方桌面端)。停止后重试即可。"),
       needsReinstall: true,
     }
   }
   if (/ENOTEMPTY|npm warn cleanup/i.test(t)) {
     return {
       code: 'ENOTEMPTY',
-      hint: '上次更新残留了半清理的目录,全局 dsh 可能处于半更新状态,建议直接「强制重装 dsh CLI」。',
+      hint: t("上次更新残留了半清理的目录,全局 dsh 可能处于半更新状态,建议直接「强制重装 dsh CLI」。"),
       needsReinstall: true,
     }
   }
   if (/EPERM|EACCES/i.test(t)) {
-    return { code: 'EPERM', hint: '权限不足:请关闭占用进程,或以管理员身份重试。', needsReinstall: false }
+    return { code: 'EPERM', hint: t("权限不足:请关闭占用进程,或以管理员身份重试。"), needsReinstall: false }
   }
   if (/ETARGET|No matching version/i.test(t)) {
     return {
       code: 'ETARGET',
       // 最常见成因:上游 latest 指向一个依赖未同步/未发布的版本(如 0.2.2-rc.1 的某个子包),
       // 或镜像源尚未同步到该版本。给用户可操作的出路,而不是只说“失败”。
-      hint: 'npm 上找不到这个版本(常因上游最新版的依赖未发布/未同步,或镜像尚未同步)。可在「目标版本」里选一个已知可用的版本重试;若正在用镜像,也可切回官方源。',
+      hint: t("npm 上找不到这个版本(常因上游最新版的依赖未发布/未同步,或镜像尚未同步)。可在「目标版本」里选一个已知可用的版本重试;若正在用镜像,也可切回官方源。"),
       needsReinstall: false,
     }
   }
@@ -159,7 +160,7 @@ function classifyNpmError(text) {
   if (/ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|network|fetch failed|request to .* failed|ERR_SOCKET|timed out/i.test(t)) {
     return {
       code: 'NETWORK',
-      hint: '连接 npm 源失败/超时:可在「设置 → npm 下载源」改用国内镜像(npmRegistry=npmmirror)后重试。',
+      hint: t("连接 npm 源失败/超时:可在「设置 → npm 下载源」改用国内镜像(npmRegistry=npmmirror)后重试。"),
       needsReinstall: false,
       network: true,
     }
@@ -189,7 +190,7 @@ async function createBackup() {
     })
   }
   fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2))
-  log.logInfo(`已创建备份 ${stamp}(版本 ${v || '未知'}、${manifest.profiles.length} 个 profile)`)
+  log.logInfo(`${t("已创建备份")} ${stamp}(${t("版本")} ${v || '未知'}、${manifest.profiles.length} ${t("个")} profile)`)
   return { id: stamp, dir, version: v }
 }
 
@@ -199,21 +200,21 @@ async function postCheck(emit) {
     const compat = require('./compat')
     const all = await compat.checkAll({ deep: true })
     if (!all.global.ok) {
-      emit?.('done', 100, `⚠ 全局 dsh 安装完整性异常:${all.global.problems.join(';')}`)
-      emit?.('done', 100, '💡 建议点「强制重装 dsh CLI」把安装树恢复完整')
+      emit?.('done', 100, `⚠ ${t("全局")} dsh ${t("安装完整性异常")}:${all.global.problems.join(';')}`)
+      emit?.('done', 100, t("💡 建议点「强制重装 dsh CLI」把安装树恢复完整"))
       return { ok: false, all, needsReinstall: true }
     }
     const bad = all.profiles.filter((p) => !p.ok && !p.skipped)
     if (bad.length) {
       const detail = bad.map((i) => `${i.profile}: ${i.bad.join(', ')}`).join(';')
-      emit?.('done', 100, `⚠ 自检发现插件无法解析:${detail}`)
-      emit?.('done', 100, '💡 点「插件兼容性修复」可一键建联接并复验(否则启动 harness 会失败)')
+      emit?.('done', 100, `⚠ ${t("自检发现插件无法解析")}:${detail}`)
+      emit?.('done', 100, t("💡 点「插件兼容性修复」可一键建联接并复验(否则启动 harness 会失败)"))
       return { ok: false, all }
     }
-    emit?.('done', 100, `✔ 更新后自检通过:${all.summary}`)
+    emit?.('done', 100, `✔ ${t("更新后自检通过")}:${all.summary}`)
     return { ok: true, all }
   } catch (e) {
-    emit?.('done', 100, `⚠ 更新后自检未完成: ${e.message}`)
+    emit?.('done', 100, `⚠ ${t("更新后自检未完成")}: ${e.message}`)
     return { ok: false, error: e.message }
   }
 }
@@ -225,43 +226,43 @@ async function doUpdate(onProgress, { stopManaged = false, registry = null, onCh
   // 1. 强制预检:有 harness 在跑就拒绝(EBUSY 的根因)
   const pre = runningWorkloads()
   if (pre.blocking && !stopManaged) {
-    const msg = `更新被阻止:检测到 ${pre.detail.join(';')}。请先停止它们(点「全部停止并继续」),否则 npm 替换文件会失败(EBUSY)。`
+    const msg = `${t("更新被阻止")}:${t("检测到")} ${pre.detail.join(';')}${t("。请先停止它们")}(${t("点「全部停止并继续」")}),${t("否则")} npm ${t("替换文件会失败")}(EBUSY)。`
     emit('preflight', 2, `✘ ${msg}`)
     log.logWarn(msg)
     return { ok: false, code: 'RUNNING', preflight: pre, error: msg }
   }
   if (pre.blocking && stopManaged) {
-    emit('preflight', 3, `正在停止 ${pre.managed.length} 个管理器托管的 profile …`)
+    emit('preflight', 3, `${t("正在停止")} ${pre.managed.length} ${t("个管理器托管的")} profile …`)
     try {
       const status = require('./status')
-      for (const m of pre.managed) { await status.stop(m.name, { force: true }); emit('preflight', 4, `已停止 ${m.name}`) }
-    } catch (e) { emit('preflight', 4, `停止 profile 失败: ${e.message}`) }
+      for (const m of pre.managed) { await status.stop(m.name, { force: true }); emit('preflight', 4, `${t("已停止")} ${m.name}`) }
+    } catch (e) { emit('preflight', 4, `${t("停止")} profile ${t("失败")}: ${e.message}`) }
     const again = runningWorkloads()
     if (again.blocking) {
-      const msg = `仍然有 dsh 进程在运行:${again.detail.join(';')}。官方桌面端与外部 CLI 进程请手动关闭后再更新。`
+      const msg = `${t("仍然有")} dsh ${t("进程在运行")}:${again.detail.join(';')}${t("。官方桌面端与外部")} CLI ${t("进程请手动关闭后再更新。")}`
       emit('preflight', 5, `✘ ${msg}`)
       return { ok: false, code: 'RUNNING', preflight: again, error: msg }
     }
-    emit('preflight', 5, '✔ 已确认没有 dsh 进程在占用文件')
+    emit('preflight', 5, t("✔ 已确认没有 dsh 进程在占用文件"))
   } else {
-    emit('preflight', 5, '✔ 预检通过:没有 dsh 进程占用文件')
+    emit('preflight', 5, t("✔ 预检通过:没有 dsh 进程占用文件"))
   }
 
-  emit('start', 6, `开始更新 @deepseek-ai/dsh(当前 ${oldVersion || '未知'})…`)
+  emit('start', 6, `${t("开始更新")} @deepseek-ai/dsh(${t("当前")} ${oldVersion || '未知'})…`)
 
   let backup = null
   try {
     backup = await createBackup()
-    emit('backup', 15, `✔ 已备份当前版本(${backup.version})与各 profile 配置`)
+    emit('backup', 15, `✔ ${t("已备份当前版本")}(${backup.version})${t("与各")} profile ${t("配置")}`)
   } catch (e) {
-    emit('backup', 15, `⚠ 备份失败(继续更新): ${e.message}`)
+    emit('backup', 15, `⚠ ${t("备份失败")}(${t("继续更新")}): ${e.message}`)
   }
 
   const spec = targetVersion ? `@deepseek-ai/dsh@${targetVersion}` : '@deepseek-ai/dsh@latest'
-  emit('install', 20, `正在全局安装 ${spec}(输出实时显示如下)…`)
+  emit('install', 20, `${t("正在全局安装")} ${spec}(${t("输出实时显示如下")})…`)
   const envMod = require('./env')
   const regArgs = registry && envMod.NPM_REGISTRY[registry] ? [`--registry=${envMod.NPM_REGISTRY[registry]}`] : []
-  if (registry) emit('install', 20, `使用 npm 镜像:${envMod.NPM_REGISTRY[registry] || registry}`)
+  if (registry) emit('install', 20, `${t("使用")} npm ${t("镜像")}:${envMod.NPM_REGISTRY[registry] || registry}`)
   const r = await execToolStream('npm', ['install', '-g', spec, ...regArgs], {
     timeout: 900000,
     heartbeatMs: 5000,
@@ -269,25 +270,25 @@ async function doUpdate(onProgress, { stopManaged = false, registry = null, onCh
     onLine: (line, meta) => emit('install', null, line, meta),
   })
   if (r.cancelled) {
-    emit('failed', 100, '⏹ 已取消更新')
-    return { ok: false, cancelled: true, backup, error: '已取消' }
+    emit('failed', 100, t("⏹ 已取消更新"))
+    return { ok: false, cancelled: true, backup, error: t("已取消") }
   }
   if (!r.ok) {
     const cls = classifyNpmError(`${r.stderr || ''}\n${r.stdout || ''}\n${r.error || ''}`)
-    log.logWarn(`更新失败(${cls.code}):${(r.stderr || r.error || '').slice(0, 400)}`)
-    emit('failed', 100, `✘ 更新失败[${cls.code}]: ${(r.stderr || r.error || '').slice(0, 400)}`)
+    log.logWarn(`${t("更新失败")}(${cls.code}):${(r.stderr || r.error || '').slice(0, 400)}`)
+    emit('failed', 100, `✘ ${t("更新失败")}[${cls.code}]: ${(r.stderr || r.error || '').slice(0, 400)}`)
     if (cls.hint) emit('failed', 100, `💡 ${cls.hint}`)
     return { ok: false, backup, error: r.stderr || r.error, code: cls.code, hint: cls.hint, needsReinstall: cls.needsReinstall }
   }
 
-  emit('verify', 95, '正在校验版本 …')
+  emit('verify', 95, t("正在校验版本 …"))
   const v = await version()
   if (oldVersion && v === oldVersion) {
-    emit('done', 100, `⚠ 安装命令已结束但版本仍是 ${v}(全局安装可能不完整)`)
-    emit('done', 100, '💡 建议点「强制重装 dsh CLI」')
-    return { ok: false, backup, version: v, code: 'NOCHANGE', needsReinstall: true, hint: 'npm 报成功但版本未变化,安装树可能不完整' }
+    emit('done', 100, `⚠ ${t("安装命令已结束但版本仍是")} ${v}(${t("全局安装可能不完整")})`)
+    emit('done', 100, t("💡 建议点「强制重装 dsh CLI」"))
+    return { ok: false, backup, version: v, code: 'NOCHANGE', needsReinstall: true, hint: t("npm 报成功但版本未变化,安装树可能不完整") }
   }
-  emit('done', 100, `✔ 更新完成:${oldVersion || '?'} → ${v || '?'}`)
+  emit('done', 100, `✔ ${t("更新完成")}:${oldVersion || '?'} → ${v || '?'}`)
 
   const post = await postCheck(emit)
   return { ok: true, backup, version: v, compat: post.all || null, compatOk: post.ok, needsReinstall: post.needsReinstall || false }
@@ -298,14 +299,14 @@ async function reinstallDsh(onProgress, opts = {}) {
   const emit = (phase, percent, line, meta) => onProgress?.({ phase, percent, line, ...(meta || {}) })
   const pre = runningWorkloads()
   if (pre.blocking) {
-    const msg = `重装被阻止:${pre.detail.join(';')}。请先停止它们。`
+    const msg = `${t("重装被阻止")}:${pre.detail.join(';')}${t("。请先停止它们。")}`
     emit('preflight', 2, `✘ ${msg}`)
     return { ok: false, code: 'RUNNING', error: msg, preflight: pre }
   }
-  emit('install', 5, '正在强制重装 @deepseek-ai/dsh@latest(忽略缓存与锁)…')
+  emit('install', 5, t("正在强制重装 @deepseek-ai/dsh@latest(忽略缓存与锁)…"))
   const env = require('./env')
   const regArgs = opts.registry && env.NPM_REGISTRY[opts.registry] ? [`--registry=${env.NPM_REGISTRY[opts.registry]}`] : []
-  if (opts.registry) emit('install', 5, `使用 npm 镜像:${env.NPM_REGISTRY[opts.registry] || opts.registry}`)
+  if (opts.registry) emit('install', 5, `${t("使用")} npm ${t("镜像")}:${env.NPM_REGISTRY[opts.registry] || opts.registry}`)
   const r = await execToolStream('npm', ['install', '-g', '@deepseek-ai/dsh@latest', '--force', ...regArgs], {
     timeout: 1200000,
     heartbeatMs: 5000,
@@ -313,17 +314,17 @@ async function reinstallDsh(onProgress, opts = {}) {
     onLine: (line, meta) => emit('install', null, line, meta),
   })
   if (r.cancelled) {
-    emit('failed', 100, '⏹ 已取消重装')
-    return { ok: false, cancelled: true, error: '已取消' }
+    emit('failed', 100, t("⏹ 已取消重装"))
+    return { ok: false, cancelled: true, error: t("已取消") }
   }
   if (!r.ok) {
     const cls = classifyNpmError(`${r.stderr || ''}\n${r.stdout || ''}\n${r.error || ''}`)
-    log.logWarn(`重装失败(${cls.code}):${(r.stderr || r.error || '').slice(0, 300)}`)
-    emit('failed', 100, `✘ 重装失败[${cls.code}]${cls.hint ? ':' + cls.hint : ''}`)
+    log.logWarn(`${t("重装失败")}(${cls.code}):${(r.stderr || r.error || '').slice(0, 300)}`)
+    emit('failed', 100, `✘ ${t("重装失败")}[${cls.code}]${cls.hint ? ':' + cls.hint : ''}`)
     return { ok: false, error: r.stderr || r.error, code: cls.code, hint: cls.hint }
   }
   const v = await version()
-  emit('done', 100, `✔ 重装完成,当前版本 ${v || '未知'}`)
+  emit('done', 100, `✔ ${t("重装完成")},${t("当前版本")} ${v || '未知'}`)
   const post = await postCheck(emit)
   return { ok: true, version: v, compat: post.all || null, compatOk: post.ok }
 }
@@ -386,16 +387,16 @@ function backupStats() {
 
 // 删除单个备份(先确认 id 在备份目录下,防止路径穿越)
 function removeBackup(id) {
-  if (!id || /[\\/]|\.\./.test(String(id))) return { ok: false, error: '非法的备份 id' }
+  if (!id || /[\\/]|\.\./.test(String(id))) return { ok: false, error: t("非法的备份 id") }
   const dir = path.join(managerDirs.backups, String(id))
-  if (!dir.startsWith(managerDirs.backups)) return { ok: false, error: '非法的备份路径' }
-  if (!fs.existsSync(dir)) return { ok: false, error: '该备份不存在' }
+  if (!dir.startsWith(managerDirs.backups)) return { ok: false, error: t("非法的备份路径") }
+  if (!fs.existsSync(dir)) return { ok: false, error: t("该备份不存在") }
   try {
     fs.rmSync(dir, { recursive: true, force: true })
-    log.logInfo(`已删除备份 ${id}`)
+    log.logInfo(`${t("已删除备份")} ${id}`)
     return { ok: true, id }
   } catch (e) {
-    log.logWarn(`删除备份 ${id} 失败: ${e.message}`)
+    log.logWarn(`${t("删除备份")} ${id} ${t("失败")}: ${e.message}`)
     return { ok: false, error: e.message }
   }
 }
@@ -405,7 +406,7 @@ function pruneBackups({ retentionDays = 0, now = Date.now() } = {}) {
   const days = Number(retentionDays) || 0
   if (!(days > 0)) return { ok: true, skipped: true, removed: [] }
   const items = backupsDetailed()
-  if (items.length <= 1) return { ok: true, removed: [], kept: items.length, reason: '只有一个备份,保留' }
+  if (items.length <= 1) return { ok: true, removed: [], kept: items.length, reason: t("只有一个备份,保留") }
   const cutoff = now - days * 24 * 60 * 60 * 1000
   // items 已按 id 降序(新的在前),第一份永不删
   const newest = items[0]
@@ -418,7 +419,7 @@ function pruneBackups({ retentionDays = 0, now = Date.now() } = {}) {
   }
   if (removed.length) {
     const freed = Math.round(removed.reduce((n, x) => n + (x.sizeMb || 0), 0) * 10) / 10
-    log.logInfo(`自动清理备份:删除 ${removed.length} 个(超过 ${days} 天),释放约 ${freed} MB;保留最新 ${newest.id}`)
+    log.logInfo(`${t("自动清理备份")}:${t("删除")} ${removed.length} ${t("个")}(${t("超过")} ${days} ${t("天")}),${t("释放约")} ${freed} MB;${t("保留最新")} ${newest.id}`)
   }
   return { ok: true, removed, kept: items.length - removed.length }
 }
@@ -428,7 +429,7 @@ function clearBackups() {
   const items = listBackups()
   const removed = []
   for (const b of items) { const r = removeBackup(b.id); if (r.ok) removed.push(b.id) }
-  log.logWarn(`已清空全部备份(${removed.length} 个)`)
+  log.logWarn(`${t("已清空全部备份")}(${removed.length} ${t("个")})`)
   return { ok: true, removed }
 }
 // 回滚:逐步执行并记录每一步结果(旧版只有一行日志,失败也无从得知)
@@ -436,17 +437,17 @@ async function rollback(id, { stopManaged = false } = {}) {
   const steps = []
   const step = (name, ok, detail) => {
     steps.push({ name, ok, detail })
-    log.logInfo(`[回滚] ${ok ? '✔' : '✘'} ${name}${detail ? ': ' + detail : ''}`)
+    log.logInfo(`[${t("回滚")}] ${ok ? '✔' : '✘'} ${name}${detail ? ': ' + detail : ''}`)
   }
   const backup = listBackups().find((b) => b.id === id)
-  if (!backup) return { ok: false, error: '未找到该备份', steps }
+  if (!backup) return { ok: false, error: t("未找到该备份"), steps }
   const targetVersion = backup.version === '?' || backup.version === 'unknown' ? null : backup.version
-  if (!targetVersion) return { ok: false, error: '备份中缺少版本号,无法回滚', steps }
+  if (!targetVersion) return { ok: false, error: t("备份中缺少版本号,无法回滚"), steps }
 
   const pre = runningWorkloads()
   if (pre.blocking && !stopManaged) {
-    const msg = `回滚被阻止:${pre.detail.join(';')}。请先停止它们,否则安装旧版同样会 EBUSY。`
-    step('进程预检', false, msg)
+    const msg = `${t("回滚被阻止")}:${pre.detail.join(';')}${t("。请先停止它们")},${t("否则安装旧版同样会")} EBUSY。`
+    step(t("进程预检"), false, msg)
     return { ok: false, code: 'RUNNING', error: msg, preflight: pre, steps }
   }
   if (pre.blocking && stopManaged) {
@@ -455,25 +456,25 @@ async function rollback(id, { stopManaged = false } = {}) {
       for (const m of pre.managed) await status.stop(m.name, { force: true })
       const again = runningWorkloads()
       if (again.blocking) {
-        step('进程预检', false, `仍有进程在跑:${again.detail.join(';')}`)
-        return { ok: false, code: 'RUNNING', error: `仍有进程在跑:${again.detail.join(';')}`, preflight: again, steps }
+        step(t("进程预检"), false, `${t("仍有进程在跑")}:${again.detail.join(';')}`)
+        return { ok: false, code: 'RUNNING', error: `${t("仍有进程在跑")}:${again.detail.join(';')}`, preflight: again, steps }
       }
-      step('进程预检', true, '已停止管理器托管的 profile')
+      step(t("进程预检"), true, t("已停止管理器托管的 profile"))
     } catch (e) {
-      step('进程预检', false, e.message)
+      step(t("进程预检"), false, e.message)
     }
   } else {
-    step('进程预检', true, '没有 dsh 进程占用文件')
+    step(t("进程预检"), true, t("没有 dsh 进程占用文件"))
   }
 
   const r = await execFileAsync('npm', ['install', '-g', `@deepseek-ai/dsh@${targetVersion}`], { timeout: 600000 })
   if (!r.ok) {
     const cls = classifyNpmError(`${r.stderr || ''}\n${r.error || ''}`)
-    step(`安装旧版 ${targetVersion}`, false, `${cls.code}: ${(r.stderr || r.error || '').slice(0, 300)}`)
-    if (cls.hint) step('建议', false, cls.hint)
+    step(`${t("安装旧版")} ${targetVersion}`, false, `${cls.code}: ${(r.stderr || r.error || '').slice(0, 300)}`)
+    if (cls.hint) step(t("建议"), false, cls.hint)
     return { ok: false, error: r.stderr || r.error, code: cls.code, hint: cls.hint, steps }
   }
-  step(`安装旧版 ${targetVersion}`, true, 'npm 安装完成')
+  step(`${t("安装旧版")} ${targetVersion}`, true, t("npm 安装完成"))
 
   let restored = 0
   let restoreError = null
@@ -484,16 +485,16 @@ async function rollback(id, { stopManaged = false } = {}) {
       // 官方桌面端独占的 profile 绝不写
       let info = null
       try { info = profileInfo(p.name) } catch { info = null }
-      if (info && info.external) { log.logWarn(`[回滚] 跳过官方桌面端 profile「${p.name}」`); continue }
+      if (info && info.external) { log.logWarn(`[${t("回滚")}] ${t("跳过官方桌面端")} profile「${p.name}」`); continue }
       if (p.packageJson != null) fs.writeFileSync(path.join(dir, 'package.json'), p.packageJson)
       if (p.cordisPatch != null) fs.writeFileSync(path.join(dir, 'cordis.patch.yml'), p.cordisPatch)
       if (p.cordis != null) fs.writeFileSync(path.join(dir, 'cordis.yml'), p.cordis)
       restored++
     }
-    step('还原 profile 配置', true, `${restored} 个 profile`)
+    step(t("还原 profile 配置"), true, `${restored} ${t("个")} profile`)
   } catch (e) {
     restoreError = e.message
-    step('还原 profile 配置', false, e.message)
+    step(t("还原 profile 配置"), false, e.message)
   }
 
   // 旧版 dsh 的解析位置可能与新版不同:回滚后同样要修联接并复验
@@ -507,16 +508,16 @@ async function rollback(id, { stopManaged = false } = {}) {
       fixResults.push({ profile: p.name, ok: check.ok, fixed: (fix.results || []).filter((x) => x.status === 'linked').map((x) => x.pkg), bad: check.bad })
     }
     const badProfiles = fixResults.filter((x) => !x.ok)
-    step('修复并复验插件解析', badProfiles.length === 0, badProfiles.length ? badProfiles.map((x) => `${x.profile}: ${x.bad.join(',')}`).join(';') : '全部通过')
+    step(t("修复并复验插件解析"), badProfiles.length === 0, badProfiles.length ? badProfiles.map((x) => `${x.profile}: ${x.bad.join(',')}`).join(';') : t("全部通过"))
     const v = await version()
-    step('确认版本', v === targetVersion, `当前 ${v || '未知'}(目标 ${targetVersion})`)
+    step(t("确认版本"), v === targetVersion, `${t("当前")} ${v || '未知'}(${t("目标")} ${targetVersion})`)
     return {
       ok: v === targetVersion, version: v, steps,
-      warning: restoreError ? `profile 配置恢复失败: ${restoreError}` : null,
+      warning: restoreError ? `profile ${t("配置恢复失败")}: ${restoreError}` : null,
       compat: fixResults,
     }
   } catch (e) {
-    step('修复并复验插件解析', false, e.message)
+    step(t("修复并复验插件解析"), false, e.message)
     const v = await version()
     return { ok: v === targetVersion, version: v, steps, error: e.message }
   }

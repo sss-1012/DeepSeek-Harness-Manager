@@ -1,4 +1,5 @@
 'use strict'
+const { t } = require('../i18n')
 // 插件服务:列表 / 启停(overrides)/ 卸载 / 安装
 const fs = require('node:fs')
 const path = require('node:path')
@@ -114,16 +115,16 @@ async function installWithDeps(profile, spec, { withDeps = true, onLog } = {}) {
     const r = await fn()
     const text = `[${label}] ${r.stdout || ''}${r.stderr ? '\n[stderr] ' + r.stderr : ''}`.trim()
     if (text) { logs.push(text); onLog?.(text) }
-    if (!r.ok) throw new Error(`${label} 失败:${r.stderr || r.error || r.stdout || ''}`.slice(0, 800))
+    if (!r.ok) throw new Error(`${label} ${t("失败")}:${r.stderr || r.error || r.stdout || ''}`.slice(0, 800))
     return r
   }
   let deps = []
   if (withDeps) {
     try { deps = await resolver.resolveDeps(spec) } catch { deps = [] }
   }
-  await run(`安装 ${spec}`, () => installSpec(profile, spec))
+  await run(`${t("安装")} ${spec}`, () => installSpec(profile, spec))
   for (const d of deps) {
-    try { await run(`依赖 ${d.name}`, () => installSpec(profile, d.name)) } catch (e) { logs.push(`依赖 ${d.name} 安装失败(已跳过): ${e.message}`) }
+    try { await run(`${t("依赖")} ${d.name}`, () => installSpec(profile, d.name)) } catch (e) { logs.push(`${t("依赖")} ${d.name} ${t("安装失败")}(${t("已跳过")}): ${e.message}`) }
   }
   return { ok: true, logs, deps }
 }
