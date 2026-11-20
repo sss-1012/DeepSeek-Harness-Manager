@@ -24,6 +24,7 @@ const status = require('./src/status')
 const desktop = require('./src/desktop')
 const icons = require('./src/icons')
 const trayMod = require('./src/tray')
+const i18n = require('./src/i18n')
 
 const APP_VERSION = require('./package.json').version
 const APP_NAME = require('./package.json').name
@@ -661,12 +662,19 @@ function registerIpc() {
   })
 
   // ---- 设置 ----
+  ipcMain.handle('i18n:get', () => ({ lang: i18n.getLanguage(), dict: i18n.dictionary() }))
   ipcMain.handle('settings:get', () => store.getSettings())
   ipcMain.handle('settings:set', (_e, patch) => {
     const r = store.setSettings(patch)
     // 主题变更立即广播,渲染层无需重启即生效
     if (patch && Object.prototype.hasOwnProperty.call(patch, 'theme')) {
       try { broadcast('theme:changed', store.getSettings().theme) } catch { /* ignore */ }
+    }
+    // 语言变更:主进程立即生效(托盘、后续对话框),并通知渲染层重载
+    if (patch && Object.prototype.hasOwnProperty.call(patch, 'language')) {
+      const lang = i18n.setLanguage(i18n.resolveLanguage(patch.language, app.getLocale()))
+      try { if (trayHandle) trayHandle.update(status.isAnyRunning()) } catch { /* ignore */ }
+      try { broadcast('language:changed', lang) } catch { /* ignore */ }
     }
     // 保留期变更后立即执行一次清理,用户不必等到下次启动
     if (patch && Object.prototype.hasOwnProperty.call(patch, 'backupRetention')) {
@@ -743,6 +751,8 @@ function registerIpc() {
 
 app.whenReady().then(() => {
   store.initSafeStorage(safeStorage)
+  // 界面语言:system(跟随系统,非中文系统回落英文) | zh | en
+  i18n.setLanguage(i18n.resolveLanguage(store.getSettings().language, app.getLocale()))
   paths.ensureManagerDirs()
   log.initLog()
   log.onLogLine((line) => broadcast('log:line', line))

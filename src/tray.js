@@ -3,6 +3,7 @@
 const path = require('node:path')
 const { Tray, Menu, nativeImage } = require('electron')
 const { ICONS } = require('./icons')
+const { t } = require('./i18n')
 
 let tray = null
 
@@ -17,19 +18,19 @@ function appIcon() {
 
 function createTray({ onStart, onStop, onShow, onResetWindow, onReloadUi, onSoftwareRestart, onQuit, isAnyRunning }) {
   tray = new Tray(appIcon())
-  tray.setToolTip('DeepSeek Harness 管理器')
+  tray.setToolTip(t('DeepSeek Harness 管理器'))
   const buildMenu = () => {
     const running = isAnyRunning()
     return Menu.buildFromTemplate([
-      { label: 'DeepSeek Harness 管理器', enabled: false },
+      { label: t('DeepSeek Harness 管理器'), enabled: false },
       { type: 'separator' },
-      { label: running ? '停止所有 harness' : '启动 web profile', click: running ? onStop : onStart },
+      { label: running ? t('停止所有 harness') : t('启动 web profile'), click: running ? onStop : onStart },
       { type: 'separator' },
-      { label: '打开管理器', click: onShow },
-      { label: '重置窗口尺寸', click: onResetWindow },
-      { label: '重载界面', click: onReloadUi },
-      { label: '以软件渲染重启(界面空白时用)', click: onSoftwareRestart },
-      { label: '退出', click: onQuit },
+      { label: t('打开管理器'), click: onShow },
+      { label: t('重置窗口尺寸'), click: onResetWindow },
+      { label: t('重载界面'), click: onReloadUi },
+      { label: t('以软件渲染重启(界面空白时用)'), click: onSoftwareRestart },
+      { label: t('退出'), click: onQuit },
     ])
   }
   tray.setContextMenu(buildMenu())
@@ -38,7 +39,7 @@ function createTray({ onStart, onStop, onShow, onResetWindow, onReloadUi, onSoft
     update(running) {
       try {
         tray.setImage(appIcon())
-        tray.setToolTip(`DeepSeek Harness 管理器 — ${running ? '运行中' : '已停止'}`)
+        tray.setToolTip(`${t('DeepSeek Harness 管理器')} — ${running ? t('运行中') : t('已停止')}`)
         tray.setContextMenu(buildMenu())
       } catch { /* ignore */ }
     },

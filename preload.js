@@ -54,6 +54,7 @@ const api = {
   securityHarden: () => ipcRenderer.invoke('security:harden'),
   // ---- 设置 ----
   getSettings: () => ipcRenderer.invoke('settings:get'),
+  i18n: () => ipcRenderer.invoke('i18n:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   setProfileSetting: (name, patch) => ipcRenderer.invoke('settings:profile', name, patch),
   getGithubToken: () => ipcRenderer.invoke('github:token'),

@@ -1651,6 +1651,15 @@ async function openSettings() {
     </div>
     <div class="muted">切换到「跟随系统」后,Windows 切换深浅色时界面会自动跟随。</div>
 
+    <div class="row">
+      <span style="width:120px">界面语言</span>
+      <select id="set-language" style="flex:1;max-width:220px">
+        ${[['system', '跟随系统'], ['zh', '中文'], ['en', 'English']]
+          .map(([v, label]) => `<option value="${v}" ${String(s.language || 'system') === v ? 'selected' : ''}>${label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="muted">语言立即生效(会重新加载界面)。</div>
+
     <h4>通用</h4>
     <label class="chk" style="margin:6px 0"><input type="checkbox" id="set-tray" ${s.closeToTray ? 'checked' : ''}> 关闭窗口时最小化到托盘</label>
     <label class="chk" style="margin:6px 0"><input type="checkbox" id="set-stop-on-exit" ${s.stopProfilesOnExit ? 'checked' : ''}> 退出管理器时停止 harness</label>
@@ -1751,6 +1760,7 @@ async function openSettings() {
       defaultInstallProfile: $('#set-install-profile').value || null,
       insecureGitHub: $('#set-gh-insecure').checked,
       theme,
+      language: $('#set-language').value || 'system',
       backupRetention: $('#set-backup-retention').value || 'off',
       npmRegistry: $('#set-npm-registry').value || null,
     }
@@ -1762,6 +1772,11 @@ async function openSettings() {
       if (key) {
         const kr = await window.dshm.setApiKey(key)
         if (!kr.ok) { toast(`API Key 保存失败: ${kr.error}`, 'error'); return }
+      }
+      // 语言变了就重载界面:静态文案与所有已渲染内容都按新语言重建
+      if (patch.language && patch.language !== (s.language || 'system')) {
+        window.location.reload()
+        return
       }
       toast('设置已保存', 'ok')
       state.bootstrap.settings = { ...(state.bootstrap.settings || {}), ...patch }

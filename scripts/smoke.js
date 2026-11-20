@@ -73,6 +73,22 @@ async function main() {
   for (const c of diag.checks) console.log(`  [${c.status}] ${c.label}: ${c.detail}`)
   console.log('report:', diag.reportPath)
 
+  console.log('=== 11. i18n ===')
+  const i18n = require('../src/i18n')
+  const assert = (label, cond) => console.log(`  ${cond ? '✔' : '✘'} ${label}`)
+  assert('system + zh-CN → zh', i18n.resolveLanguage('system', 'zh-CN') === 'zh')
+  assert('system + en-US → en', i18n.resolveLanguage('system', 'en-US') === 'en')
+  assert('system + de-DE → en(非中文回落英文)', i18n.resolveLanguage('system', 'de-DE') === 'en')
+  assert('显式 zh 总是 zh', i18n.resolveLanguage('zh', 'en-US') === 'zh')
+  i18n.setLanguage('zh')
+  assert('中文模式 t() 原样返回', i18n.t('打开管理器') === '打开管理器')
+  i18n.setLanguage('en')
+  assert('英文模式命中字典', i18n.t('打开管理器') === 'Open manager')
+  assert('缺词回落中文', i18n.t('这条还没翻译') === '这条还没翻译')
+  assert('占位符插值可用', i18n.t('占位符 {0} 与 {1}', 'A', 'B') === '占位符 A 与 B')
+  assert('字典条目数 > 60', Object.keys(i18n.dictionary()).length > 60)
+  i18n.setLanguage('zh')
+
   console.log('\nALL SMOKE TESTS DONE')
 }
 
