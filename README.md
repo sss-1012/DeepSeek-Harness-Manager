@@ -45,7 +45,7 @@ DSH Manager puts the whole lifecycle in one window:
 | 🧩 | **Plugin management** | Install from npm / GitHub / local, enable or disable without uninstalling, update, uninstall, jump to the plugin's source |
 | 🩺 | **Diagnostics** | Environment, profiles, plugin resolution, ports, credentials and permissions — with a Markdown report |
 | 🔄 | **Update & rollback** | Version detection, backup before updating, live progress, one-click rollback; backups can be deleted and auto-pruned |
-| ⚙ | **Compatibility check** | After a DSH update, self-check whether your plugins still resolve — quick/deep modes, one-click repair with re-verification |
+| ⚙ | **Compatibility check** | After a DSH update, self-check whether your plugins still resolve — quick/deep modes, one-click repair with re-verification. Repair distinguishes a **bundle retired upstream** (removed from the profile's `bundles` after confirmation and a backup) from a genuinely missing package (reinstall the CLI), and leaves healthy profile-only plugins untouched |
 | 🌙 | **Dark mode** | Follow system / light / dark, switches instantly |
 | 🔐 | **Credentials & permissions** | Windows-encrypted secret storage, plaintext audits, one-click file-permission hardening |
 | ⚡ | **Instant start** | Cards render immediately (measured 1–2 ms); update/env probes fill in afterwards in the background |

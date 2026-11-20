@@ -618,10 +618,11 @@ function registerIpc() {
     const targets = profile ? [profile] : profiles.listProfiles().map((p) => p.name)
     const out = []
     for (const name of targets) {
-      const r = await compat.fixBundles(name, { deep: true, onLog: (l) => log.logInfo(l) })
+      // 一键修复 = 删除上游已撤销的条目 + 重建断链联接 + 复验(仅 profile 内的健康插件不再被动)
+      const r = await compat.repair(name, { deep: true, onLog: (l) => log.logInfo(l) })
       const line = r.skipped
         ? `[compat] ${name}: 跳过(${r.reason})`
-        : `[compat] ${name}: ${(r.results || []).map((x) => `${x.pkg}=${x.status}${x.verify && x.verify !== 'ok' ? '(' + x.verify + ')' : ''}`).join(', ')}`
+        : `[compat] ${name}: ${(r.results || []).map((x) => `${x.pkg}=${x.status}${x.verify && x.verify !== 'ok' ? '(' + x.verify + ')' : ''}`).join(', ')}${(r.removed || []).length ? ` | 已删除:${r.removed.join(',')}` : ''}`
       log.logInfo(line)
       broadcast('log:line', line)
       out.push(r)

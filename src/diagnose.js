@@ -9,6 +9,7 @@ const { disabledIds } = require('./overrides')
 const { managerDirs, dshHome, profilesDir } = require('./paths')
 const { hasApiKey, encryptionStatus } = require('./store')
 const { execToolSync } = require('./tool')
+const { createRequire } = require('node:module')
 
 const statusMark = { ok: '✓', warn: '⚠', error: '✗' }
 
@@ -43,7 +44,22 @@ async function runDiagnostics() {
     add('profiles', 'Profile', 'warn', '未检测到任何 profile($DSH_HOME/profiles 为空)')
   }
   for (const p of profiles) {
-    const exists = (b) => fs.existsSync(path.join(p.dir, 'node_modules', b, 'package.json')) || fs.existsSync(path.join(profilesDir, 'node_modules', b, 'package.json'))
+    // 旧版只看 profile / profiles 共享目录的 node_modules,于是所有官方 bundle
+    // (它们住在全局 dsh 安装树的 node_modules 里)都被误报成「缺失」—— 实测 rc.5 下
+    // dsh-experimental-auto-review / -plugin-market-bundle 明明能正常解析却报缺失。
+    // 这里改成和 loader 同一解析链,实在解析不到才算缺失。
+    let loaderReq = null
+    try {
+      const base = require('./compat').loaderBase()
+      if (base && fs.existsSync(base)) loaderReq = createRequire(base)
+    } catch { /* 全局 dsh 不完整时下面会单独报 */ }
+    const resolves = (b) => {
+      if (loaderReq) { try { loaderReq.resolve(b); return true } catch { /* 继续往下探 */ } }
+      return false
+    }
+    const exists = (b) => resolves(b)
+      || fs.existsSync(path.join(p.dir, 'node_modules', b, 'package.json'))
+      || fs.existsSync(path.join(profilesDir, 'node_modules', b, 'package.json'))
     const missing = (p.bundles || []).filter((b) => !exists(b))
     add(`profile-${p.name}`, `Profile: ${p.name} (${p.type})`,
       missing.length ? 'warn' : 'ok',
@@ -52,10 +68,16 @@ async function runDiagnostics() {
     if (dis.length) add(`conflict-${p.name}`, `禁用条目检查: ${p.name}`, 'warn', `以下禁用 id 不在 bundles 中: ${dis.join(', ')}`)
     // 插件解析兼容性(新版 dsh 从全局 loader 位置解析 bundle)
     try {
-      const c = require('./compat').checkBundles(p.name)
+      // 旧写法漏了 await:checkBundles 是 async,拿到的是 Promise,c.ok 永远 undefined、
+      // c.bad.join 直接抛错又被外层 catch 吃掉 —— 这条诊断实际上从来没生效过。
+      const c = await require('./compat').checkBundles(p.name, { deep: false })
       if (!c.ok) {
+        const retired = (c.badItems || []).filter((i) => i.state === 'retired-bundle').map((i) => i.name)
+        const hint = retired.length
+          ? `;其中 ${retired.join(', ')} 是上游已移除的 bundle,一键修复会从 bundles 删掉它`
+          : ''
         add(`compat-${p.name}`, `插件解析: ${p.name}`, 'error',
-          `以下插件在当前 dsh 版本下无法解析,启动会失败: ${c.bad.join(', ')}(可在更新面板点「插件兼容性检查」一键修复)`)
+          `以下插件在当前 dsh 版本下无法解析,启动会失败: ${c.bad.join(', ')}(可在更新面板点「插件兼容性检查」一键修复)${hint}`)
       }
     } catch { /* 忽略检查异常 */ }
   }

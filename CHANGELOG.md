@@ -2,6 +2,37 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/);版本号与 GitHub Release 的 tag 一致。
 安装版 / 绿色免安装版构建产物见 [Releases](https://github.com/sss-1012/DeepSeek-Harness-Manager/releases)。
+## [0.4.5] - 2026-11-20
+
+### 修复
+
+- 🐞 **一键修复修不了唯一真正会挂启动的那个问题**:`@deepseek-ai/dsh-experimental-agent-team-profile`
+  在 dsh 0.2.2-rc.5 里已被上游并入 `dsh-base`(该包最后一个发布版本停在 rc.1),而管理器只会说
+  「找不到包,需先安装该插件」——根本没有可装的版本;`fixBundles()` 对 `state=missing` 直接跳过,
+  于是点「一键修复」什么都不会发生。现在把缺失分成两种:
+  - registry 上**没有**当前 dsh 版本的发布 → 新状态 `retired-bundle`(错误级),
+    结论是「上游已移除,该从 profile 的 `dsh.profile.bundles` 删掉」;
+  - registry 上**有**该版本但本地没装 → 安装树不完整,提示重装 CLI。
+- 🐞 **一键修复会去动不该动的东西**:`profile-only`(仅存在于 profile 内、检查结果本身就写着
+  「无需处理」)的插件也被当成待修复项,往**全局 node_modules** 里建联接 —— 而全局 dsh 一更新
+  这些联接就断,等于亲手埋下一轮故障。现在这类项标为 `skipped-optional`,一键修复不再碰。
+- ✨ **新增删除式修复**:`removeRetiredBundles()` 先备份 `package.json`(`.bak-<时间戳>-retired`),
+  再只删该条目(保留原排版;删的是数组最后一条时正确收掉尾逗号),写完重新解析校验并复验;
+  一键修复动手前会弹确认框列出将被删除的 bundle。
+- 🐞 **诊断中心「插件解析」这条检查从来没生效过**:`checkBundles()` 是 async,旧代码没 `await`,
+  `c.ok` 永远是 `undefined`、`c.bad.join` 直接抛错又被外层 `catch {}` 吞掉。已补 `await`,
+  并提示哪些是「上游已移除」的 bundle。
+- 🐞 **诊断中心把官方 bundle 一律报成「缺失」**:旧代码只查 `profile/node_modules` 与
+  `profiles/node_modules`,而官方 bundle 住在全局 dsh 安装树里 —— 实测 rc.5 下
+  `dsh-experimental-auto-review`、`-plugin-market-bundle` 明明能解析却报缺失。现在改用与 loader
+  相同的解析链,真正解析不到才算缺失。
+
+### 测试
+
+- 新增 `node scripts/compat-repair-test.js`:隔离 `DSH_HOME` 验证「上游已移除的 bundle 被判为
+  `retired-bundle` → `repair()` 删除并复验 → 尾逗号/排版/备份正确 → 健康插件不会被焊进全局
+  node_modules」;registry 探测用桩注入(`registryProbe`),沙箱/CI 下同样可跑。
+
 ## [0.4.4] - 2026-11-06
 
 > 0.4.0～0.4.3 是内部测试构建(未单独发 Release),改动已全部包含在本版。

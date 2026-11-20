@@ -1,6 +1,14 @@
 ## DeepSeek Harness Manager
 
 由 GitHub Actions 自动构建发布的 Windows 桌面版。
+### v0.4.5 更新(修「一键修复」:dsh 0.2.2-rc.5 撤掉 agent-team bundle 那次)
+- 🐞 **一键修复对「上游已移除的 bundle」无效** —— dsh 0.2.2-rc.5 把 `dsh-experimental-agent-team-profile`
+  并入 `dsh-base`,旧版只提示「找不到包,需先安装该插件」,而这个包已经没有可安装的版本;一键修复又直接跳过,等于点了没反应。
+  现在判定为 **上游已移除**,确认后从 profile 的 `dsh.profile.bundles` 删掉(先备份 `package.json`)
+- 🐞 **一键修复不再乱建联接** —— 「仅存在于 profile 内、无需处理」的健康插件不会被焊进全局 `node_modules`
+- 🐞 **诊断中心的「插件解析」检查其实一直没生效**(漏了 `await`,异常又被吞掉);官方 bundle 也不再被误报「缺失」
+- 🧪 新增 `scripts/compat-repair-test.js` 回归测试(隔离 DSH_HOME,不碰真实 profile)
+
 ### v0.4.4 更新(修「退出不询问是否关 dsh」)
 - 🐞 **退出时不弹窗**:按端口认领的 web 被误当成「外部托管」跳过 → 判定「没有运行中的 harness」直接退出。已修
 - 🐞 同一原因导致的**更新预检漏检**(dsh 在跑时误判为没在跑 → EBUSY)也修了

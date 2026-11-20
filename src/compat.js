@@ -20,6 +20,30 @@ const { profileInfo, listProfiles } = require('./profiles')
 const { profilesDir } = require('./paths')
 const log = require('./log')
 
+// 官方包在 registry 上是否真有「当前 dsh 版本」这一版:yes / no(上游已撤销) / unknown(离线、超时)。
+// 只在 bundle 缺失且名字属于 @deepseek-ai/dsh 时才查,结果按 name@version 缓存(一个进程只查一次)。
+const registryVerdicts = new Map()
+
+async function registryHasVersion(name, version, { timeout = 8000 } = {}) {
+  if (!version) return 'unknown'
+  const key = `${name}@${version}`
+  if (registryVerdicts.has(key)) return registryVerdicts.get(key)
+  let verdict = 'unknown'
+  try {
+    const { execTool } = require('./tool')
+    const r = await execTool('npm', ['view', `${name}@${version}`, 'version', '--json'], { timeout })
+    const text = `${r.stdout || ''} ${r.stderr || ''}`
+    if (r.ok && text.includes(version)) verdict = 'yes'
+    else if (/E404|is not in this registry|No match found|not found/i.test(text)) verdict = 'no'
+  } catch { /* 离线/超时:保持 unknown —— 不能据此下「上游已废弃」的结论 */ }
+  registryVerdicts.set(key, verdict)
+  return verdict
+}
+
+async function currentDshVersion() {
+  try { return await require('./dsh').version() } catch { return null }
+}
+
 // dshBin: <prefix>/node_modules/@deepseek-ai/dsh/lib/bin.js
 // 注意:必须从 bin 文件向上找到 **package.json 里 name 为 @deepseek-ai/dsh 的那一层**,
 // 不能简单地 '..','..'(那样会停在 @deepseek-ai 作用域目录,导致 loaderBase() 永远不存在 →
@@ -94,7 +118,7 @@ function probeImport(spec, { timeoutMs = 20000 } = {}) {
 }
 
 // 解析一个 bundle:给出分档结论
-async function checkBundle(profile, name, { deep = true, info = null } = {}) {
+async function checkBundle(profile, name, { deep = true, info = null, registryProbe = null } = {}) {
   const prof = info || profileInfo(profile)
   const base = loaderBase()
   const item = { name, state: 'unknown', detail: '', resolvedFrom: null, target: null, loadError: null }
@@ -158,10 +182,31 @@ async function checkBundle(profile, name, { deep = true, info = null } = {}) {
       : 'profile 与全局目录都找不到这个包,需要先安装该插件'
     item.target = g.path || null
   }
+
+  // 官方 bundle 的缺失要分两种,给的结论完全相反(2026-11 实测 dsh 0.2.2-rc.5):
+  //   registry 上有当前版本 → 安装树不完整,该重装 CLI;
+  //   registry 上没有当前版本 → 上游把这个 bundle 撤销/并进别的包了,该从 profile 的 bundles 删掉。
+  // 旧版一律报「需先安装该插件」,而那件事根本做不到(最后一个发布版本早于当前 dsh)。
+  if (item.state === 'missing' && /^@deepseek-ai\/dsh/.test(name)) {
+    const version = await currentDshVersion()
+    const verdict = await (registryProbe || registryHasVersion)(name, version)
+    item.registry = verdict
+    item.dshVersion = version
+    if (verdict === 'no') {
+      item.state = 'retired-bundle'
+      item.repair = 'remove-bundle'
+      item.detail = `官方 dsh ${version || '(当前版本)'} 已不再提供这个 bundle(上游移除或并入其它包),registry 上也没有该版本的发布;应当从 profile 的 dsh.profile.bundles 里删掉这一条,而不是安装它`
+    } else if (verdict === 'yes') {
+      item.repair = 'reinstall-dsh'
+      item.detail = `registry 上有 ${name}@${version},但本地安装树里没有:全局 dsh 安装不完整,建议重装 CLI`
+    } else {
+      item.detail += '(未能联网核对 registry;确认「上游已移除」请在有网环境下重试)'
+    }
+  }
   return item
 }
 
-async function checkBundles(profile, { deep = true } = {}) {
+async function checkBundles(profile, { deep = true, registryProbe = null } = {}) {
   const info = profileInfo(profile)
   if (info.external) {
     return {
@@ -170,12 +215,12 @@ async function checkBundles(profile, { deep = true } = {}) {
     }
   }
   const items = []
-  for (const b of info.bundles || []) items.push(await checkBundle(profile, b, { deep, info }))
+  for (const b of info.bundles || []) items.push(await checkBundle(profile, b, { deep, info, registryProbe }))
   // 分档结论:
   //   error = 真的会启动失败(联接断链 / 包不存在 / 加载失败 / loader 缺失)
   //   info  = 仅 profile 内 —— dsh 0.2.x 能直接解析(实测:web profile 有 4 个这样的插件且运行正常),
   //           所以不算失败;旧版 dsh 可能需要联接,修复按钮仍可手动建。
-  const SEVERITY = { ok: 'ok', 'profile-only': 'info', 'link-dangling': 'error', missing: 'error', 'load-failed': 'error', 'loader-missing': 'error', unknown: 'error' }
+  const SEVERITY = { ok: 'ok', 'profile-only': 'info', 'link-dangling': 'error', 'retired-bundle': 'error', missing: 'error', 'load-failed': 'error', 'loader-missing': 'error', unknown: 'error' }
   for (const i of items) i.severity = SEVERITY[i.state] || 'error'
   const bad = items.filter((i) => i.severity === 'error')
   const infoItems = items.filter((i) => i.severity === 'info')
@@ -229,15 +274,28 @@ async function checkGlobalDsh() {
 }
 
 // 修复:为"仅 profile 内/断链"的 bundle 在全局 node_modules 建/重建目录联接,并立即复验
-async function fixBundles(profile, { deep = true, onLog } = {}) {
+async function fixBundles(profile, { deep = true, onLog, registryProbe = null } = {}) {
   const info = profileInfo(profile)
   if (info.external) return { profile, ok: true, skipped: true, results: [], reason: info.externalReason }
   const globalNM = globalNodeModules()
   if (!globalNM) return { profile, ok: false, results: [{ pkg: '*', status: 'failed', error: '未找到全局 node_modules' }] }
   const results = []
   for (const b of info.bundles || []) {
-    const before = await checkBundle(profile, b, { deep: false, info })
+    const before = await checkBundle(profile, b, { deep: false, info, registryProbe })
     if (before.state === 'ok') { results.push({ pkg: b, status: 'ok', detail: '无需修复' }); continue }
+    // 仅 profile 内:检查结果本身就说「无需处理」,这里必须真的不动它 ——
+    // 旧版会为这 11 个健康插件往全局 node_modules 里建联接,而全局 dsh 一更新这些联接就断,
+    // 等于亲手制造下一轮故障。
+    if (before.state === 'profile-only') {
+      results.push({ pkg: b, status: 'skipped-optional', detail: '仅在 profile 内,dsh 0.2.x 可直接解析,无需修复' })
+      continue
+    }
+    // 上游已撤销的官方 bundle:建联接没有意义,删除条目由 removeRetiredBundles 做
+    if (before.state === 'retired-bundle') {
+      results.push({ pkg: b, status: 'retired', detail: before.detail })
+      onLog?.(`[兼容性] ${b}: ${before.detail}`)
+      continue
+    }
     if (before.state === 'missing') {
       results.push({ pkg: b, status: 'missing', detail: before.detail })
       onLog?.(`[兼容性] ${b}: ${before.detail}`)
@@ -263,7 +321,7 @@ async function fixBundles(profile, { deep = true, onLog } = {}) {
       continue
     }
     // 立即复验(旧版修完不复验,所以"点了没反应"也没人知道)
-    const after = await checkBundle(profile, b, { deep, info })
+    const after = await checkBundle(profile, b, { deep, info, registryProbe })
     const status = after.state === 'ok' ? 'linked' : 'verify-failed'
     results.push({
       pkg: b, status, target: before.target,
@@ -271,8 +329,97 @@ async function fixBundles(profile, { deep = true, onLog } = {}) {
     })
     onLog?.(`[兼容性] ${b}: 已建联接 → 复验 ${after.state === 'ok' ? '通过' : `仍未通过(${after.state}:${after.detail})`}`)
   }
-  const ok = results.every((r) => r.status === 'ok' || r.status === 'linked')
+  const ok = results.every((r) => r.status === 'ok' || r.status === 'linked' || r.status === 'skipped-optional')
   return { profile, ok, results }
+}
+
+// 把一条 bundle 从 package.json 文本里删掉(保留原文件排版),失败返回 null 交给结构化回写兜底
+function removeBundleLine(text, name) {
+  const lines = String(text).split('\n')
+  const re = new RegExp(`^\\s*"${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"\\s*,?\\s*$`)
+  const idx = lines.findIndex((l) => re.test(l))
+  if (idx === -1) return null
+  const hadComma = /,\s*$/.test(lines[idx])
+  lines.splice(idx, 1)
+  if (!hadComma) {
+    // 删掉的是数组最后一条:把它前一条的尾逗号去掉,否则 JSON 不合法
+    for (let i = idx - 1; i >= 0; i--) {
+      if (/^\s*[\]}[]/.test(lines[i]) || !lines[i].trim()) continue
+      lines[i] = lines[i].replace(/,\s*$/, '')
+      break
+    }
+  }
+  return lines.join('\n')
+}
+
+// 修复:把「上游已移除的官方 bundle」从 profile 的 package.json 里删除(先备份),再复验
+async function removeRetiredBundles(profile, { onLog, registryProbe = null } = {}) {
+  const info = profileInfo(profile)
+  if (info.external) return { profile, ok: true, skipped: true, results: [], removed: [], reason: info.externalReason }
+  const results = []
+  const retired = []
+  for (const b of info.bundles || []) {
+    const c = await checkBundle(profile, b, { deep: false, info, registryProbe })
+    if (c.state === 'retired-bundle') retired.push(b)
+  }
+  if (!retired.length) return { profile, ok: true, results, removed: [] }
+
+  const pkgPath = path.join(info.dir, 'package.json')
+  let text
+  try { text = fs.readFileSync(pkgPath, 'utf8') } catch (e) {
+    return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `读不到 package.json: ${e.message}` })), removed: [] }
+  }
+  const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)
+  const backupPath = `${pkgPath}.bak-${stamp}-retired`
+  try { fs.copyFileSync(pkgPath, backupPath) } catch (e) {
+    return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `备份失败: ${e.message}` })), removed: [] }
+  }
+
+  let next = text
+  for (const b of retired) {
+    const removed = removeBundleLine(next, b)
+    if (removed !== null) next = removed
+  }
+  let parsed = null
+  try { parsed = JSON.parse(next) } catch { parsed = null }
+  if (!parsed) {
+    // 排版保留失败:退回结构化改写(仍然只动 bundles 这一项)
+    try {
+      const j = JSON.parse(text)
+      const kept = (j.dsh?.profile?.bundles || []).filter((b) => !retired.includes(b))
+      j.dsh = j.dsh || {}; j.dsh.profile = j.dsh.profile || {}
+      j.dsh.profile.bundles = kept
+      next = JSON.stringify(j, null, 2) + '\n'
+      parsed = JSON.parse(next)
+    } catch (e) {
+      return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `改写失败: ${e.message}` })), removed: [], backup: backupPath }
+    }
+  }
+  try { fs.writeFileSync(pkgPath, next) } catch (e) {
+    return { profile, ok: false, results: retired.map((b) => ({ pkg: b, status: 'remove-failed', error: `写入失败: ${e.message}` })), removed: [], backup: backupPath }
+  }
+
+  // 复验:条目真的不在了才算成功
+  const after = profileInfo(profile)
+  for (const b of retired) {
+    const gone = !(after.bundles || []).includes(b)
+    results.push({ pkg: b, status: gone ? 'removed' : 'remove-failed', detail: gone ? '已从 dsh.profile.bundles 删除,重启该 profile 后生效' : '仍留在 bundles 里', backup: backupPath })
+    onLog?.(`[兼容性] ${b}: ${gone ? '已从 profile 删除' : '删除后仍在 bundles 里'}(备份 ${backupPath})`)
+  }
+  return { profile, ok: results.every((r) => r.status === 'removed'), results, removed: results.filter((r) => r.status === 'removed').map((r) => r.pkg), backup: backupPath }
+}
+
+// 一键修复总入口:先删上游已撤销的条目,再重建断链联接,最后整体复验
+async function repair(profile, { deep = true, onLog, registryProbe = null } = {}) {
+  const info = profileInfo(profile)
+  if (info.external) return { profile, ok: true, skipped: true, results: [], reason: info.externalReason }
+  const removed = await removeRetiredBundles(profile, { onLog, registryProbe })
+  const linked = await fixBundles(profile, { deep, onLog, registryProbe })
+  const results = [...(removed.results || []), ...(linked.results || [])]
+  const verify = await checkBundles(profile, { deep: false, registryProbe })
+  const ok = results.every((r) => r.status !== 'failed' && r.status !== 'verify-failed' && r.status !== 'remove-failed' && r.status !== 'retired' && r.status !== 'missing')
+    && verify.ok
+  return { profile, ok, results, removed: removed.removed || [], backup: removed.backup || null, verify: { ok: verify.ok, bad: verify.bad } }
 }
 
 function summarizeCheck(all) {
@@ -296,6 +443,6 @@ async function checkAll({ deep = true } = {}) {
 }
 
 module.exports = {
-  checkBundles, checkBundle, fixBundles, checkAll, checkGlobalDsh,
-  globalNodeModules, loaderBase, dshPkgDir, probeImport,
+  checkBundles, checkBundle, fixBundles, removeRetiredBundles, repair, checkAll, checkGlobalDsh,
+  globalNodeModules, loaderBase, dshPkgDir, probeImport, registryHasVersion, removeBundleLine,
 }

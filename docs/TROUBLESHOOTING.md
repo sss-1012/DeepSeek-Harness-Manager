@@ -8,10 +8,21 @@ The app extracts the real reason from the DSH boot output and shows it in a toas
 
 | Symptom in the log | Cause | Fix |
 |---|---|---|
-| `failed to import loader entry <pkg>` / `plugin tree failed to load` | A new DSH version resolves bundle plugins from a different location than the profile's `node_modules` | Open the update panel → **Plugin compatibility check** → repair. This creates junctions in the global `node_modules` (no copies, reversible). |
+| `failed to import loader entry <pkg>` / `plugin tree failed to load` | A new DSH version resolves bundle plugins from a different location than the profile's `node_modules` | Open the update panel → **Plugin compatibility check** → repair. This rebuilds junctions in the global `node_modules` (no copies, reversible); a bundle the new release no longer ships is flagged **retired** and repair removes that entry instead (see below) |
 | `EADDRINUSE` / port already in use | Another Harness instance is still running | Stop the other instance, or change the monitored port in **Launch settings** |
 | `--expose-internals is required for HMR service` | You are running a manager build older than **v0.1.2**, which launched DSH with Electron's bundled Node | Upgrade the manager — v0.1.2+ starts DSH with the real `node.exe` |
 
+### A bundle disappeared after a DSH update
+
+Symptoms: the compatibility report says a package cannot be found, but there is no version to install. Since
+**v0.4.5** the manager separates the two cases:
+
+| Report | Meaning | What repair does |
+|---|---|---|
+| `上游已移除该 bundle,需从 profile 删除` (retired) | The new DSH release merged or dropped that bundle, so npm has no build for the running dsh version — e.g. `@deepseek-ai/dsh-experimental-agent-team-profile`, folded into `dsh-base` in dsh 0.2.2-rc.5 | Asks for confirmation, backs up `package.json`, removes just that entry from `dsh.profile.bundles`, and re-verifies. Restart the profile afterwards |
+| `找不到包,需先安装该插件` (missing) | The package does exist at this dsh version, but the local install tree lacks it | Nothing automatic — reinstall the CLI (**Force reinstall dsh CLI**) |
+
+Entries reported as **profile-only** are healthy under dsh 0.2.x; repair deliberately leaves them alone.
 ## The manager window flashes and closes immediately
 
 If the manager disappears within a second and `~/.dsh-manager/logs/` gets **no new file**, it died before it

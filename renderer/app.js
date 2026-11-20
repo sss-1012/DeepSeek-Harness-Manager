@@ -823,11 +823,15 @@ const COMPAT_STATE_TEXT = {
   ok: '正常',
   'profile-only': '仅存在于 profile 内(dsh 0.2.x 可直接解析,无需处理)',
   'link-dangling': '全局联接已断链,需重建',
+  'retired-bundle': '上游已移除该 bundle,需从 profile 删除',
   missing: '找不到包,需先安装该插件',
   'load-failed': '可解析但加载失败',
   'loader-missing': '全局 dsh 安装不完整(需重装 CLI)',
   unknown: '未知',
 }
+
+// 最近一次检查结果:一键修复据此判断有没有「必须删除」的项(删除 profile 条目要先确认)
+let lastCompatAll = null
 
 // 真错误(会导致启动失败)与信息项(仅 profile 内,不影响运行)分开列
 function compatIssueLines(all) {
@@ -856,6 +860,7 @@ async function runCompatCheck(auto = false, opts = {}) {
     if (box) box.innerHTML = `<div class="warn-box">检查失败:${esc(e.message)}</div>`
     return { ok: false, error: e.message }
   }
+  lastCompatAll = r
   const skipped = (r.profiles || []).filter((p) => p.skipped)
   const bad = (r.profiles || []).filter((p) => !p.ok && !p.skipped)
   const infoCount = (r.profiles || []).reduce((n, p) => n + ((p.infoItems || []).length), 0)
@@ -934,16 +939,30 @@ async function runCompatCheck(auto = false, opts = {}) {
   return { ok: false, summary }
 }
 
-// 一键修复(建目录联接 → 立即复验)
+// 一键修复:删除上游已撤销的 bundle → 重建断链联接 → 立即复验
 async function doCompatFix() {
+  // 删除 profile 里的 bundles 条目是不可逆动作(只留备份),先让用户确认
+  const retired = []
+  for (const p of (lastCompatAll && lastCompatAll.profiles) || []) {
+    for (const it of p.items || []) if (it.state === 'retired-bundle') retired.push(`${p.profile} / ${it.name}`)
+  }
+  if (retired.length) {
+    const yes = await modal('一键修复',
+      `<div>以下 bundle 已随 dsh 更新被上游移除,将从 profile 的 <code>dsh.profile.bundles</code> 删除(会先备份 <code>package.json</code>):</div>` +
+      `<pre class="update-log">${esc(retired.join('\n'))}</pre>` +
+      `<div class="muted">其余断链联接会自动重建;仅存在于 profile 内的健康插件不会被改动。</div>`,
+      [{ label: '修复', value: true, cls: 'primary' }, { label: '取消', value: false }])
+    if (!yes) return { ok: false, cancelled: true }
+  }
   const fixed = await window.dshm.compatFix()
   const okLines = []
   const failLines = []
+  const OK_STATUS = ['ok', 'linked', 'removed', 'skipped-optional']
   for (const x of fixed.results || []) {
     if (x.skipped) { okLines.push(`${x.profile}: 跳过(${x.reason || '外部 profile'})`); continue }
     for (const y of x.results || []) {
       const text = `${x.profile} / ${y.pkg}: ${y.status}${y.verify && y.verify !== 'ok' ? `(复验仍失败:${COMPAT_STATE_TEXT[y.verify] || y.verify})` : ''}`
-      if (y.status === 'linked' || y.status === 'ok') okLines.push(text); else failLines.push(text)
+      if (OK_STATUS.includes(y.status)) okLines.push(text); else failLines.push(text)
     }
   }
   appendLog('[compat] ' + [...okLines, ...failLines].join(' | '))

@@ -29,6 +29,7 @@ node scripts/smoke.js            # core-module smoke test (no GUI needed)
 node scripts/check-docs.js       # verify relative + external links (--offline to skip externals)
 node plugin/test/host.test.js    # plugin host-side self-check (mock ctx)
 node plugin/test/boot-check.mjs  # plugin end-to-end: isolated profile + real dsh boot on port 3099
+node scripts/compat-repair-test.js  # one-click repair regression: retired bundle removed, healthy profile-only left alone (isolated DSH_HOME)
 npm run pack                     # build installer + portable into dist/ (also archives locally)
 npm run verify-signature         # check the Authenticode signature + SHA-256 of every dist/ artifact
 npm run verify-signature:strict  # same, but exit 1 if anything is unsigned

@@ -9,10 +9,20 @@
 
 | 日志中的症状 | 原因 | 处理 |
 |---|---|---|
-| `failed to import loader entry <包名>` / `plugin tree failed to load` | DSH 新版本从**与 profile 的 `node_modules` 不同的位置**解析 bundle 插件 | 更新面板 → **插件兼容性检查** → 一键修复。它会在全局 `node_modules` 里创建目录联接(不复制文件、可逆) |
+| `failed to import loader entry <包名>` / `plugin tree failed to load` | DSH 新版本从**与 profile 的 `node_modules` 不同的位置**解析 bundle 插件 | 更新面板 → **插件兼容性检查** → 一键修复。它会在全局 `node_modules` 里重建目录联接(不复制文件、可逆);若是新版**不再随发行提供的 bundle**,则标为「上游已移除」并改为删掉该条目(见下) |
 | `EADDRINUSE` / 端口被占用 | 已有另一个 Harness 实例在运行 | 停掉那个实例,或在「配置启动项」里改检测端口 |
 | `--expose-internals is required for HMR service` | 你用的管理器版本早于 **v0.1.2**,旧版本用 Electron 内建 Node 启动 DSH | 升级管理器 —— v0.1.2 起改为用真实 `node.exe` 启动 |
 
+### DSH 更新后某个 bundle 消失了
+
+症状:兼容性报告说找不到某个包,但**也没有可安装的版本**。v0.4.5 起管理器把两种缺失分开:
+
+| 报告 | 含义 | 一键修复做什么 |
+|---|---|---|
+| `上游已移除该 bundle,需从 profile 删除`(retired) | 新版 DSH 把它合并或撤掉了,registry 上没有当前 dsh 版本的发布 —— 例:`@deepseek-ai/dsh-experimental-agent-team-profile` 在 dsh 0.2.2-rc.5 已并入 `dsh-base` | 先弹确认框,备份 `package.json` 后只删 `dsh.profile.bundles` 里的这一条,并复验。之后重启该 profile 生效 |
+| `找不到包,需先安装该插件`(missing) | 这个版本确实有这个包,但本地安装树里没有 | 不会自动处理 —— 用「强制重装 dsh CLI」修复安装树 |
+
+报告里只标为 **profile-only** 的条目在 dsh 0.2.x 下本来就正常,一键修复会**故意不动它们**。
 ## 管理器窗口一闪就关
 
 若管理器启动后 1 秒内消失,且 `~/.dsh-manager/logs/` 里**没有产生新日志文件**,说明它死在创建窗口之前。
