@@ -92,19 +92,29 @@ Steps 3–4 are automated: **`npm run release`** (`scripts/release.js`) runs pre
 then **verifies the published package** (`npm run verify-artifact --release v<version>`, which downloads the
 Release portable and inspects its `app.asar`), syncs the artifacts into the local archive and finally
 publishes `plugin/` to npm. `--dry-run` only checks, `--from=<step>` resumes after a failure, `--no-npm` /
-`--no-wait` / `--skip-tests` skip a stage. The npm stage needs a token with publish rights; while `~/.npmrc`
-only holds a read-only token it reports the exact commands to finish by hand and leaves the desktop release
-(already published) untouched.
+`--no-wait` / `--skip-tests` skip a stage. The npm stage delegates to `scripts/publish-plugin.js`, which
+waits for a login instead of failing when the credentials are missing (see below).
 
 **Checksums:** the same source produces *different* binaries locally and on CI, so quote only the digests
 from the GitHub Release (the script prints those first and labels the local ones as local-only).
 
 The npm plugin has its own semi-automatic entry point: **`npm run publish:plugin`**
 (`scripts/publish-plugin.js`). It checks the version against the desktop app, prints the exact tarball
-contents (`npm pack --dry-run`), runs the plugin tests, refuses to re-publish an existing version, then
-stops with exit code 2 if the npm credentials cannot write — it prints the `npm login` / `NPM_TOKEN`
-options and publishes on the next run. `--dry-run` needs no credentials. `npm run release` delegates its
-final `npm` step to this script so the logic lives in one place only.
+contents (`npm pack --dry-run`), runs the plugin tests and refuses to re-publish an existing version.
+
+Authentication and 2FA are treated as "wait for the human", not as failures:
+
+- **Not logged in** → prints the login URL (`https://www.npmjs.com/login`), then runs
+  `npm login --auth-type=web` in the same terminal (npm opens the browser / prints its own session URL and
+  blocks) and polls `npm whoami`; it continues automatically as soon as a login is detected — including a
+  login done in another terminal. `--no-login` skips the prompt, `--wait=<seconds>` tunes the polling window
+  (default 300). Only if nothing happens does it exit with code 2.
+- **Publish needs 2FA (EOTP)** → retries through npm's own browser challenge (`npm publish
+  --auth-type=web`), falling back to asking for the 6-digit code (`--otp=` to pass it up front).
+
+`--dry-run` needs no credentials. `npm run release` delegates its final `npm` step to this script so the
+logic lives in one place only. The repository root `package.json` is `private: true` on purpose: publishing
+from there would ship `.github/`, `docs/` and `AGENTS.md` under the unrelated name `deepseek-harness-manager`.
 
 ## Definition of done
 

@@ -8,9 +8,16 @@
  * 用法:
  *   node scripts/publish-plugin.js                # 预检 → 认证 → 冲突检查 → 发布 → 校验
  *   node scripts/publish-plugin.js --dry-run      # 只看要发什么(本地检查,不需要登录)
- *   node scripts/publish-plugin.js --otp=123456   # 一次性密码(账号开了 2FA 时)
  *   node scripts/publish-plugin.js --yes          # 不问确认
- *   node scripts/publish-plugin.js --login        # 先在本终端跑 npm login,成功后继续
+ *   node scripts/publish-plugin.js --no-login     # 不自动发起登录,只打印入口
+ *   node scripts/publish-plugin.js --wait=600     # 等登录成功的秒数(默认 300)
+ *   node scripts/publish-plugin.js --otp=123456   # 直接给一次性密码
+ *
+ * 认证与二重验证都是「等人」而不是「报错退出」:
+ *   - 未登录 → 打印登录入口,并在本终端跑 npm login --auth-type=web(npm 自己会开浏览器
+ *     并等待),同时轮询 npm whoami;检测到登录成功就自动继续(也适用于你在别的终端登录)。
+ *   - 发布时遇到 EOTP → 和手动发布一样走 npm 的浏览器验证(--auth-type=web),
+ *     不行再退回输入 6 位验证码。
  *
  * 提供 token 的两种方式(等价):
  *   $env:NPM_TOKEN="npm_xxx"; node scripts/publish-plugin.js      # 推荐:不写进任何文件
@@ -44,8 +51,10 @@ const opt = (n, d = null) => {
 const DRY = flag('dry-run')
 const YES = flag('yes') || flag('y')
 const OTP = opt('otp')
-const DO_LOGIN = flag('login')
 const SKIP_TESTS = flag('skip-tests')
+const NO_LOGIN = flag('no-login')
+const WAIT_SEC = Math.max(0, Number(opt('wait', '300')) || 0)
+const LOGIN_URL = 'https://www.npmjs.com/login'
 
 const C = {
   reset: '\x1b[0m', dim: '\x1b[2m', bold: '\x1b[1m',
@@ -120,8 +129,7 @@ function npmArgs(extra = []) {
  * Windows 上 spawn('npm.cmd', args) 必须 shell:true,而 shell:true + args 数组会触发
  * Node 的 DEP0190 警告 —— 那行 stderr 会让 PowerShell 把「成功」当成失败(报 exit 1)。
  */
-function npmInvocation(extra) {
-  const args = npmArgs(extra)
+function npmInvocationRaw(args) {
   const base = path.dirname(process.execPath)
   const candidates = [
     path.join(base, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
@@ -131,6 +139,9 @@ function npmInvocation(extra) {
     if (fs.existsSync(c)) return { cmd: process.execPath, args: [c, ...args], shell: false }
   }
   return { cmd: NPM, args, shell: true }
+}
+function npmInvocation(extra) {
+  return npmInvocationRaw(npmArgs(extra))
 }
 function npm(extra, opts = {}) {
   const inv = npmInvocation(extra)
@@ -158,6 +169,18 @@ function ask(q) {
     const a = buf.subarray(0, n).toString('utf8').trim().toLowerCase()
     return a === 'y' || a === 'yes'
   } catch { return false }
+}
+
+const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+
+/** 读一行输入(仅在 TTY 下调用;终端是行缓冲模式,一次 readSync 就能拿到整行) */
+function promptLine(question) {
+  process.stdout.write(`\n${C.yellow}?${C.reset} ${question} `)
+  const buf = Buffer.alloc(64)
+  try {
+    const n = fs.readSync(0, buf, 0, 64, null)
+    return buf.subarray(0, n).toString('utf8').replace(/[\r\n]/g, '').trim()
+  } catch { return '' }
 }
 
 // npm 常把 "Unknown user config" 之类的 warn 混进输出,取值前先剔掉这些行
@@ -267,30 +290,79 @@ function preflight() {
 }
 
 // ── [2] 认证 ──
-function checkAuth() {
+// ── [2] 认证:给入口、等人、检测到成功就继续 ──
+function checkAuthQuiet() {
+  const who = npm(['whoami'])
+  return who.status === 0 && !!npmValue(who.out)
+}
+
+function printLoginHelp() {
+  log('')
+  log(`  ${C.yellow}需要登录 npm 才能发布。登录入口:${C.reset}`)
+  log(`    ${C.bold}${LOGIN_URL}${C.reset}`)
+  log(`  ${C.dim}命令行登录(会给出带一次性 token 的链接,凭据写进 ~/.npmrc):${C.reset}`)
+  log(`    npm login --auth-type=web --registry ${REGISTRY}`)
+  log(`  ${C.dim}或者只用一次(不落盘):${C.reset}`)
+  log(`    $env:NPM_TOKEN="npm_有写权限的token"`)
+}
+
+/** 轮询 npm whoami 直到登录成功(也覆盖用户在别的终端/浏览器里完成登录的情况) */
+function waitForLogin() {
+  if (WAIT_SEC <= 0) return false
+  log('')
+  info(`等待登录完成(最多 ${WAIT_SEC}s);检测到已登录会自动继续,Ctrl+C 可取消`)
+  const started = Date.now()
+  let waited = 0
+  while (Date.now() - started < WAIT_SEC * 1000) {
+    if (checkAuthQuiet()) {
+      log('')
+      ok(`检测到登录成功:${npmValue(npm(['whoami']).out)}`)
+      return true
+    }
+    process.stdout.write(`\r  ${C.dim}·${C.reset} 等待登录… ${waited}s / ${WAIT_SEC}s   `)
+    sleep(5000)
+    waited += 5
+  }
+  log('')
+  return false
+}
+
+function ensureAuth() {
   step(2, '认证')
   const who = npm(['whoami'])
   if (who.status === 0 && who.out) {
     ok(`已登录:${npmValue(who.out)}`)
     return true
   }
-  const first = who.out.split('\n').find((l) => /error/i.test(l)) || who.out.split('\n')[0] || '未知错误'
-  bad('没有可用的 npm 写权限:')
-  info(first.trim().slice(0, 120))
-  return false
-}
 
-function authHelp() {
-  log('')
-  log(`  ${C.yellow}这一步只能你来 —— 机器没有你的 npm 凭据。二选一:${C.reset}`)
-  log(`    A) 交互登录(写进 ~/.npmrc,以后一直有效)`)
-  log(`       npm login --registry ${REGISTRY}`)
-  log(`    B) 只用一次(不落盘,推荐给 CI 或多账号)`)
-  log(`       $env:NPM_TOKEN="npm_有写权限的token"`)
-  log('')
-  log(`  ${C.dim}补完之后重跑同一条命令即可,脚本会自动接着发布:${C.reset}`)
-  log(`    node scripts/publish-plugin.js`)
-  log(`  ${C.dim}要发到哪些版本由 plugin/package.json 决定,当前是 ${VERSION}。${C.reset}`)
+  bad('当前没有可用的 npm 发布凭据')
+  const first = (who.out.split('\n').find((l) => /error/i.test(l)) || '').trim()
+  if (first) info(first.slice(0, 120))
+  printLoginHelp()
+
+  if (NO_LOGIN) return false
+
+  // 有终端就直接进 npm 官方登录流程:它会开浏览器/打印带 token 的链接并阻塞等待,
+  // 和用户手动执行完全一样,凭据写进 ~/.npmrc。
+  if (process.stdin.isTTY) {
+    log('')
+    info('启动 npm 登录流程(浏览器里完成后这里会自动继续)…')
+    const inv = npmInvocationRaw(['login', '--auth-type=web', '--registry', REGISTRY])
+    run(inv.cmd, inv.args, { shell: inv.shell, cwd: PLUGIN })
+    if (USERCONFIG) USERCONFIG = null // 登录写的是 ~/.npmrc,临时 token 不要再用了
+    if (checkAuthQuiet()) {
+      ok(`登录成功:${npmValue(npm(['whoami']).out)}`)
+      return true
+    }
+  }
+
+  if (waitForLogin()) {
+    if (USERCONFIG) USERCONFIG = null
+    return true
+  }
+  bad(`等了 ${WAIT_SEC}s 仍未检测到登录`)
+  printLoginHelp()
+  return false
 }
 
 // ── [3] 冲突 ──
@@ -345,13 +417,47 @@ function doPublish() {
 
   if (r.status === 0) { ok(`已发布 ${NAME}@${VERSION}`); return { ok: true } }
   bad('npm publish 失败')
+
+  // 二重验证不是终点:按 npm 自己的做法继续,而不是让用户换个命令重来
+  if (isOtpError(r.out)) {
+    if (solveOtp()) { ok(`已发布 ${NAME}@${VERSION}`); return { ok: true } }
+  }
   return { ok: false, code: 2, out: r.out }
+}
+
+function isOtpError(out) {
+  return /EOTP|one-time password|two-factor/i.test(out)
+}
+
+/**
+ * 处理二重验证,尽量和手动发布一致:
+ *   1) 先走 npm 的浏览器验证(--auth-type=web):npm 会打印验证链接并阻塞等待
+ *   2) 不行再退回输入 6 位验证码(--otp)
+ */
+function solveOtp() {
+  if (!process.stdin.isTTY) {
+    info('当前不是交互终端,无法走验证界面')
+    info(`请带上一次性密码重跑:node scripts/publish-plugin.js --otp=<6位数字>`)
+    return false
+  }
+
+  log('')
+  info('该账号需要二重验证。打开 npm 的验证方式(给出链接,完成后自动继续)…')
+  const inv = npmInvocation(['publish', '--access', 'public', '--auth-type=web'])
+  const webRun = run(inv.cmd, inv.args, { shell: inv.shell, cwd: PLUGIN })
+  if (webRun.status === 0) return true
+
+  log('')
+  const code = promptLine('浏览器验证没走通。输入认证器里的 6 位验证码(直接回车放弃):')
+  if (!/^\d{6,8}$/.test(code)) return false
+  const r = npm(['publish', '--access', 'public', '--otp', code], { timeout: 900000 })
+  for (const l of r.out.split('\n').slice(-12)) if (l.trim()) info(l.trim())
+  return r.status === 0
 }
 
 function classifyPublishFailure(out) {
   if (/EOTP|one-time password/i.test(out)) {
-    info('账号开了两步验证:带上一次性密码重跑')
-    info(`  node scripts/publish-plugin.js --otp=<6位数字>`)
+    info('二重验证没有完成:确认浏览器里已确认授权,或改用 --otp=<6位数字> 重跑')
     return true
   }
   if (/E401|Unauthorized|ENEEDAUTH/i.test(out)) {
@@ -417,7 +523,7 @@ function verifyPublished(packed) {
 // ── 主流程 ──
 function main() {
   log(`${C.bold}npm 插件发布${C.reset}  ${C.dim}${NAME}@${VERSION} · ${REGISTRY}${C.reset}`)
-  const flags = [DRY && 'dry-run', YES && 'yes', OTP && 'otp', DO_LOGIN && 'login'].filter(Boolean)
+  const flags = [DRY && 'dry-run', YES && 'yes', OTP && 'otp', NO_LOGIN && 'no-login'].filter(Boolean)
   if (flags.length) log(`${C.dim}flags: ${flags.join(' ')}${C.reset}`)
   if (TOKEN) info('已从环境变量读到 token(不回显,只写本次临时 .npmrc)')
   setupToken()
@@ -434,7 +540,7 @@ function main() {
     step(2, '认证')
     const who = npm(['whoami'])
     if (who.status === 0) ok(`已登录:${npmValue(who.out)}(干跑不发布)`)
-    else warn('当前没有可用的 npm 写权限;干跑只做本地检查,真正发布前需要登录')
+    else { warn('当前没有可用的 npm 写权限(干跑不阻塞、不登录)'); printLoginHelp() }
     step(3, '冲突检查')
     const c = checkConflictDry()
     log(`\n${C.green}${C.bold}干跑通过${C.reset}  将要发布 ${NAME}@${VERSION}`)
@@ -443,19 +549,10 @@ function main() {
     return
   }
 
-  // 可选:先在这个终端里登录(成功即继续,失败就停下等人)
-  if (DO_LOGIN && !checkAuthQuiet()) {
-    info('运行 npm login …')
-    const inv = npmInvocation(['login', '--registry', REGISTRY])
-    run(inv.cmd, inv.args, { shell: inv.shell, cwd: PLUGIN })
-    if (!checkAuthQuiet()) {
-      bad('登录仍未成功'); authHelp(); process.exitCode = 2; return
-    }
-  }
-
-  if (!checkAuth()) {
-    authHelp()
-    log(`\n  ${C.yellow}停在这里,没有发布任何东西。补完凭据重跑即可。${C.reset}`)
+  // 认证:未登录时给入口并等登录成功(而不是直接失败退出)
+  if (!ensureAuth()) {
+    log(`\n  ${C.yellow}没有完成登录,停在这里,没有发布任何东西。${C.reset}`)
+    info('补好凭据后重跑:node scripts/publish-plugin.js')
     process.exitCode = 2
     return
   }
