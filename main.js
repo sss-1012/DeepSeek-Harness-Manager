@@ -1,4 +1,4 @@
-﻿'use strict'
+'use strict'
 // DeepSeek Harness 管理器 — Electron 主进程
 const path = require('node:path')
 const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell, nativeImage, screen } = require('electron')
@@ -25,6 +25,7 @@ const desktop = require('./src/desktop')
 const icons = require('./src/icons')
 const trayMod = require('./src/tray')
 const i18n = require('./src/i18n')
+const { t } = require('./src/i18n')
 
 const APP_VERSION = require('./package.json').version
 const APP_NAME = require('./package.json').name
