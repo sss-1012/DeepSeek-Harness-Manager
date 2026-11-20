@@ -99,6 +99,13 @@ only holds a read-only token it reports the exact commands to finish by hand and
 **Checksums:** the same source produces *different* binaries locally and on CI, so quote only the digests
 from the GitHub Release (the script prints those first and labels the local ones as local-only).
 
+The npm plugin has its own semi-automatic entry point: **`npm run publish:plugin`**
+(`scripts/publish-plugin.js`). It checks the version against the desktop app, prints the exact tarball
+contents (`npm pack --dry-run`), runs the plugin tests, refuses to re-publish an existing version, then
+stops with exit code 2 if the npm credentials cannot write — it prints the `npm login` / `NPM_TOKEN`
+options and publishes on the next run. `--dry-run` needs no credentials. `npm run release` delegates its
+final `npm` step to this script so the logic lives in one place only.
+
 ## Definition of done
 
 - Behaviour verified by actually running it (not by reading code), with the evidence stated plainly.

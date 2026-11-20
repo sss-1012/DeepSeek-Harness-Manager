@@ -104,9 +104,8 @@ function run(cmd, args, opts = {}) {
   return { status: r.status, signal: r.signal, error: r.error }
 }
 
-const NPM_CMD = process.platform === 'win32' ? 'npm.cmd' : 'npm'
-const npm = (args, opts = {}) => capture(NPM_CMD, args, { ...opts, shell: true })
-const npmRun = (args, opts = {}) => run(NPM_CMD, args, { ...opts, shell: true })
+// npm 相关发布逻辑统一在 scripts/publish-plugin.js 里,这里只调它
+// (同一个实现两处维护,迟早会不一致;上一步的插件发布就是这样丢过一次)
 const git = (args, opts = {}) => capture('git', args, opts)
 
 /**
@@ -489,35 +488,17 @@ STEPS.npm = () => {
   if (NO_NPM) { warn('已按 --no-npm 跳过'); return { ok: true } }
   if (DRY_RUN) { warn('--dry-run:不发布 npm'); return { ok: true } }
 
-  const who = npm(['whoami', '--registry', 'https://registry.npmjs.org'])
-  if (who.status !== 0) {
-    bad('npm 当前没有可写的登录态(E401):')
-    info(who.out.split('\n').filter((l) => /E40|error/.test(l)).slice(0, 3).join(' | '))
-    log('')
-    log(`  ${C.yellow}手动补发(桌面端已经发布,这一步只影响插件):${C.reset}`)
-    log(`    cd ${path.join(ROOT, 'plugin')}`)
-    log('    npm login            # 用有 dsh-harness-manager 写权限的账号')
-    log('    npm publish --access public')
-    log(`  ${C.dim}(或在项目根的 ~/.npmrc 里换一个带 publish 权限的 token 后重跑:node scripts/release.js --from=npm)${C.reset}`)
-    return { ok: false, nonFatal: true, reason: 'npm-auth' }
+  // 交给专门的半自动脚本:它会做预检、包内容展示、冲突检查、发布和线上校验,
+  // 并在「需要人登录」时以 exit 2 停下,而不是假装成功。
+  const r = run(process.execPath, ['scripts/publish-plugin.js', '--yes'])
+  if (r.status === 0) { ok('npm 插件已发布并校验'); return { ok: true } }
+  if (r.status === 2) {
+    warn('npm 插件停在一个只能人工完成的步骤(登录/token),见上方命令')
+    info('桌面端发布不受影响;补完凭据后跑:node scripts/release.js --from=npm')
+    return { ok: false, nonFatal: true, reason: 'npm 需人工登录' }
   }
-  ok(`npm 身份:${who.out}`)
-
-  const view = npm(['view', 'dsh-harness-manager', 'version', '--registry', 'https://registry.npmjs.org'],
-    { env: process.env.DSHM_NPM_CACHE ? { npm_config_cache: process.env.DSHM_NPM_CACHE } : {} })
-  if (view.status === 0 && view.out && view.out.includes(VERSION)) {
-    warn(`registry 上已经是 ${VERSION},跳过发布`)
-    return { ok: true }
-  }
-
-  const pub = npmRun(['publish', '--access', 'public'], { cwd: path.join(ROOT, 'plugin') })
-  if (pub.status !== 0) {
-    bad('npm publish 失败(见上方输出)')
-    info(`补发:cd ${path.join(ROOT, 'plugin')} && npm publish --access public`)
-    return { ok: false, nonFatal: true, reason: 'npm-publish' }
-  }
-  ok(`插件 ${VERSION} 已发布到 npm`)
-  return { ok: true }
+  bad('npm 插件发布失败(详见上方输出)')
+  return { ok: false, nonFatal: true, reason: 'npm-publish' }
 }
 
 // ─────────────────────────── 主流程 ───────────────────────────
