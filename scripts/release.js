@@ -109,6 +109,29 @@ const npm = (args, opts = {}) => capture(NPM_CMD, args, { ...opts, shell: true }
 const npmRun = (args, opts = {}) => run(NPM_CMD, args, { ...opts, shell: true })
 const git = (args, opts = {}) => capture('git', args, opts)
 
+/**
+ * 需要联网的 git 操作(ls-remote / push)。
+ * 本机到 github.com:443 会间歇性被重置("Recv failure: Connection was reset",
+ * DNS 指到代理的 fake-IP 段),单次失败不代表真的不可达,所以重试 3 次;
+ * 同时总是用 openssl 后端 —— ~/.gitconfig 里的 schannel 在部分环境下
+ * 会 AcquireCredentialsHandle / 凭据管道失败。
+ */
+function gitNet(args, opts = {}) {
+  const tries = 3
+  let last = null
+  for (let i = 1; i <= tries; i++) {
+    const r = git(['-c', 'http.sslBackend=openssl', ...args], opts)
+    if (r.status === 0) return r
+    last = r
+    const first = (r.out.split('\n').find(Boolean) || '').slice(0, 100)
+    if (i < tries) {
+      warn(`联网 git 失败(${i}/${tries}),${i * 3}s 后重试:${first}`)
+      sleep(i * 3000)
+    }
+  }
+  return last
+}
+
 const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 
 function sha256(file) {
@@ -178,7 +201,7 @@ STEPS.preflight = () => {
 
   // tag 唯一性
   const localTag = git(['rev-parse', '--verify', '--quiet', `refs/tags/${TAG}`])
-  const remoteTags = git(['-c', 'http.sslBackend=openssl', 'ls-remote', '--tags', 'origin', `refs/tags/${TAG}`])
+  const remoteTags = gitNet(['ls-remote', '--tags', 'origin', `refs/tags/${TAG}`])
   const remoteHasTag = remoteTags.status === 0 && /refs\/tags\//.test(remoteTags.out)
   if (localTag.status === 0 && !RETAG) problems.push(`本地已存在 tag ${TAG}(确认要重打请加 --retag)`)
   else if (remoteHasTag && !RETAG) problems.push(`远端已存在 tag ${TAG}(已发布过?)`)
@@ -197,7 +220,7 @@ STEPS.preflight = () => {
   else ok('在 main 分支上')
 
   // 远端可达 & 领先提交
-  const lsRemote = git(['-c', 'http.sslBackend=openssl', 'ls-remote', 'origin', 'refs/heads/main'])
+  const lsRemote = gitNet(['ls-remote', 'origin', 'refs/heads/main'])
   if (lsRemote.status !== 0) {
     problems.push(`无法访问远端(检查网络/凭据):${lsRemote.out.split('\n')[0] || 'git ls-remote 失败'}`)
   } else {
@@ -338,14 +361,7 @@ STEPS.push = () => {
     return { ok: false, fatal: true, code: 1 }
   }
 
-  const push = (refs) => {
-    let r = git(['push', 'origin', ...refs], { timeout: 180000 })
-    if (r.status !== 0 && /schannel|SEC_E_|AcquireCredentialsHandle|signal pipe|couldn't create/i.test(r.out)) {
-      info('遇到 schannel/凭据管道错误,改用 openssl 后端重试…')
-      r = git(['-c', 'http.sslBackend=openssl', 'push', 'origin', ...refs], { timeout: 180000 })
-    }
-    return r
-  }
+  const push = (refs) => gitNet(['push', 'origin', ...refs], { timeout: 180000 })
 
   const b = push(['main'])
   if (b.status !== 0) { bad(`push main 失败:\n${b.out}`); return { ok: false, fatal: true, code: 1 } }
