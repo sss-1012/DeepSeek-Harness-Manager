@@ -13,6 +13,7 @@
     "archive": "node scripts/archive-build.js",
     "sync-releases": "node scripts/sync-releases.js",
     "release": "node scripts/release.js",
+    "verify-artifact": "node scripts/verify-artifact.js",
     "i18n:check": "node scripts/i18n-extract.js && node scripts/i18n-check.js",
     "verify-signature": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-signature.ps1",
     "verify-signature:strict": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-signature.ps1 -RequireSigned"

@@ -1,6 +1,6 @@
 'use strict'
 /**
- * 一键发布:体检 → 测试 → 提交 → 打 tag → 推送 → 等 CI 构建 → 同步产物 → npm 插件
+ * 一键发布:体检 → 测试 → 提交 → 打 tag → 推送 → 等 CI 构建 → 校验线上包 → 同步产物 → npm 插件
  *
  * 用法:
  *   node scripts/release.js                  # 交互确认后完整发布
@@ -373,6 +373,17 @@ STEPS.push = () => {
   return { ok: true }
 }
 
+/** Release 上真正给用户下载的那几个文件(含 sha256 digest) */
+function releaseAssets(tag) {
+  const r = capture('gh', ['release', 'view', tag, '--repo', REPO, '--json', 'assets'], { timeout: 120000 })
+  if (r.status !== 0) return []
+  try {
+    return (JSON.parse(r.out).assets || []).map((a) => ({
+      name: a.name, size: a.size || 0, digest: a.digest || '',
+    }))
+  } catch { return [] }
+}
+
 function findRun(tag, sinceMs) {
   const r = capture('gh', [
     'run', 'list', '--workflow', WORKFLOW, '--repo', REPO, '--limit', '10',
@@ -434,8 +445,28 @@ STEPS.ci = () => {
   return { ok: true }
 }
 
+STEPS.verify = () => {
+  step(7, '校验线上的发布包')
+  if (DRY_RUN) { warn('--dry-run:不下载校验'); return { ok: true } }
+  const r = capture(process.execPath, ['scripts/verify-artifact.js', '--release', TAG], { timeout: 900000 })
+  if (r.status === 0) {
+    for (const l of r.out.split('\n')) info(l.trim())
+    ok('线上发布包校验通过')
+    return { ok: true }
+  }
+  if (r.status === 2) {
+    warn('无法拿到发布包做校验(网络/7za 不可用),已跳过:')
+    for (const l of r.out.split('\n').slice(0, 3)) info(l.trim())
+    return { ok: true, nonFatal: true, reason: 'verify-skip' }
+  }
+  bad('线上发布包校验失败:')
+  for (const l of r.out.split('\n')) info(l.trim())
+  info('先别宣传这次发布;修好后打新版本号重发(不要改已发布的 tag)')
+  return { ok: false, fatal: true, code: 1 }
+}
+
 STEPS.sync = () => {
-  step(7, '同步 CI 产物到本地归档')
+  step(8, '同步 CI 产物到本地归档')
   if (DRY_RUN) { warn('--dry-run:不同步'); return { ok: true } }
   const hasLocal = ARTIFACTS.every((f) => fs.existsSync(path.join(ROOT, 'dist', f)))
   if (hasLocal) {
@@ -454,7 +485,7 @@ STEPS.sync = () => {
 }
 
 STEPS.npm = () => {
-  step(8, '发布 npm 插件 dsh-harness-manager')
+  step(9, '发布 npm 插件 dsh-harness-manager')
   if (NO_NPM) { warn('已按 --no-npm 跳过'); return { ok: true } }
   if (DRY_RUN) { warn('--dry-run:不发布 npm'); return { ok: true } }
 
@@ -503,7 +534,7 @@ function main() {
   banner()
   fs.mkdirSync(TMP, { recursive: true })
 
-  const order = ['preflight', 'test', 'commit', 'tag', 'push', 'ci', 'sync', 'npm']
+  const order = ['preflight', 'test', 'commit', 'tag', 'push', 'ci', 'verify', 'sync', 'npm']
   let start = 0
   if (FROM) {
     const i = order.indexOf(FROM)
@@ -540,9 +571,19 @@ function main() {
 
   if (!fatal) {
     log('')
-    for (const f of ARTIFACTS) {
-      const p = path.join(ROOT, 'dist', f)
-      if (fs.existsSync(p)) info(`SHA256 ${sha256(p)}  ${f}`)
+    // 校验和以线上为准 —— 同一份源码在 CI 与本机构建的 exe 内容不同,别拿本地那组对外
+    const assets = DRY_RUN ? [] : releaseAssets(TAG)
+    if (assets.length) {
+      log(`  ${C.dim}线上产物(GitHub Release,用户下载的就是这些):${C.reset}`)
+      for (const a of assets) {
+        const d = (a.digest || '').replace(/^sha256:/, '') || '(无 digest)'
+        info(`${d}  ${a.name}  ${(a.size / 1048576).toFixed(1)} MB`)
+      }
+    }
+    const localPresent = ARTIFACTS.filter((f) => fs.existsSync(path.join(ROOT, 'dist', f)))
+    if (localPresent.length) {
+      log(`  ${C.dim}本地构建(仅本机留存,与线上不同,不要拿去核对下载):${C.reset}`)
+      for (const f of localPresent) info(`SHA256 ${sha256(path.join(ROOT, 'dist', f))}  ${f}`)
     }
     if (DRY_RUN) {
       log(`\n  ${C.green}${C.bold}体检通过(dry-run,没有发布任何东西)${C.reset}`)

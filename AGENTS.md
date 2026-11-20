@@ -89,10 +89,15 @@ Before claiming a change works, run at least `smoke.js`, `check-docs.js --offlin
 
 Steps 3–4 are automated: **`npm run release`** (`scripts/release.js`) runs pre-flight (version / notes / tag /
 `app.asar` sanity / no `require(` in `renderer/`), the test suites, commit, tag, push, waits for the CI run,
-syncs the artifacts into the local archive and finally publishes `plugin/` to npm. `--dry-run` only checks,
-`--from=<step>` resumes after a failure, `--no-npm` / `--no-wait` / `--skip-tests` skip a stage. The npm
-stage needs a token with publish rights; while `~/.npmrc` only holds a read-only token it reports the exact
-commands to finish by hand and leaves the desktop release (already published) untouched.
+then **verifies the published package** (`npm run verify-artifact --release v<version>`, which downloads the
+Release portable and inspects its `app.asar`), syncs the artifacts into the local archive and finally
+publishes `plugin/` to npm. `--dry-run` only checks, `--from=<step>` resumes after a failure, `--no-npm` /
+`--no-wait` / `--skip-tests` skip a stage. The npm stage needs a token with publish rights; while `~/.npmrc`
+only holds a read-only token it reports the exact commands to finish by hand and leaves the desktop release
+(already published) untouched.
+
+**Checksums:** the same source produces *different* binaries locally and on CI, so quote only the digests
+from the GitHub Release (the script prints those first and labels the local ones as local-only).
 
 ## Definition of done
 
