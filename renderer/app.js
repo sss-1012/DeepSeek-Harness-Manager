@@ -1,6 +1,5 @@
 'use strict'
-const { t } = require('./src/i18n')
-/* DeepSeek Harness 管理器 — 渲染进程逻辑 */
+/* DeepSeek Harness 管理器 — 渲染进程逻辑。t() 来自 renderer/i18n.js（先于本文件加载）。*/
 const $ = (sel) => document.querySelector(sel)
 const $$ = (sel) => [...document.querySelectorAll(sel)]
 

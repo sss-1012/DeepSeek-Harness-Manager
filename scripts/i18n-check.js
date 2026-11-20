@@ -28,6 +28,32 @@ const marked = []
 for (const m of html.matchAll(/data-i18n(?:-html|-title|-placeholder)?="([^"]*)"/g)) marked.push(m[1])
 const missingMarked = [...new Set(marked)].filter((k) => !dict.has(norm(k)))
 
+// 1b. 两个历史事故的回归闸门:
+//     (a) 渲染层是浏览器脚本,绝不能出现 require() —— 会让整个 app.js 在第 2 行就死掉;
+//     (b) 非渲染层凡是用 t( 的文件,必须真的绑定了 t(只 require 了 i18n 不算)。
+const rendererFiles = ['renderer/app.js', 'renderer/i18n.js']
+const moduleFiles = ['main.js', 'src/compat.js', 'src/diagnose.js', 'src/status.js', 'src/update.js',
+  'src/tray.js', 'src/env.js', 'src/security.js', 'src/store.js', 'src/balance.js', 'src/dsh.js',
+  'src/profiles.js', 'src/overrides.js', 'src/selfupdate.js', 'src/plugins/index.js']
+const wire = []
+for (const f of rendererFiles) {
+  const p = path.join(ROOT, f)
+  if (!fs.existsSync(p)) continue
+  if (/\brequire\s*\(/.test(fs.readFileSync(p, 'utf8'))) wire.push(`${f}: 渲染层里出现了 require()`)
+}
+for (const f of moduleFiles) {
+  const p = path.join(ROOT, f)
+  if (!fs.existsSync(p)) continue
+  const src = fs.readFileSync(p, 'utf8')
+  const usesT = /(?:^|[^\w$.])t\(/.test(src)
+  const bindsT = /const\s*\{\s*t\s*(?:,[^}]*)?\}\s*=\s*require\(/.test(src)
+  if (usesT && !bindsT) wire.push(`${f}: 用了 t() 但没有 const { t } = require(...)`)
+}
+if (wire.length) {
+  console.log('接线错误:')
+  for (const w of wire) console.log('  ✘ ' + w)
+}
+
 // 2. 字典里不能有"查无此句"的僵尸条目(容易因为改了源码而悄悄失效)
 const allSource = inv.items.map((i) => norm(i.text)).concat(marked.map(norm))
 const zw = [...dict.keys()].filter((k) => !allSource.includes(k))
@@ -56,7 +82,7 @@ for (const [file, s] of Object.entries(byFile).sort((a, b) => b[1].total - a[1].
   console.log(`${String(pct).padStart(3)}%  ${file.padEnd(24)} ${s.done}/${s.total}`)
 }
 
-const fail = missingMarked.length > 0 || (strict && total !== done)
+const fail = wire.length > 0 || missingMarked.length > 0 || (strict && total !== done)
 if (fail) {
   console.log('\n未通过:' + (missingMarked.length ? ' HTML 标记有缺译' : '') + (strict && total !== done ? ` 仍有 ${total - done} 条待译` : ''))
   process.exit(1)
