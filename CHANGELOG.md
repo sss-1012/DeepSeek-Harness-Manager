@@ -2,6 +2,20 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/);版本号与 GitHub Release 的 tag 一致。
 安装版 / 绿色免安装版构建产物见 [Releases](https://github.com/sss-1012/DeepSeek-Harness-Manager/releases)。
+## [0.4.7] - 2026-11-23
+
+本版**没有应用逻辑改动**,只为让 npm 页面拿到正确的 README(发布后才能生效)。
+
+### 文档
+
+- 📄 **npm 页面不再混入开发/发布内容**:`plugin/README.md` 只留用户需要的安装/卸载、胶囊三种状态、
+  管理器定位顺序、官方桌面端里为什么是灰点与本机路由说明;本地 `link:` 安装、目录结构、自检、
+  npm 发布(含 2FA)与 awesome-list 收录 YAML 移到 `plugin/DEVELOPMENT.md`(不在 npm 包内)。
+- 📄 根 README(中/英)的插件段落改为分别指向用户向与开发者向文档;`scripts/check-docs.js` 把
+  `plugin/DEVELOPMENT.md` 也纳入链接检查。
+- 🩹 修正 README 的过时陈述:目标 CLI 版本 `0.1.x` → `0.2.x`;那句 "layout plugins are resolved from
+  can change" 是病句,一并改写;Roadmap 的「英文界面」标为已完成(0.4.6 已上线)。
+
 ## [0.4.6] - 2026-11-20
 
 ### 新增

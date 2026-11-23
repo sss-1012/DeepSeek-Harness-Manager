@@ -252,7 +252,7 @@ dsh plugin --profile web add link:<仓库>/plugin   # 之后重启 dsh web
 ```
 
 包已发布到 npm,用户可直接 `dsh plugin --profile web add dsh-harness-manager` 安装;本地 `link:` 形式、
-发布步骤与 awesome-list 收录用的 YAML 见 [plugin/README.md](../../plugin/README.md)。
+发布步骤与 awesome-list 收录用的 YAML 见 [plugin/DEVELOPMENT.md](../../plugin/DEVELOPMENT.md)。
 
 ## 环境变量
 

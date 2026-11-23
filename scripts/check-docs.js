@@ -13,6 +13,7 @@ const FILES = [
   'AGENTS.md',
   'PRIVACY.md',
   'plugin/README.md',
+  'plugin/DEVELOPMENT.md',
   'docs/DEVELOPMENT.md',
   'docs/TROUBLESHOOTING.md',
   'docs/zh-CN/DEVELOPMENT.md',

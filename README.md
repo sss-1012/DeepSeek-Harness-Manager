@@ -16,9 +16,9 @@ Launch, manage plugins, diagnose problems, update, and roll back your DSH enviro
 ![DeepSeek Harness Manager — dashboard](docs/screenshots/overview.png)
 
 > [!IMPORTANT]
-> **Upstream moves fast.** This manager targets the current `@deepseek-ai/dsh` CLI (0.1.x).
-> DSH is a fast-moving preview: profiles, plugin bundles and the layout plugins are resolved from
-> can change between releases. The manager detects what it can, backs up before every update and
+> **Upstream moves fast.** This manager targets the current `@deepseek-ai/dsh` CLI (0.2.x).
+> DSH is a fast-moving preview: profiles, plugin bundles and where plugins are resolved from can
+> change between releases. The manager detects what it can, backs up before every update and
 > offers a one-click plugin-compatibility repair — but it cannot anticipate every upstream change.
 > Keep the automatic backup until you are sure the new version is good.
 
@@ -145,9 +145,9 @@ Working on the plugin itself? Install the local copy instead:
 
 The pill can be hidden (× button); the preference is stored in `localStorage`. The plugin locates
 the manager through `DSH_MANAGER_EXE`, then `~/.dsh-manager/install.json`, then the usual install
-locations — see [plugin/README.md](plugin/README.md) for details, the self-check commands
-(`node plugin/test/host.test.js`, `node plugin/test/boot-check.mjs --spec dsh-harness-manager`,
-`node plugin/test/resolve-check.mjs`) and the awesome-list submission file.
+locations — see [plugin/README.md](plugin/README.md) for usage, and
+[plugin/DEVELOPMENT.md](plugin/DEVELOPMENT.md) for the local `link:` install, the self-check commands
+and the npm / awesome-list release steps.
 
 ## Coexisting with the official desktop app
 
@@ -264,7 +264,7 @@ Full setup, mirror configuration, packaging and offline-build notes: **[docs/DEV
 ## Roadmap
 
 - [ ] Embedded plugin details (currently opens GitHub in your browser)
-- [ ] English UI (the app interface is Chinese today; only the documentation is bilingual)
+- [x] English UI (shipped in 0.4.6 — Settings → interface language: follow system / 中文 / English)
 - [ ] Runtime history view in the UI (the data is already recorded to disk)
 - [ ] Better compatibility detection across DSH versions
 - [ ] More plugin sources (curated registries)

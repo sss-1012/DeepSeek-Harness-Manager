@@ -16,7 +16,7 @@
 ![DeepSeek Harness Manager — 概览页](docs/screenshots/overview.png)
 
 > [!IMPORTANT]
-> **上游变化很快。** 本管理器面向当前 `@deepseek-ai/dsh` CLI(0.1.x)。DSH 迭代频繁:
+> **上游变化很快。** 本管理器面向当前 `@deepseek-ai/dsh` CLI(0.2.x)。DSH 迭代频繁:
 > profile、插件 bundle、以及「插件从哪里解析」都可能随版本改变。管理器会尽力检测、
 > 每次更新前自动备份、并提供一键插件兼容修复 —— 但无法预见上游的每一处改动。
 > **在确认新版本可用之前,请保留自动备份。**
@@ -140,7 +140,7 @@ dsh plugin --profile web remove dsh-harness-manager   # 卸载
 
 胶囊可以关掉(× 按钮),偏好存在 `localStorage`。插件按 `DSH_MANAGER_EXE` →
 `~/.dsh-manager/install.json` → 常见安装路径的顺序定位管理器,详见
-[plugin/README.md](plugin/README.md)(含三条自检命令,以及 awesome-list 收录用的 YAML)。
+[plugin/README.md](plugin/README.md)(用法);开发与发布见 [plugin/DEVELOPMENT.md](plugin/DEVELOPMENT.md)。
 
 ## 与官方桌面端共存
 
@@ -251,7 +251,7 @@ npm run screenshots       # 重新生成 README 截图
 ## Roadmap
 
 - [ ] 插件详情内嵌浏览(目前是跳转浏览器)
-- [ ] 英文界面(当前应用界面为中文,只有文档双语)
+- [x] 英文界面(0.4.6 已上线:设置 → 界面语言,跟随系统 / 中文 / English)
 - [ ] 界面内的运行历史视图(数据已在本地记录)
 - [ ] 更完善的跨 DSH 版本兼容性检测
 - [ ] 更多插件来源(精选 registry)
